@@ -11,7 +11,7 @@ fs.mkdirSync(outDir,{recursive:true});
 const licenseContent=read('licenses.html').match(/<!-- licenses-content:start -->([\s\S]*?)<!-- licenses-content:end -->/);
 if(!licenseContent) throw new Error('License content markers are missing');
 let html=read('_head.html').replace('<!-- licenses-content -->',()=>licenseContent[1]);
-for(const name of ['expression','data','typesetter']) html+=`\n<script id="${name}-code">\n${read(name+'.js')}\n</script>\n`;
+for(const name of ['expression','data','symbols','typesetter']) html+=`\n<script id="${name}-code">\n${read(name+'.js')}\n</script>\n`;
 const data=read('data/expressions.json');
 if(external) {
   const table=JSON.parse(data), folder=path.join(outDir,'data','hours');fs.mkdirSync(folder,{recursive:true});

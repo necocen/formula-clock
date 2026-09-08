@@ -50,7 +50,8 @@
   const saved = savedDisplay();
   let displaySettings = {
     font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
-    division: ['fraction','inline'].includes(saved.division) ? saved.division : 'fraction'
+    division: ['fraction','inline'].includes(saved.division) ? saved.division : 'fraction',
+    symbolMotion: saved.symbolMotion === true
   };
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
@@ -107,19 +108,23 @@
   let typesetter = engineFor(displaySettings.font);
   async function setDisplay(changes) {
     const next = {...displaySettings,...changes};
-    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division)) throw new TypeError('Invalid display options');
-    displaySettings = {font:next.font,division:next.division};
+    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division) || typeof next.symbolMotion !== 'boolean') throw new TypeError('Invalid display options');
+    displaySettings = {font:next.font,division:next.division,symbolMotion:next.symbolMotion};
+    $('#symbol-motion').checked = next.symbolMotion;
     $('#font-choice').value = next.font; $('#division-choice').value = next.division;
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
     typesetter = engineFor(next.font); engineError=null; lastVisual='';
     refresh(true);
     await typesetter.boot;
   }
+  $('#symbol-motion').checked = displaySettings.symbolMotion;
+  $('#symbol-motion').addEventListener('change',e=>{setDisplay({symbolMotion:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
   $('#division-choice').value = displaySettings.division;
   $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
   $('#division-choice').addEventListener('change',e=>{setDisplay({division:e.target.value}).catch(()=>{});});
   const scene = $('#math-scene'), notationRoot = $('#notation-root'), equalSign = $('#equal-sign');
+  const operatorRoot = $('#operator-root'), symbolRecords = new Set();
   const secondsEls = [...scene.querySelectorAll('.answer-digit')];
   const movingEls = [...digitsEls, ...secondsEls];
   const plainTime = $('#plain-time');
@@ -155,6 +160,40 @@
   function fadeIn(el, duration, delayed = false) {
     if (reducedMotion.matches) return;
     el.animate(delayed ? [{ opacity: 0 }, { opacity: 0, offset: .18 }, { opacity: 1 }] : [{ opacity: .15 }, { opacity: 1 }], { duration, easing: 'ease-out' });
+  }
+  function updateSymbols(tokens,fit,animated,placeToken) {
+    const now=performance.now(), previous=[...symbolRecords];
+    const position=(token,matrix,exiting=false)=>({...token,x:matrix[4],y:matrix[5],scale:Math.hypot(matrix[0],matrix[1]),exiting});
+    const old=previous.map(record=>position(record.token,matrixAt(movement.get(record.el),now),record.exiting));
+    const next=tokens.map(token=>{
+      const m=fit.multiply(new DOMMatrix(token.matrix));
+      return position(token,[m.a,m.b,m.c,m.d,m.e,m.f]);
+    });
+    const matches=FormulaSymbols.match(old,next,Math.max(1,stage.clientWidth)),used=new Set();
+    tokens.forEach((token,i)=>{
+      let record=previous[matches[i]];
+      if(!record) {
+        const el=document.createElementNS(mathNS,'g');
+        el.classList.add('moving-symbol');operatorRoot.append(el);
+        record={el};symbolRecords.add(record);
+      } else if(record.animation) {
+        const opacity=getComputedStyle(record.el).opacity;
+        record.animation.cancel();record.animation=null;
+        if(animated)record.el.animate([{opacity},{opacity:1}],{duration:180});
+      }
+      used.add(record);record.exiting=false;record.token=token;
+      record.el.dataset.kind=token.kind;
+      placeToken(token,record.el);
+    });
+    for(const record of previous) if(!used.has(record)) {
+      const remove=()=>{record.el.remove();movement.delete(record.el);symbolRecords.delete(record);};
+      if(!animated){record.animation?.cancel();remove();continue;}
+      if(record.exiting)continue;
+      record.exiting=true;
+      const animation=record.el.animate([{opacity:1},{opacity:0}],{duration:180,fill:'forwards'});
+      record.animation=animation;
+      animation.onfinish=()=>{if(record.animation===animation && record.exiting)remove();};
+    }
   }
   function plainFallback(code, seconds, reason) {
     const full = `${code.slice(0,2)}:${code.slice(2)}:${pad(seconds)}`;
@@ -197,6 +236,7 @@
     // Equality keeps its glyph and interpolates with the digits; other signs fade.
     if (frame.equality) placeToken(frame.equality,equalSign);
     equalSign.style.opacity = frame.equality ? '1' : '0';
+    updateSymbols(frame.symbols,fit,animated,placeToken);
     const layer = document.createElementNS(mathNS, 'g');
     layer.classList.add('notation-layer');
     const content = frame.decorations.cloneNode(true);
@@ -225,7 +265,7 @@
   }
   function renderExpression(ast, code, seconds, loading, instant = false) {
     const engine = typesetter, view = {...displaySettings};
-    const key = `${view.font}:${view.division}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
+    const key = `${view.font}:${view.division}:${view.symbolMotion}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;

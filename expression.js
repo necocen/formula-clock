@@ -39,7 +39,7 @@
   function options(value = {}) {
     const division = value.division ?? 'fraction';
     if (!['fraction','inline'].includes(division)) throw new TypeError('Unknown division style');
-    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false };
+    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true };
   }
   function mark(slot, digit, opt) {
     const glyph = opt.oldstyle ? `{\\oldstyle ${digit}}` : digit;
@@ -60,6 +60,21 @@
   function expressionTex(ast, code, settings = {}) {
     assertCode(code);
     const opt = options(settings);
+    let symbolId = 0;
+    function interval(a) {
+      if (a.op === 'lit') return [a.i,a.j];
+      const left = interval(a.a);
+      return [left[0],a.b ? interval(a.b)[1] : left[1]];
+    }
+    function symbol(a, glyph, texClass) {
+      if (!opt.symbolMotion) {
+        if (a.op === 'neg') return negative(opt);
+        return a.op === 'fact' ? glyph : binary(glyph,opt);
+      }
+      const [i,j] = interval(a);
+      const id = `fc-op-${symbolId++}-${a.op}-${i}-${j}`;
+      return `\\${texClass}{\\cssId{${id}}{${a.op === 'fact' ? glyph : center(glyph,opt)}}}`;
+    }
     function write(a) {
       if (a.op === 'lit') {
         let out = ''; for (let i = a.i; i < a.j; i++) out += mark(`d${i}`,code[i],opt);
@@ -69,12 +84,12 @@
       if (a.op === 'neg') {
         let x = write(a.a);
         if (precedence(a.a,opt) <= 30) x = parens(x);
-        return negative(opt) + x;
+        return symbol(a,'-','mathord') + x;
       }
       if (a.op === 'fact') {
         // (n!)! must not become n!!, which conventionally means double factorial.
         const x = write(a.a);
-        return (['lit','sqrt'].includes(a.a.op) ? x : parens(x)) + '!';
+        return (['lit','sqrt'].includes(a.a.op) ? x : parens(x)) + symbol(a,'!','mathclose');
       }
       if (a.op === 'pow') {
         let x = write(a.a);
@@ -92,9 +107,9 @@
         const associative = (a.op === 'add' || a.op === 'mul') && x.op === a.op && homogeneous(x);
         return q < p || (right && ((q === p && !associative) || x.op === 'neg')) ? parens(tex) : tex;
       }
-      const symbol = {add:'+', sub:'-', mul:'\\times', div:'\\div'}[a.op];
-      if (!symbol) throw new TypeError(`Unsupported operation: ${a.op}`);
-      return `${child(a.a,false)} ${binary(symbol,opt)} ${child(a.b,true)}`;
+      const glyph = {add:'+', sub:'-', mul:'\\times', div:'\\div'}[a.op];
+      if (!glyph) throw new TypeError(`Unsupported operation: ${a.op}`);
+      return `${child(a.a,false)} ${symbol(a,glyph,'mathbin')} ${child(a.b,true)}`;
     }
     return write(ast);
   }

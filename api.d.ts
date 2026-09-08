@@ -26,6 +26,8 @@ export interface FormulaProvider {
 export interface DisplayOptions {
   font: 'stix2' | 'euler';
   division: 'fraction' | 'inline';
+  /** Experimental reuse of +, −, ×, ÷ and ! glyphs. Defaults to false. */
+  symbolMotion: boolean;
 }
 export interface FormulaClockAPI {
   setDisplay(options: Partial<DisplayOptions>): Promise<void>;

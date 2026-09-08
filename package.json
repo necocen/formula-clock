@@ -7,7 +7,7 @@
     "build": "node build.cjs",
     "build:external": "node build.cjs --external",
     "generate": "node tools/generate.cjs",
-    "test": "node tests/expression.test.cjs && node tests/data.test.cjs && node --test tests/hourly.test.cjs tests/build.test.cjs",
+    "test": "node tests/expression.test.cjs && node tests/data.test.cjs && node --test tests/hourly.test.cjs tests/build.test.cjs tests/symbols.test.cjs",
     "deploy": "wrangler deploy",
     "preview": "wrangler versions upload"
   },

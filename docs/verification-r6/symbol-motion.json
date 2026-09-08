@@ -1,0 +1,83 @@
+[
+  {
+    "at": "2026-09-08T16:54:48.358552+00:00",
+    "command": [
+      "tests/symbol-motion.browser.py",
+      "--browser",
+      "chromium",
+      "--output-dir",
+      "test-results/symbol-lifetime-chromium"
+    ],
+    "browser": "chromium",
+    "checks": [
+      "24 font/division/time comparisons preserve digit layout within 0.12px",
+      "Shared plus retains its element and glyph, moving continuously at full opacity; surplus multiplication disappears",
+      "Two of three repeated plus signs are reused without duplicating nodes",
+      "Rapid previews and disabling the experiment leave no stale or duplicate glyphs",
+      "Settings switch persists across reload; reduced motion immediately places symbols"
+    ],
+    "browserVersion": "151.0.7922.34",
+    "mathjax": "4.1.3",
+    "maxMatrixDelta": 0,
+    "pageErrors": [],
+    "url": "http://127.0.0.1:8000/dist-external/",
+    "fonts": [
+      "stix2",
+      "euler"
+    ]
+  },
+  {
+    "at": "2026-09-08T16:54:57.285654+00:00",
+    "command": [
+      "tests/symbol-motion.browser.py",
+      "--browser",
+      "firefox",
+      "--output-dir",
+      "test-results/symbol-lifetime-firefox"
+    ],
+    "browser": "firefox",
+    "checks": [
+      "24 font/division/time comparisons preserve digit layout within 0.12px",
+      "Shared plus retains its element and glyph, moving continuously at full opacity; surplus multiplication disappears",
+      "Two of three repeated plus signs are reused without duplicating nodes",
+      "Rapid previews and disabling the experiment leave no stale or duplicate glyphs",
+      "Settings switch persists across reload; reduced motion immediately places symbols"
+    ],
+    "browserVersion": "153.0",
+    "mathjax": "4.1.3",
+    "maxMatrixDelta": 0,
+    "pageErrors": [],
+    "url": "http://127.0.0.1:8000/dist-external/",
+    "fonts": [
+      "stix2",
+      "euler"
+    ]
+  },
+  {
+    "at": "2026-09-08T16:54:53.028647+00:00",
+    "command": [
+      "tests/symbol-motion.browser.py",
+      "--browser",
+      "webkit",
+      "--output-dir",
+      "test-results/symbol-lifetime-webkit"
+    ],
+    "browser": "webkit",
+    "checks": [
+      "24 font/division/time comparisons preserve digit layout within 0.12px",
+      "Shared plus retains its element and glyph, moving continuously at full opacity; surplus multiplication disappears",
+      "Two of three repeated plus signs are reused without duplicating nodes",
+      "Rapid previews and disabling the experiment leave no stale or duplicate glyphs",
+      "Settings switch persists across reload; reduced motion immediately places symbols"
+    ],
+    "browserVersion": "26.5",
+    "mathjax": "4.1.3",
+    "maxMatrixDelta": 0,
+    "pageErrors": [],
+    "url": "http://127.0.0.1:8000/dist-external/",
+    "fonts": [
+      "stix2",
+      "euler"
+    ]
+  }
+]

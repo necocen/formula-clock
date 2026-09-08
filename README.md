@@ -1,3 +1,30 @@
+## 実験機能：記号の移動
+
+設定の「記号も動かす（実験的）」で、`＋ − × ÷ !` を次の数式へ引き継いで移動できます。
+初期値はオフ。設定はブラウザに保存し、いつでも従来のフェード表示へ戻せます。
+分数線・根号・括弧は従来の表示を維持します。等号はこの設定にかかわらず常に移動します。
+
+```js
+await FormulaClock.setDisplay({symbolMotion: true});
+```
+
+記号の対応は、種類・周囲の桁の範囲・移動距離・拡大率から決めます。
+数式データとMathJaxによる最終配置は変わりません。
+同じ記号でも役割が変わる場合があるため、移動は数式の等価変形を示すものではありません。
+
+```sh
+npm test
+npm run build
+npm run build:external
+python tests/browser.test.py --url http://127.0.0.1:8000/dist-external/ --symbol-motion
+python tests/symbol-motion.browser.py --url http://127.0.0.1:8000/dist-external/
+```
+
+以下はr5時点の引き継ぎ資料です。現行UIは右上の設定に集約され、書体はSTIX Two / Eulerの2種類、
+配信用ビルドは1時間単位の24ファイルを生成します。現在の形式は[FORMAT.md](FORMAT.md)を参照してください。
+
+---
+
 # Formula Clock — STIX Two（r5）
 
 **Codex引き継ぎ版：まず [CODEX_HANDOFF.md](CODEX_HANDOFF.md) を読む。** [AGENTS.md](AGENTS.md) に作業上の要点、[検証記録](docs/VERIFICATION.md) に確認済み範囲をまとめた。

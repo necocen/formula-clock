@@ -187,6 +187,13 @@
         const equality = svg.querySelector('#fc-eq');
         const slots = ['d0', 'd1', 'd2', 'd3', 's0', 's1'];
         if (equality) slots.push('eq');
+        const symbolMarks = new Map([...svg.querySelectorAll('[id^="fc-op-"]')].map(el => {
+          const [,role,start,end] = el.id.match(/^fc-op-\d+-(add|sub|neg|mul|div|fact)-(\d)-(\d)$/);
+          const kind = {add:'+',sub:'−',neg:'−',mul:'×',div:'÷',fact:'!'}[role];
+          return [el.id.slice(3),{kind,role,start:Number(start),end:Number(end)}];
+        }));
+        const symbolOffset = slots.length;
+        slots.push(...symbolMarks.keys());
         const tokens = slots.map((slot, i) => {
           const tagged = svg.querySelector(`#fc-${slot}`);
           if (!tagged || !tagged.querySelector('path')) throw new Error(`Missing digit ${slot}`);
@@ -233,7 +240,8 @@
               maxY < v.y - slack || minY > v.y + v.height + slack) {
             throw new Error(`Glyph outside SVG viewBox ${slot}`);
           }
-          return { slot, text: slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i - 4], matrix: matrixArray(local), shape };
+          const symbol = symbolMarks.get(slot);
+          return { slot, text: symbol ? symbol.kind : slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i - 4], matrix: matrixArray(local), shape, ...symbol };
         });
         // Anchor equations by the actual equal-sign ink, not by the full SVG's
         // height. In time mode use the same mathematical axis (there is no '=').
@@ -248,7 +256,7 @@
         for (const slot of slots) decorations.querySelector(`#fc-${slot}`)?.remove();
         // cssId is only a temporary typesetting marker, never an on-screen id.
         decorations.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-        return { tex, viewBox, tokens:tokens.slice(0,6), equality:equality ? tokens[6] : null, decorations, axisY, typography: this.typography, font: this.profile.id };
+        return { tex, viewBox, tokens:tokens.slice(0,6), equality:equality ? tokens[6] : null, symbols:tokens.slice(symbolOffset), decorations, axisY, typography: this.typography, font: this.profile.id };
       } finally { node.remove(); }
     }
   }

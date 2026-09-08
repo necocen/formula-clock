@@ -14,12 +14,12 @@
 *{box-sizing:border-box}body{margin:0;min-width:320px;background:var(--bg);color:var(--fg);font-family:var(--sans);font-weight:400;-webkit-font-smoothing:antialiased}body:before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 48% 38%,#2b332323,transparent 64%)}button,input,select{font:inherit}button,a,input,select,summary{touch-action:manipulation}button{color:inherit;cursor:pointer}button:focus-visible,input:focus-visible,summary:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--c2);outline-offset:4px}button:disabled{cursor:default;opacity:.35}button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}button[aria-pressed=true]{border-color:#687762;background:#283125}button:hover:not(:disabled){background:#252c22;color:#fff}::selection{background:#83977b55}
 .shell{position:relative;max-width:1520px;min-height:100svh;margin:auto;padding:28px 50px;display:flex;flex-direction:column}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:40px}.brand{display:flex;align-items:center;gap:11px;font-size:12px;font-weight:550;letter-spacing:2.3px;white-space:nowrap}.brand-mark{display:grid;grid-template-columns:repeat(2,3px);gap:4px}.brand-mark i{width:3px;height:3px;border-radius:50%;background:var(--c0)}.brand-mark i:nth-child(2){background:var(--c1)}.brand-mark i:nth-child(3){background:var(--c2)}.brand-mark i:nth-child(4){background:var(--c3)}.tools{display:flex;gap:8px}.tool{display:inline-flex;justify-content:center;gap:8px;align-items:center;border:1px solid var(--line);background:transparent;border-radius:7px;padding:11px 12px;font-size:11px;line-height:1;min-height:40px;transition:background .2s,border-color .2s}.tool.icon-only{width:40px;padding:10px}.tool[aria-pressed=true]{color:var(--c2)}
 main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%;padding:56px 0 64px}.clock-top{display:flex;justify-content:center;margin-bottom:8px}.source-time{display:flex;align-items:baseline;gap:3px;font-family:var(--mono);font-size:24px;letter-spacing:2px}.source-time span[data-digit="0"]{color:var(--c0)}.source-time span[data-digit="1"]{color:var(--c1)}.source-time span[data-digit="2"]{color:var(--c2)}.source-time span[data-digit="3"]{color:var(--c3)}.source-time .colon{margin:0 4px;color:#71786c;font-size:20px}.source-time .src-second{color:var(--muted);font-size:inherit}.source-time[hidden]{display:flex;visibility:hidden}
-.stage-wrap{position:relative;margin:8px 0 0}.stage{height:242px;width:100%;position:relative;overflow:visible;isolation:isolate}.stage:before{content:"";position:absolute;left:12%;right:12%;top:17%;bottom:10%;border-radius:50%;background:radial-gradient(ellipse,#8aa7770c,transparent 68%);pointer-events:none}.math-scene{position:absolute;inset:0;width:100%;height:100%;overflow:visible;visibility:hidden;user-select:none}.math-scene .digit,.answer-digit{fill:currentColor;stroke:currentColor;stroke-width:0;transition:opacity 440ms ease,filter 440ms ease}.digit[data-digit="0"]{color:var(--c0)}.digit[data-digit="1"]{color:var(--c1)}.digit[data-digit="2"]{color:var(--c2)}.digit[data-digit="3"]{color:var(--c3)}.answer-digit{color:var(--fg)}#equal-sign{fill:currentColor;stroke:currentColor;stroke-width:0;color:#c3c8ba;opacity:0;transition:opacity 440ms ease}#notation-root{color:#c3c8ba;transition:opacity 440ms ease}.stage.resting .digit{opacity:.48;filter:saturate(.38)}.stage.resting .answer-digit{opacity:.48}.stage.resting #notation-root{opacity:.44}.stage.loading .digit{opacity:.6}.math-staging{position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;width:20000px;font-size:16px;contain:layout style;z-index:-1}.math-staging mjx-container{margin:0!important}.plain-time{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;font-family:var(--mono);font-size:clamp(28px,6vw,78px);letter-spacing:1px;opacity:.48;filter:saturate(.38);white-space:nowrap}.plain-time[hidden]{display:none}.plain-time span:nth-child(1){color:var(--c0)}.plain-time span:nth-child(2){color:var(--c1)}.plain-time span:nth-child(4){color:var(--c2)}.plain-time span:nth-child(5){color:var(--c3)}.plain-time span:nth-child(3),.plain-time span:nth-child(6){margin:0 .08em;color:var(--muted)}.state-label{height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);letter-spacing:1.4px}.state-label.quiet{font-family:var(--mono);font-size:12px;letter-spacing:4px;color:#737c6a}.state-label.counting{color:var(--c1);font-size:12px;letter-spacing:2px}.flash{position:absolute;inset:0;border-radius:20px;background:radial-gradient(ellipse,#c4d0ae18,transparent 66%);pointer-events:none;opacity:0}.a11y{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.stage-wrap{position:relative;margin:8px 0 0}.stage{height:242px;width:100%;position:relative;overflow:visible;isolation:isolate}.stage:before{content:"";position:absolute;left:12%;right:12%;top:17%;bottom:10%;border-radius:50%;background:radial-gradient(ellipse,#8aa7770c,transparent 68%);pointer-events:none}.math-scene{position:absolute;inset:0;width:100%;height:100%;overflow:visible;visibility:hidden;user-select:none}.math-scene .digit,.answer-digit{fill:currentColor;stroke:currentColor;stroke-width:0;transition:opacity 440ms ease,filter 440ms ease}.digit[data-digit="0"]{color:var(--c0)}.digit[data-digit="1"]{color:var(--c1)}.digit[data-digit="2"]{color:var(--c2)}.digit[data-digit="3"]{color:var(--c3)}.answer-digit{color:var(--fg)}#operator-root{fill:currentColor;stroke:currentColor;stroke-width:0;color:#c3c8ba}#equal-sign{fill:currentColor;stroke:currentColor;stroke-width:0;color:#c3c8ba;opacity:0;transition:opacity 440ms ease}#notation-root{color:#c3c8ba;transition:opacity 440ms ease}.stage.resting .digit{opacity:.48;filter:saturate(.38)}.stage.resting .answer-digit{opacity:.48}.stage.resting #notation-root{opacity:.44}.stage.loading .digit{opacity:.6}.math-staging{position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;width:20000px;font-size:16px;contain:layout style;z-index:-1}.math-staging mjx-container{margin:0!important}.plain-time{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;font-family:var(--mono);font-size:clamp(28px,6vw,78px);letter-spacing:1px;opacity:.48;filter:saturate(.38);white-space:nowrap}.plain-time[hidden]{display:none}.plain-time span:nth-child(1){color:var(--c0)}.plain-time span:nth-child(2){color:var(--c1)}.plain-time span:nth-child(4){color:var(--c2)}.plain-time span:nth-child(5){color:var(--c3)}.plain-time span:nth-child(3),.plain-time span:nth-child(6){margin:0 .08em;color:var(--muted)}.state-label{height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);letter-spacing:1.4px}.state-label.quiet{font-family:var(--mono);font-size:12px;letter-spacing:4px;color:#737c6a}.state-label.counting{color:var(--c1);font-size:12px;letter-spacing:2px}.flash{position:absolute;inset:0;border-radius:20px;background:radial-gradient(ellipse,#c4d0ae18,transparent 66%);pointer-events:none;opacity:0}.a11y{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 .stage{height:clamp(242px,32svh,360px)}
 .minute{max-width:710px;width:calc(100% - 50px);margin:28px auto 0}.ruler{height:32px;display:grid;grid-template-columns:repeat(60,1fr);align-items:center;gap:4px}.tick{position:relative;background:transparent;padding:0;height:32px;border:0;border-radius:2px}.tick:before{content:"";position:absolute;left:50%;top:12px;width:2px;height:7px;transform:translateX(-50%);background:#30372b;transition:background .3s,height .3s,top .3s}.tick.major:before{height:12px;top:9px}.tick.solved:before{background:#7c8970}.tick.past:before{opacity:.55}.tick.current:before{height:22px;top:4px;background:var(--fg);box-shadow:0 0 10px #d5dbc333}.tick:hover:before{background:var(--c2);height:20px;top:5px}.ruler-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim)}
 .transport{display:flex;justify-content:center;align-items:center;gap:10px;height:38px;margin-top:18px}.transport[hidden]{display:flex;visibility:hidden}.transport button{border:0;background:transparent;color:var(--muted);font-size:10px;padding:10px;border-radius:4px;letter-spacing:.5px}.transport .live-return{color:var(--c2)}.transport .divider{height:10px;width:1px;background:var(--line)}.transport .playback{font-family:var(--mono);font-size:10px;color:var(--dim);min-width:76px}.transport #play-pause{min-width:63px}
-.settings-dialog{position:fixed;inset:80px 28px auto auto;margin:0;width:350px;max-width:calc(100vw - 32px);max-height:calc(100svh - 100px);overflow:auto;overscroll-behavior:contain;background:#181d17;border:1px solid #394232;border-radius:12px;color:var(--fg);padding:22px;box-shadow:0 16px 70px #0005;font-size:12px}.settings-dialog::backdrop{background:#0003}.settings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.settings-header h2{font-size:13px;font-weight:500;letter-spacing:1px;margin:0}.settings-close{display:grid;place-items:center;width:32px;height:32px;background:transparent;border:0;border-radius:5px;color:var(--muted)}.setting-row{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:16px 0;color:var(--muted)}.setting-row select{color:var(--fg);background:#111710;border:1px solid var(--line);border-radius:5px;padding:8px;max-width:180px}.setting-row input[type=range]{width:160px;accent-color:var(--c2)}.custom-time-label{display:block;margin:22px 0 9px;color:var(--muted)}.custom-time{display:flex;gap:8px}.custom-time input{background:#111710;color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:8px;min-width:0;flex:1;font-family:var(--mono)}.settings-dialog .small-button{border:1px solid var(--line);background:transparent;border-radius:5px;padding:8px 10px;font-size:11px}.advanced{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}.advanced summary{color:var(--muted);cursor:pointer;padding:4px 0}.advanced p{font-size:10px;line-height:1.8;color:var(--muted);overflow-wrap:anywhere}.data-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.data-controls input[hidden]{display:none}.settings-links{display:flex;gap:18px;margin-top:22px}.settings-links a,.license-link{padding:0;border:0;background:none;color:var(--muted);font-size:10px;text-decoration:underline;text-underline-offset:3px}.settings-dialog.license-dialog{inset:0;margin:auto;width:760px;max-height:calc(100svh - 48px);padding:0}.license-dialog .settings-header{position:sticky;top:0;margin:0;padding:16px 22px;background:#181d17;border-bottom:1px solid var(--line);z-index:1}.license-content{padding:0 24px 24px;font-size:12px;line-height:1.8;overflow-wrap:anywhere}.license-content h1{display:none}.license-content h2{font-size:14px;margin-top:28px}.license-content a{color:var(--c2)}.license-content pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 var(--mono);color:var(--muted)}.license-content summary{cursor:pointer;padding:12px 0}.license-content details{border-bottom:1px solid var(--line)}.math-engine-frame{position:fixed;left:-100000px;top:0;width:300px;height:200px;visibility:hidden;pointer-events:none;border:0}
+.settings-dialog{position:fixed;inset:80px 28px auto auto;margin:0;width:350px;max-width:calc(100vw - 32px);max-height:calc(100svh - 100px);overflow:auto;overscroll-behavior:contain;background:#181d17;border:1px solid #394232;border-radius:12px;color:var(--fg);padding:22px;box-shadow:0 16px 70px #0005;font-size:12px}.settings-dialog::backdrop{background:#0003}.settings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.settings-header h2{font-size:13px;font-weight:500;letter-spacing:1px;margin:0}.settings-close{display:grid;place-items:center;width:32px;height:32px;background:transparent;border:0;border-radius:5px;color:var(--muted)}.setting-row{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:16px 0;color:var(--muted)}.setting-row select{color:var(--fg);background:#111710;border:1px solid var(--line);border-radius:5px;padding:8px;max-width:180px}.setting-row input[type=range]{width:160px;accent-color:var(--c2)}.experimental-option{margin-top:22px;font-size:11px}.experimental-option small{font-size:9px;color:var(--dim);margin-left:5px}.experimental-option input{accent-color:var(--c2);width:16px;height:16px}.custom-time-label{display:block;margin:22px 0 9px;color:var(--muted)}.custom-time{display:flex;gap:8px}.custom-time input{background:#111710;color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:8px;min-width:0;flex:1;font-family:var(--mono)}.settings-dialog .small-button{border:1px solid var(--line);background:transparent;border-radius:5px;padding:8px 10px;font-size:11px}.advanced{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}.advanced summary{color:var(--muted);cursor:pointer;padding:4px 0}.advanced p{font-size:10px;line-height:1.8;color:var(--muted);overflow-wrap:anywhere}.data-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.data-controls input[hidden]{display:none}.settings-links{display:flex;gap:18px;margin-top:22px}.settings-links a,.license-link{padding:0;border:0;background:none;color:var(--muted);font-size:10px;text-decoration:underline;text-underline-offset:3px}.settings-dialog.license-dialog{inset:0;margin:auto;width:760px;max-height:calc(100svh - 48px);padding:0}.license-dialog .settings-header{position:sticky;top:0;margin:0;padding:16px 22px;background:#181d17;border-bottom:1px solid var(--line);z-index:1}.license-content{padding:0 24px 24px;font-size:12px;line-height:1.8;overflow-wrap:anywhere}.license-content h1{display:none}.license-content h2{font-size:14px;margin-top:28px}.license-content a{color:var(--c2)}.license-content pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 var(--mono);color:var(--muted)}.license-content summary{cursor:pointer;padding:12px 0}.license-content details{border-bottom:1px solid var(--line)}.math-engine-frame{position:fixed;left:-100000px;top:0;width:300px;height:200px;visibility:hidden;pointer-events:none;border:0}
 @media(max-width:760px){.shell{padding:22px}.brand{font-size:10px;letter-spacing:1.8px}.tools{gap:6px}main{padding:40px 0 48px}.minute{width:100%;margin-top:22px}.ruler{gap:2px}.source-time{font-size:22px}.settings-dialog{right:16px;top:76px;max-height:calc(100svh - 92px)}}
 @media(max-width:480px){.shell{padding:18px 16px}.brand{font-size:9px;letter-spacing:1.4px;gap:8px}.tool{padding:10px;min-width:40px}.tools{gap:5px}.stage{height:226px}.transport{gap:2px}.transport button{padding:10px 7px}.transport .playback{min-width:60px;font-size:9px}.transport #play-pause{min-width:55px}.transport .live-return{white-space:nowrap}.setting-row select{max-width:165px}.settings-dialog{padding:20px}}
 @media(prefers-reduced-motion:reduce){*,*:before{scroll-behavior:auto!important}.math-scene .digit,.answer-digit,#equal-sign,#notation-root{transition:none!important}}
@@ -45,6 +45,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
       <div class="flash" id="flash"></div>
       <svg id="math-scene" class="math-scene" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <g id="notation-root"></g>
+        <g id="operator-root"></g>
         <g id="equal-sign"></g>
         <g class="digit" data-digit="0"></g><g class="digit" data-digit="1"></g><g class="digit" data-digit="2"></g><g class="digit" data-digit="3"></g>
         <g class="answer-digit" data-second="0"></g><g class="answer-digit" data-second="1"></g>
@@ -68,6 +69,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
   <label class="setting-row">音量<input id="volume" type="range" min="0" max="100" value="25" aria-label="時報の音量"></label>
   <label class="custom-time-label" for="custom-time">時刻を指定</label>
   <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go">表示</button></div>
+  <label class="setting-row experimental-option"><span>記号も動かす <small>実験的</small></span><input id="symbol-motion" type="checkbox"></label>
   <details class="advanced" id="advanced-settings"><summary>詳細</summary>
     <div class="data-controls"><button class="small-button" id="import-data">式データを読み込む</button><button class="small-button" id="restore-data">元に戻す</button><input id="data-file" type="file" accept=".json,application/json" hidden></div>
     <p id="data-status" role="status">formula-clock/1 形式のJSON。</p>
@@ -975,7 +977,7 @@ Important Recommendations
   function options(value = {}) {
     const division = value.division ?? 'fraction';
     if (!['fraction','inline'].includes(division)) throw new TypeError('Unknown division style');
-    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false };
+    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true };
   }
   function mark(slot, digit, opt) {
     const glyph = opt.oldstyle ? `{\\oldstyle ${digit}}` : digit;
@@ -996,6 +998,21 @@ Important Recommendations
   function expressionTex(ast, code, settings = {}) {
     assertCode(code);
     const opt = options(settings);
+    let symbolId = 0;
+    function interval(a) {
+      if (a.op === 'lit') return [a.i,a.j];
+      const left = interval(a.a);
+      return [left[0],a.b ? interval(a.b)[1] : left[1]];
+    }
+    function symbol(a, glyph, texClass) {
+      if (!opt.symbolMotion) {
+        if (a.op === 'neg') return negative(opt);
+        return a.op === 'fact' ? glyph : binary(glyph,opt);
+      }
+      const [i,j] = interval(a);
+      const id = `fc-op-${symbolId++}-${a.op}-${i}-${j}`;
+      return `\\${texClass}{\\cssId{${id}}{${a.op === 'fact' ? glyph : center(glyph,opt)}}}`;
+    }
     function write(a) {
       if (a.op === 'lit') {
         let out = ''; for (let i = a.i; i < a.j; i++) out += mark(`d${i}`,code[i],opt);
@@ -1005,12 +1022,12 @@ Important Recommendations
       if (a.op === 'neg') {
         let x = write(a.a);
         if (precedence(a.a,opt) <= 30) x = parens(x);
-        return negative(opt) + x;
+        return symbol(a,'-','mathord') + x;
       }
       if (a.op === 'fact') {
         // (n!)! must not become n!!, which conventionally means double factorial.
         const x = write(a.a);
-        return (['lit','sqrt'].includes(a.a.op) ? x : parens(x)) + '!';
+        return (['lit','sqrt'].includes(a.a.op) ? x : parens(x)) + symbol(a,'!','mathclose');
       }
       if (a.op === 'pow') {
         let x = write(a.a);
@@ -1028,9 +1045,9 @@ Important Recommendations
         const associative = (a.op === 'add' || a.op === 'mul') && x.op === a.op && homogeneous(x);
         return q < p || (right && ((q === p && !associative) || x.op === 'neg')) ? parens(tex) : tex;
       }
-      const symbol = {add:'+', sub:'-', mul:'\\times', div:'\\div'}[a.op];
-      if (!symbol) throw new TypeError(`Unsupported operation: ${a.op}`);
-      return `${child(a.a,false)} ${binary(symbol,opt)} ${child(a.b,true)}`;
+      const glyph = {add:'+', sub:'-', mul:'\\times', div:'\\div'}[a.op];
+      if (!glyph) throw new TypeError(`Unsupported operation: ${a.op}`);
+      return `${child(a.a,false)} ${symbol(a,glyph,'mathbin')} ${child(a.b,true)}`;
     }
     return write(ast);
   }
@@ -1233,6 +1250,63 @@ Important Recommendations
 
 </script>
 
+<script id="symbols-code">
+/* Match reusable visual operators. This never changes the expression AST. */
+(function (root) {
+  'use strict';
+  // Rectangular minimum-cost assignment. Every row gets one distinct column.
+  // O(n^3), bounded by the expression validator's 96-node limit.
+  function assignment(cost) {
+    const n=cost.length, m=cost[0].length;
+    const u=Array(n+1).fill(0),v=Array(m+1).fill(0),p=Array(m+1).fill(0),way=Array(m+1).fill(0);
+    for(let i=1;i<=n;i++) {
+      p[0]=i;let j0=0;
+      const min=Array(m+1).fill(Infinity),used=Array(m+1).fill(false);
+      do {
+        used[j0]=true;const i0=p[j0];let delta=Infinity,j1=0;
+        for(let j=1;j<=m;j++) if(!used[j]) {
+          const cur=cost[i0-1][j-1]-u[i0]-v[j];
+          if(cur<min[j]){min[j]=cur;way[j]=j0;}
+          if(min[j]<delta){delta=min[j];j1=j;}
+        }
+        for(let j=0;j<=m;j++) if(used[j]){u[p[j]]+=delta;v[j]-=delta;}else min[j]-=delta;
+        j0=j1;
+      } while(p[j0]!==0);
+      do {const j1=way[j0];p[j0]=p[j1];j0=j1;} while(j0);
+    }
+    const result=Array(n);
+    for(let j=1;j<=m;j++) if(p[j])result[p[j]-1]=j-1;
+    return result;
+  }
+  function cost(a,b,distance) {
+    const overlap=Math.max(0,Math.min(a.end,b.end)-Math.max(a.start,b.start));
+    const union=Math.max(a.end,b.end)-Math.min(a.start,b.start);
+    return Math.hypot(a.x-b.x,a.y-b.y)/distance + .22*(1-overlap/union) +
+      .12*Math.abs(Math.log2(a.scale/b.scale)) + (a.role===b.role ? 0 : .08) + (a.exiting ? .15 : 0);
+  }
+  // Result maps each destination index to a source index, or -1 for a new glyph.
+  function match(previous,next,distance=1000) {
+    const result=Array(next.length).fill(-1);
+    for(const kind of new Set(next.map(x=>x.kind))) {
+      const old=previous.map((x,i)=>({...x,index:i})).filter(x=>x.kind===kind);
+      const fresh=next.map((x,i)=>({...x,index:i})).filter(x=>x.kind===kind);
+      if(!old.length)continue;
+      const reverse=old.length<fresh.length, rows=reverse?old:fresh, cols=reverse?fresh:old;
+      const matches=assignment(rows.map(a=>cols.map(b=>reverse?cost(a,b,distance):cost(b,a,distance))));
+      matches.forEach((col,row)=>{
+        const a=rows[row],b=cols[col];
+        result[reverse?b.index:a.index]=reverse?a.index:b.index;
+      });
+    }
+    return result;
+  }
+  const api=Object.freeze({match});
+  if(typeof module!=='undefined' && module.exports)module.exports=api;
+  else root.FormulaSymbols=api;
+})(typeof window==='undefined'?globalThis:window);
+
+</script>
+
 <script id="typesetter-code">
 /* TeX -> SVG layout adapter. MathJax owns typography; the clock owns animation.
  * No font files are bundled. MathJax and its font extensions load from the CDN.
@@ -1423,6 +1497,13 @@ Important Recommendations
         const equality = svg.querySelector('#fc-eq');
         const slots = ['d0', 'd1', 'd2', 'd3', 's0', 's1'];
         if (equality) slots.push('eq');
+        const symbolMarks = new Map([...svg.querySelectorAll('[id^="fc-op-"]')].map(el => {
+          const [,role,start,end] = el.id.match(/^fc-op-\d+-(add|sub|neg|mul|div|fact)-(\d)-(\d)$/);
+          const kind = {add:'+',sub:'−',neg:'−',mul:'×',div:'÷',fact:'!'}[role];
+          return [el.id.slice(3),{kind,role,start:Number(start),end:Number(end)}];
+        }));
+        const symbolOffset = slots.length;
+        slots.push(...symbolMarks.keys());
         const tokens = slots.map((slot, i) => {
           const tagged = svg.querySelector(`#fc-${slot}`);
           if (!tagged || !tagged.querySelector('path')) throw new Error(`Missing digit ${slot}`);
@@ -1469,7 +1550,8 @@ Important Recommendations
               maxY < v.y - slack || minY > v.y + v.height + slack) {
             throw new Error(`Glyph outside SVG viewBox ${slot}`);
           }
-          return { slot, text: slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i - 4], matrix: matrixArray(local), shape };
+          const symbol = symbolMarks.get(slot);
+          return { slot, text: symbol ? symbol.kind : slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i - 4], matrix: matrixArray(local), shape, ...symbol };
         });
         // Anchor equations by the actual equal-sign ink, not by the full SVG's
         // height. In time mode use the same mathematical axis (there is no '=').
@@ -1484,7 +1566,7 @@ Important Recommendations
         for (const slot of slots) decorations.querySelector(`#fc-${slot}`)?.remove();
         // cssId is only a temporary typesetting marker, never an on-screen id.
         decorations.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-        return { tex, viewBox, tokens:tokens.slice(0,6), equality:equality ? tokens[6] : null, decorations, axisY, typography: this.typography, font: this.profile.id };
+        return { tex, viewBox, tokens:tokens.slice(0,6), equality:equality ? tokens[6] : null, symbols:tokens.slice(symbolOffset), decorations, axisY, typography: this.typography, font: this.profile.id };
       } finally { node.remove(); }
     }
   }
@@ -1548,7 +1630,8 @@ Important Recommendations
   const saved = savedDisplay();
   let displaySettings = {
     font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
-    division: ['fraction','inline'].includes(saved.division) ? saved.division : 'fraction'
+    division: ['fraction','inline'].includes(saved.division) ? saved.division : 'fraction',
+    symbolMotion: saved.symbolMotion === true
   };
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
@@ -1605,19 +1688,23 @@ Important Recommendations
   let typesetter = engineFor(displaySettings.font);
   async function setDisplay(changes) {
     const next = {...displaySettings,...changes};
-    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division)) throw new TypeError('Invalid display options');
-    displaySettings = {font:next.font,division:next.division};
+    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division) || typeof next.symbolMotion !== 'boolean') throw new TypeError('Invalid display options');
+    displaySettings = {font:next.font,division:next.division,symbolMotion:next.symbolMotion};
+    $('#symbol-motion').checked = next.symbolMotion;
     $('#font-choice').value = next.font; $('#division-choice').value = next.division;
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
     typesetter = engineFor(next.font); engineError=null; lastVisual='';
     refresh(true);
     await typesetter.boot;
   }
+  $('#symbol-motion').checked = displaySettings.symbolMotion;
+  $('#symbol-motion').addEventListener('change',e=>{setDisplay({symbolMotion:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
   $('#division-choice').value = displaySettings.division;
   $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
   $('#division-choice').addEventListener('change',e=>{setDisplay({division:e.target.value}).catch(()=>{});});
   const scene = $('#math-scene'), notationRoot = $('#notation-root'), equalSign = $('#equal-sign');
+  const operatorRoot = $('#operator-root'), symbolRecords = new Set();
   const secondsEls = [...scene.querySelectorAll('.answer-digit')];
   const movingEls = [...digitsEls, ...secondsEls];
   const plainTime = $('#plain-time');
@@ -1653,6 +1740,40 @@ Important Recommendations
   function fadeIn(el, duration, delayed = false) {
     if (reducedMotion.matches) return;
     el.animate(delayed ? [{ opacity: 0 }, { opacity: 0, offset: .18 }, { opacity: 1 }] : [{ opacity: .15 }, { opacity: 1 }], { duration, easing: 'ease-out' });
+  }
+  function updateSymbols(tokens,fit,animated,placeToken) {
+    const now=performance.now(), previous=[...symbolRecords];
+    const position=(token,matrix,exiting=false)=>({...token,x:matrix[4],y:matrix[5],scale:Math.hypot(matrix[0],matrix[1]),exiting});
+    const old=previous.map(record=>position(record.token,matrixAt(movement.get(record.el),now),record.exiting));
+    const next=tokens.map(token=>{
+      const m=fit.multiply(new DOMMatrix(token.matrix));
+      return position(token,[m.a,m.b,m.c,m.d,m.e,m.f]);
+    });
+    const matches=FormulaSymbols.match(old,next,Math.max(1,stage.clientWidth)),used=new Set();
+    tokens.forEach((token,i)=>{
+      let record=previous[matches[i]];
+      if(!record) {
+        const el=document.createElementNS(mathNS,'g');
+        el.classList.add('moving-symbol');operatorRoot.append(el);
+        record={el};symbolRecords.add(record);
+      } else if(record.animation) {
+        const opacity=getComputedStyle(record.el).opacity;
+        record.animation.cancel();record.animation=null;
+        if(animated)record.el.animate([{opacity},{opacity:1}],{duration:180});
+      }
+      used.add(record);record.exiting=false;record.token=token;
+      record.el.dataset.kind=token.kind;
+      placeToken(token,record.el);
+    });
+    for(const record of previous) if(!used.has(record)) {
+      const remove=()=>{record.el.remove();movement.delete(record.el);symbolRecords.delete(record);};
+      if(!animated){record.animation?.cancel();remove();continue;}
+      if(record.exiting)continue;
+      record.exiting=true;
+      const animation=record.el.animate([{opacity:1},{opacity:0}],{duration:180,fill:'forwards'});
+      record.animation=animation;
+      animation.onfinish=()=>{if(record.animation===animation && record.exiting)remove();};
+    }
   }
   function plainFallback(code, seconds, reason) {
     const full = `${code.slice(0,2)}:${code.slice(2)}:${pad(seconds)}`;
@@ -1695,6 +1816,7 @@ Important Recommendations
     // Equality keeps its glyph and interpolates with the digits; other signs fade.
     if (frame.equality) placeToken(frame.equality,equalSign);
     equalSign.style.opacity = frame.equality ? '1' : '0';
+    updateSymbols(frame.symbols,fit,animated,placeToken);
     const layer = document.createElementNS(mathNS, 'g');
     layer.classList.add('notation-layer');
     const content = frame.decorations.cloneNode(true);
@@ -1723,7 +1845,7 @@ Important Recommendations
   }
   function renderExpression(ast, code, seconds, loading, instant = false) {
     const engine = typesetter, view = {...displaySettings};
-    const key = `${view.font}:${view.division}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
+    const key = `${view.font}:${view.division}:${view.symbolMotion}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;

@@ -7,8 +7,9 @@ const table=require('../data/expressions.json'), solver=createSolver();
 // Independent parser for the emitted TeX subset. It knows no serializer rules.
 // Digit markers become slot tokens rather than their values (two zeroes differ).
 function parse(tex) {
- const s=tex.replace(/\\mathbin\{\\vcenter\{(\\times|\\div|[+\-])\}\}/g,'$1')
+ const s=tex.replace(/\\cssId\{fc-op-\d+-(?:add|sub|neg|mul|div|fact)-\d-\d\}\{(\\vcenter\{[^{}]+\}|[^{}]+)\}/g,'$1').replace(/\\mathbin\{\\vcenter\{(\\times|\\div|[+\-])\}\}/g,'$1')
   .replace(/\\mathord\{\\vcenter\{-\}\}/g,'-')
+  .replace(/\\(?:mathbin|mathord|mathclose)\{(\\times|\\div|[+!\-])\}/g,'$1')
   .replace(/\\cssId\{fc-d(\d)\}\{(?:\{\\oldstyle\s+\d\}|\d)\}/g,'d$1')
   .replace(/\\(?:left|right)/g,'').replace(/\s+/g,'');
  let i=0;
@@ -45,8 +46,8 @@ const profiles=[{oldstyle:false,centerOperators:true},{oldstyle:true,centerOpera
 let equations=0,serializations=0,rest=0;
 const start=Date.now();
 function roundtrip(ast,code){
- for(const profile of profiles)for(const division of ['fraction','inline']){
-  const opt={...profile,division},tex=E.expressionTex(ast,code,opt), parsed=parse(tex);
+ for(const profile of profiles)for(const division of ['fraction','inline'])for(const symbolMotion of [false,true]){
+  const opt={...profile,division,symbolMotion},tex=E.expressionTex(ast,code,opt), parsed=parse(tex);
   assert.deepEqual(canonical(parsed),canonical(ast),`${code}: ${tex}`);
   assert.ok(!tex.includes('!!'));
   assert.deepEqual([...tex.matchAll(/\{fc-d(\d)\}/g)].map(m=>+m[1]),[0,1,2,3]);
