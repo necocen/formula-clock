@@ -1,0 +1,49 @@
+{
+  "handoff": "r5-stix2-codex-handoff",
+  "preparedDate": "2026-09-08",
+  "applicationVersion": "5.0.0",
+  "schema": "formula-clock/1",
+  "sourceArchive": {
+    "name": "formula-clock-stix2-source.zip",
+    "sha256": "45617174053b43ea46d106d3db1f3683096316d95840b6160593546ea4911d6e"
+  },
+  "previousDeliveredHTML": {
+    "name": "formula-clock-stix2.html",
+    "sha256": "12fac051c850668c17c6b9948dd4d86c2f657bc9e9b548464826c05fc90f4eba"
+  },
+  "includedHTML": {
+    "path": "index.html",
+    "sha256": "12fac051c850668c17c6b9948dd4d86c2f657bc9e9b548464826c05fc90f4eba"
+  },
+  "applicationSourceChanged": false,
+  "sourceFilesPreservedByteForByte": [
+    "_head.html",
+    "expression.js",
+    "data.js",
+    "typesetter.js",
+    "app.js",
+    "build.cjs",
+    "package.json",
+    "api.d.ts",
+    "formula.schema.json",
+    "FORMAT.md",
+    "tools/solver.cjs",
+    "tools/generate.cjs",
+    "data/expressions.json",
+    "data/example-1234.json",
+    "data/example-table.json"
+  ],
+  "newMaterials": [
+    "AGENTS.md",
+    "CODEX_HANDOFF.md",
+    "docs/",
+    "requirements-test.txt",
+    ".gitignore",
+    "ORIGIN.json",
+    "SHA256SUMS.txt"
+  ],
+  "existingDocumentationUpdated": [
+    "README.md: handoff entry paragraph added"
+  ],
+  "browserVerification": "Historical MathJax 3.2.1 compatibility report retained; no browser run during handoff; shipped MathJax 4 CDN path remains unverified."
+}

@@ -1,0 +1,211 @@
+# Formula Clock — 式データと表示の仕様（r4）
+
+## 受け渡すもの
+
+受け渡しの正規形式は **JSONで表した式の構文木（AST）**。TeXは保存形式にせず、表示設定を適用するときに生成する。
+
+```text
+事前計算・外部のソルバ
+  → JSONの構文木
+  → データ取得インターフェース
+  → 構文木からTeXへ変換（フォント・除算表記・括弧）
+  → MathJaxで組版
+  → SVGの字形と配置を取得
+  → 同じ数字オブジェクトを移動
+```
+
+構文木には演算の意味と元の桁への参照を記録する。括弧、色、TeXマクロ、フォント、分数線か「÷」か、といった表示の指定は記録しない。
+
+TeXを受け取る形式だと、分数を「÷」へ変える前にTeXを解析し直す必要がある。数字の文字列だけからは、同じ数字が複数現れたときの元の桁も決まらない。構文木なら、その両方を保存できる。
+
+## 1. 構文木
+
+```ts
+type Expr =
+  | { op: 'lit'; i: number; j: number }
+  | { op: 'neg' | 'sqrt' | 'fact'; a: Expr }
+  | { op: 'add' | 'sub' | 'mul' | 'div' | 'pow'; a: Expr; b: Expr };
+```
+
+### 数字は値でなくHHMMの位置を参照
+
+`lit` はゼロ始まり、終端を含まない区間 `[i, j)` を表す。`HHMM = "1234"` の場合：
+
+| 構文木 | 表示される数字 | アニメーション上の同一性 |
+|---|---|---|
+| `{ "op": "lit", "i": 0, "j": 1 }` | `1` | HHMMの0番目 |
+| `{ "op": "lit", "i": 0, "j": 2 }` | `12` | 0番目と1番目の2個 |
+| `{ "op": "lit", "i": 2, "j": 4 }` | `34` | 2番目と3番目の2個 |
+
+`12` を1個の画像や文字要素にまとめない。TeX生成時にそれぞれの数字へ識別子を付けるため、次の式で `1 + 2` に分かれても同じ2個の数字を使う。
+
+r4の規則は、左から順番に4桁を各1回使うこと。`i < j`、`0 ≤ i < 4`、`1 ≤ j ≤ 4`。複数桁の数の先頭0は認めない。数の値自体、追加の定数、文字列のTeXは構文木に含めない。
+
+### 演算
+
+`add/sub/mul/div/pow` は、それぞれ `a+b`、`a−b`、`a×b`、`a/b`、`a^b`。`neg/sqrt/fact` は、`−a`、主平方根、階乗を表す。
+
+「÷で表示する」という設定は `div` の意味を変更しない。平方根と階乗にも表示専用の別演算は作らない。
+
+### 完全な式の例
+
+12:34:08で使う `12 ÷ 3 + 4 = 08` の**左辺**：
+
+```json
+{
+  "op": "add",
+  "a": {
+    "op": "div",
+    "a": { "op": "lit", "i": 0, "j": 2 },
+    "b": { "op": "lit", "i": 2, "j": 3 }
+  },
+  "b": { "op": "lit", "i": 3, "j": 4 }
+}
+```
+
+同じ構文木を分数モードでは `\frac{12}{3}+4` に変換する。等号と右辺の秒はフロントエンドで付ける。
+
+## 2. 1分分のレコード
+
+```ts
+interface MinuteRecord {
+  schema: 'formula-clock/1';
+  hhmm: string;                  // '0000'～'2359' の有効な時刻
+  seconds: (Expr | null)[];       // 必ず60個、添字が00～59秒
+}
+```
+
+- `seconds[8]` に、上の構文木を入れると12:34:08で表示される。
+- `null` は、その秒に提供する式がないという指定。淡い `HH:MM:SS` を表示する。
+- レコードの欠落、通信失敗、JSONの不正、配列の要素不足は、`null` と区別する。画面は時刻表示を継続し、データ取得の失敗を別に表示する。
+
+`null` は、その数を数学的に作れないという証明を意味しない。
+
+完全な60要素の例は `data/example-1234.json`。配列内の `...` のような省略記法はJSONとして受け付けない。
+
+## 3. 複数の分をまとめる形式
+
+```ts
+interface FormulaTable {
+  schema: 'formula-clock/1';
+  minutes: Record<string, (Expr | null)[]>;
+}
+```
+
+`minutes["1234"]` が上の60要素の配列になる。1日分は1,440キー、86,400秒。時刻に日付やタイムゾーンは含めない。時計は端末のローカル時刻からHHMMと秒を決めて、この表を参照する。
+
+`data/expressions.json` に1日分の生成済みデータ、`data/example-table.json` に12:34だけを持つサンプルがある。部分的な表も受け取れるが、ない分を要求すると欠落エラーになる。
+
+## 4. 配信方法に依存しないインターフェース
+
+```ts
+interface FormulaProvider {
+  getMinute(
+    hhmm: string,
+    options?: { signal?: AbortSignal }
+  ): Promise<MinuteRecord>;
+}
+```
+
+時計は現在の1分分を取得し、次の分も先読みする。直近のレコードを保持する。データ提供元を変更したときは進行中の取得を中止し、古い提供元から遅れて返ってきた結果を採用しない。
+
+### 既にメモリ上にあるJSON
+
+```js
+FormulaClock.setDataProvider(new FormulaData.InlineProvider(table));
+```
+
+### HHMMごとのJSONを非同期で取得
+
+```js
+FormulaClock.setDataProvider(
+  new FormulaData.FetchMinuteProvider(
+    hhmm => `/expressions/${hhmm}.json`
+  )
+);
+```
+
+各URLは `MinuteRecord` を返す。サーバー側で必要ならHTTP圧縮する。
+
+### 全日分のJSONを一度だけ非同期で取得
+
+```js
+FormulaClock.setDataProvider(
+  new FormulaData.TableProvider(async () => {
+    const response = await fetch('/expressions.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  })
+);
+```
+
+`TableProvider` は取得処理を共有する。1分分の利用者が中止しても、共有中の全日データの取得を巻き添えにしない。失敗した取得は次の要求で再試行できる。
+
+### 起動前に指定
+
+`data.js` の読み込み後、`app.js` の実行前に指定する。
+
+```js
+window.FORMULA_CLOCK_CONFIG = {
+  provider: new FormulaData.FetchMinuteProvider(
+    hhmm => `data/minutes/${hhmm}.json`
+  )
+};
+```
+
+画面の「この時計について」→「式データを読み込む」では、1分のレコードか複数分の表をJSONファイルから読み込める。「元に戻す」で起動時の提供元へ戻る。
+
+## 5. 優先度と結合性
+
+TeX生成は `expression.js` に集約した。表示上の優先度は次のとおり。
+
+| 弱い → 強い | 表記 |
+|---|---|
+| 1 | `+ −` |
+| 2 | `× ÷`（左結合） |
+| 3 | 単項の負号 |
+| 4 | 累乗 |
+| 5 | 階乗 |
+| 6 | 数字、平方根、分数線でまとまった分数 |
+
+分数線は分子・分母の範囲を明示する。`÷` にはそれがないので、同じ構文木でも必要な括弧が変わる。
+
+| 意味 | ÷での表示 |
+|---|---|
+| `a / (b + c)` | `a ÷ (b + c)` |
+| `a / (b / c)` | `a ÷ (b ÷ c)` |
+| `(a / b) / c` | `a ÷ b ÷ c` |
+| `a / (b × c)` | `a ÷ (b × c)` |
+| `a × (b / c)` | `a × (b ÷ c)` |
+| `a − (b − c)` | `a − (b − c)` |
+
+加算だけ、乗算だけの連鎖では、結合の違いによる括弧を省略する。減算・除算を含む右側の部分式は保守的に括弧を残し、木の意味を維持する。分配・約分・負号の移項などの代数的変形はしない。
+
+負の底は `(-a)^b`、二度の階乗は `(a!)!`。`a!!` は別の慣用的な意味になるため出力しない。指数の部分式はTeXの指数グループで範囲を保持する。
+
+## 6. フォントは別の表示設定
+
+```js
+await FormulaClock.setDisplay({ font: 'oldstyle', division: 'inline' });
+await FormulaClock.setDisplay({ font: 'euler', division: 'fraction' });
+```
+
+Eulerは `mathjax-modern` に `mathjax-euler` 拡張を追加し、r3と同じ数字中央の軸へ調整する。Oldstyleは `mathjax-tex` の各数字に `\oldstyle` を指定する。記号はフォント本来の数式軸を使い、数値中心への変更も `\vcenter` の補正も適用しない。両方とも等号の画面上の縦位置を固定する。
+
+異なるフォント・除算表記でもデータを取り直す必要はない。TeXと組版結果のキャッシュは表示設定を区別する。
+
+## 7. 検証の境界
+
+`formula.schema.json` がJSON Schema、`api.d.ts` がTypeScript型定義。スキーマの配列サイズや演算の形に加えて、実行時に次を検証する。
+
+- HHMMが有効な24時間制の時刻で、要求した分と一致すること。
+- 60秒分の要素があり、各構文木が4桁を順番に各1回参照すること。
+- リテラルの区間、演算名、フィールドが正しく、過大な深さや循環参照がないこと。
+
+**数式の計算結果が秒に一致することは、データ生成側の責任**。ブラウザには探索ソルバも計算結果の検証器も含めない。同梱データはオフラインの `tools/generate.cjs` と `tests/expression.test.cjs` で厳密計算により検証した。
+
+このデータを差し替える場合も、生成側で演算の定義域と計算結果を確認してから渡す。追加演算や桁の並べ替えを導入するときは、スキーマとTeX生成器の双方を更新する。
+
+## r5の書体追加
+
+`FormulaClock.setDisplay({font: 'stix2'})` でSTIX Twoのオールドスタイル数字を選べる。初期値も `stix2`。既存の `euler` / `oldstyle` はそのまま使える。式データのスキーマ・プロバイダーAPIには変更なし。

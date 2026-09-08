@@ -1,0 +1,121 @@
+/* The public expression format and its presentation-independent serializer.
+ * Leaves reference HHMM positions [i,j); they never contain numeric values.
+ */
+(function (root) {
+  'use strict';
+  const UNARY = new Set(['neg', 'sqrt', 'fact']);
+  const BINARY = new Set(['add', 'sub', 'mul', 'div', 'pow']);
+  const validCode = code => typeof code === 'string' && /^(?:[01]\d|2[0-3])[0-5]\d$/.test(code);
+  function assertCode(code) { if (!validCode(code)) throw new TypeError('HHMM must be a 24-hour time (0000–2359)'); }
+
+  // Return a new, bounded, immutable tree. No getters/extra keys survive this boundary.
+  function validateAst(ast, code) {
+    assertCode(code);
+    if (ast === null) return null;
+    let nodes = 0; const slots = [], active = new Set();
+    function visit(x, depth) {
+      if (!x || typeof x !== 'object' || Array.isArray(x) || ++nodes > 96 || depth > 24 || active.has(x)) {
+        throw new TypeError('Invalid or excessively deep expression tree');
+      }
+      active.add(x); let out;
+      if (x.op === 'lit') {
+        const {i, j} = x;
+        if (!Number.isInteger(i) || !Number.isInteger(j) || i < 0 || j > 4 || i >= j) throw new TypeError('Invalid digit interval');
+        if (j - i > 1 && code[i] === '0') throw new TypeError('Leading zero in a concatenated number');
+        for (let k = i; k < j; k++) slots.push(k);
+        out = {op:'lit', i, j};
+      } else if (UNARY.has(x.op)) out = {op:x.op, a:visit(x.a, depth + 1)};
+      else if (BINARY.has(x.op)) out = {op:x.op, a:visit(x.a, depth + 1), b:visit(x.b, depth + 1)};
+      else throw new TypeError(`Unknown operation: ${String(x.op)}`);
+      const allowed = Object.keys(out);
+      if (Object.keys(x).some(key => !allowed.includes(key))) throw new TypeError(`Unexpected expression field (${x.op})`);
+      active.delete(x); return Object.freeze(out);
+    }
+    const result = visit(ast, 0);
+    if (slots.join(',') !== '0,1,2,3') throw new TypeError('Use each HHMM position exactly once, in order');
+    return result;
+  }
+
+  function options(value = {}) {
+    const division = value.division ?? 'fraction';
+    if (!['fraction','inline'].includes(division)) throw new TypeError('Unknown division style');
+    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false };
+  }
+  function mark(slot, digit, opt) {
+    const glyph = opt.oldstyle ? `{\\oldstyle ${digit}}` : digit;
+    return `\\cssId{fc-${slot}}{${glyph}}`;
+  }
+  const parens = text => `\\left(${text}\\right)`;
+  const center = (symbol, opt) => opt.centerOperators ? `\\vcenter{${symbol}}` : symbol;
+  const binary = (symbol, opt) => opt.centerOperators ? `\\mathbin{${center(symbol,opt)}}` : symbol;
+  const negative = opt => opt.centerOperators ? '\\mathord{\\vcenter{-}}' : '-';
+  const relation = opt => `\\mathrel{\\cssId{fc-eq}{${center('=',opt)}}}`;
+
+  // Precedence is a property of the PRESENTATION. A fraction is a visual group;
+  // an obelus is a left-associative infix operator with multiplication's priority.
+  function precedence(ast, opt) {
+    if (ast.op === 'lit' || ast.op === 'sqrt' || (ast.op === 'div' && opt.division === 'fraction')) return 60;
+    return {add:10, sub:10, mul:20, div:20, neg:30, pow:40, fact:50}[ast.op];
+  }
+  function expressionTex(ast, code, settings = {}) {
+    assertCode(code);
+    const opt = options(settings);
+    function write(a) {
+      if (a.op === 'lit') {
+        let out = ''; for (let i = a.i; i < a.j; i++) out += mark(`d${i}`,code[i],opt);
+        return out;
+      }
+      if (a.op === 'sqrt') return `\\sqrt{${write(a.a)}}`;
+      if (a.op === 'neg') {
+        let x = write(a.a);
+        if (precedence(a.a,opt) <= 30) x = parens(x);
+        return negative(opt) + x;
+      }
+      if (a.op === 'fact') {
+        // (n!)! must not become n!!, which conventionally means double factorial.
+        const x = write(a.a);
+        return (['lit','sqrt'].includes(a.a.op) ? x : parens(x)) + '!';
+      }
+      if (a.op === 'pow') {
+        let x = write(a.a);
+        if (precedence(a.a,opt) <= 40 || ['div','sqrt'].includes(a.a.op)) x = parens(x);
+        return `{${x}}^{${write(a.b)}}`;
+      }
+      if (a.op === 'div' && opt.division === 'fraction') return `\\frac{${write(a.a)}}{${write(a.b)}}`;
+      const p = precedence(a,opt);
+      function child(x, right) {
+        const q = precedence(x,opt), tex = write(x);
+        // Equal-precedence infix operators associate to the LEFT. Only homogeneous
+        // sums/products may be flattened; subtraction/division retain right groups.
+        const homogeneous = n => precedence(n,opt) !== p ||
+          (n.op === a.op && homogeneous(n.a) && homogeneous(n.b));
+        const associative = (a.op === 'add' || a.op === 'mul') && x.op === a.op && homogeneous(x);
+        return q < p || (right && ((q === p && !associative) || x.op === 'neg')) ? parens(tex) : tex;
+      }
+      const symbol = {add:'+', sub:'-', mul:'\\times', div:'\\div'}[a.op];
+      if (!symbol) throw new TypeError(`Unsupported operation: ${a.op}`);
+      return `${child(a.a,false)} ${binary(symbol,opt)} ${child(a.b,true)}`;
+    }
+    return write(ast);
+  }
+  function frameTex(ast, code, seconds, settings = {}) {
+    assertCode(code);
+    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 59) throw new TypeError('Invalid second');
+    const opt = options(settings), ss = String(seconds).padStart(2,'0');
+    const right = mark('s0',ss[0],opt) + mark('s1',ss[1],opt);
+    if (ast) return `${expressionTex(ast,code,opt)} ${relation(opt)} ${right}`;
+    const colon = `\\mkern2mu\\mathord{${center(':',opt)}}\\mkern2mu`;
+    return mark('d0',code[0],opt) + mark('d1',code[1],opt) + colon + mark('d2',code[2],opt) + mark('d3',code[3],opt) + colon + right;
+  }
+  function plain(ast, code) {
+    if (ast.op === 'lit') return code.slice(ast.i,ast.j);
+    const a = plain(ast.a,code);
+    if (ast.op === 'sqrt') return `√(${a})`;
+    if (ast.op === 'neg') return `−(${a})`;
+    if (ast.op === 'fact') return `(${a})!`;
+    return `(${a} ${{add:'+',sub:'−',mul:'×',div:'÷',pow:'^'}[ast.op]} ${plain(ast.b,code)})`;
+  }
+  const api = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.FormulaExpression = Object.freeze(api);
+})(typeof window === 'undefined' ? globalThis : window);

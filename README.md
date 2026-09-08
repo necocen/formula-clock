@@ -1,0 +1,102 @@
+# Formula Clock — STIX Two（r5）
+
+**Codex引き継ぎ版：まず [CODEX_HANDOFF.md](CODEX_HANDOFF.md) を読む。** [AGENTS.md](AGENTS.md) に作業上の要点、[検証記録](docs/VERIFICATION.md) に確認済み範囲をまとめた。
+この下はSTIX Two版の既存README。今回の引き継ぎで時計本体の動作は変更していない。
+
+HHMMの4桁からSSを表す数式を表示する時計。r4の事前生成データ・数式ツリー・数字の同一性を維持するアニメーションを引き継ぎ、STIX Twoのオールドスタイル数字を追加した。
+
+## 表示
+
+初期書体は **STIX Two · Oldstyle**。下部の「字体」でEuler、Computer Modern · Oldstyleへ切り替えられる。「6と9を見る」は16:39:19の `1 + 6 + 3 + 9 = 19` を静止表示する。「再生」でその先の秒へ進む。
+
+STIX Two / Computer Modernはフォント本来の数式軸を使う。Eulerは従来どおり数字中央へ演算子を調整する。すべての書体で等号の縦位置を固定する。分数／÷、解のない秒の淡いHH:MM:SS表示、時報は従来どおり。
+
+書体と除算表記をlocalStorageの `formula-clock-display-v2` に保存する。r4の保存書体とはキーを分けたため、この版を最初に開いたときにはSTIX Twoになる。
+
+## 起動と公開
+
+`index.html` をブラウザで開くか、静的ホスティングにそのまま配置する。式データはgzip＋base64で埋め込まれており、ブラウザでは探索しない。MathJax 4.1.3と選択したフォントのデータはCDNから取得するため、初回読み込みにはインターネット接続が必要。
+
+```sh
+npm run build
+```
+
+生成物は `index.html`。Node.js 20以上で外部npmパッケージなしにビルドできる。フォントファイルは同梱しない。
+
+## 書体の実装
+
+`typesetter.js` のプロファイルを追加した。
+
+```js
+stix2: {
+  id: 'stix2',
+  label: 'STIX Two · Oldstyle',
+  font: 'mathjax-stix2',
+  extensions: [],
+  oldstyle: true,
+  centerOperators: false,
+  numericAxis: false
+}
+```
+
+数字には `\\oldstyle` を使い、MathJaxのSTIX2フォントセットに組版させる。各書体は独立した非表示iframeのMathJaxインスタンスで処理する。Eulerの拡張や数式軸設定がSTIX Twoへ混入しない。表示側の数字要素は切り替え前後で同一。
+
+```js
+await FormulaClock.setDisplay({font: 'stix2', division: 'inline'});
+```
+
+## 式データと非同期配信
+
+データ形式とプロバイダーAPIはr4から変更なし。詳細は `FORMAT.md`、型定義は `api.d.ts`、検証用スキーマは `formula.schema.json`。
+
+```js
+FormulaClock.setDataProvider(
+  new FormulaData.FetchMinuteProvider(hhmm => `/expressions/${hhmm}.json`)
+);
+```
+
+1分ごとのJSONを使う配信版を生成する場合：
+
+```sh
+npm run build:external
+```
+
+`dist-external/index.html` と `dist-external/data/minutes/` を同じ配信先へ配置する。全日一括取得・直接埋め込み・任意の非同期プロバイダーも引き続き使える。
+
+ソルバは `tools/solver.cjs` にあり、全日データを作り直す操作は `npm run generate`。表示用JavaScriptにはソルバを含めていない。
+
+## 検証
+
+```sh
+npm test
+```
+
+全86,400秒のデータを検証し、71,456件の式の厳密評価、桁の使用順、2種類の組版方針×2種類の除算表記とランダム木を含む305,824件のTeXシリアライズを確認した。
+
+配布版そのもののブラウザテスト（CDN接続が必要）：
+
+```sh
+python tests/browser.test.py --screenshots
+```
+
+この実行環境ではCDNへ接続できなかったため、**MathJax 4.1.3＋mathjax-stix2の配布経路は未検証**。
+
+ローカルのSTIX Twoフォントを使った互換テスト：
+
+```sh
+python tests/stix2.local.test.py \
+  --local-mathjax /path/to/mathjax-full/es5 \
+  --stix-fonts /path/to/stix2-otf
+```
+
+このテストではMathJax 3.2.1へ、ローカルのSTIX Two Text / Math（Version 2.12 b168）から読み取った実際の数字・通常記号の字形と寸法を一時的に設定した。数字はTextフォントの `onum` 機能から取得し、6のSVGパス一致も検査する。式の組版エンジン自体はMathJax 3であり、MathJax 4の出力と完全一致すると主張するテストではない。Euler設定の互換テストにはローカルのTeX字形を使っている。
+
+60配置ケースで、STIX Twoの初期表示、3書体の切り替え、両除算表記、数字要素の同一性、等号の固定、通常時計表示、320/390/768px幅を確認。結果は `tests/stix2-compatibility-results.json`。スクリーンショットもこのローカル互換テストのもの。
+
+`tests/local_stix_fixture.py` はローカルフォントを読むテスト用コードだけを含み、字形データやフォントファイルは保存・配布しない。配布する時計本体にはこの仕組みを使用していない。
+
+## 参照
+
+- [MathJax Font Support](https://docs.mathjax.org/en/v4.1/output/fonts.html)
+- [MathJax TeX macros](https://docs.mathjax.org/en/v4.1/input/tex/macros/index.html)
+- [Tiro Typeworks: STIX Two](https://www.tiro.com/fonts/stix-two)

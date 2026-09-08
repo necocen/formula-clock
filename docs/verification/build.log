@@ -1,0 +1,12 @@
+
+> formula-clock-stix2@5.0.0 build
+> node build.cjs
+
+/mnt/data/clock-handoff-work/formula-clock-stix2/index.html: 420877 bytes (embedded gzip JSON)
+12fac051c850668c17c6b9948dd4d86c2f657bc9e9b548464826c05fc90f4eba  index.html
+12fac051c850668c17c6b9948dd4d86c2f657bc9e9b548464826c05fc90f4eba  /mnt/data/formula-clock-stix2.html
+
+> formula-clock-stix2@5.0.0 build:external
+> node build.cjs --external
+
+/mnt/data/clock-handoff-work/formula-clock-stix2/dist-external/index.html: 72204 bytes (async minute JSON)

@@ -1,0 +1,11 @@
+{
+  "build": "r5-stix2",
+  "minutes": 1440,
+  "equations": 71456,
+  "rest": 14944,
+  "fuzzTrees": 5000,
+  "checkedSerializations": 305824,
+  "profiles": 2,
+  "divisionModes": 2,
+  "elapsedMs": 2580
+}

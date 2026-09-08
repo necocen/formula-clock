@@ -1,0 +1,15 @@
+{
+  "name": "formula-clock-stix2",
+  "version": "5.0.0",
+  "private": true,
+  "description": "A mathematical clock with persistent digits, switchable typography, and AST data providers",
+  "scripts": {
+    "build": "node build.cjs",
+    "build:external": "node build.cjs --external",
+    "generate": "node tools/generate.cjs",
+    "test": "node tests/expression.test.cjs && node tests/data.test.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

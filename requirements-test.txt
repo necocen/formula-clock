@@ -1,0 +1,4 @@
+# Python dependencies imported by the existing browser/compatibility tests.
+# No version lock is asserted by this handoff.
+playwright
+fonttools

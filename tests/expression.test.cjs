@@ -1,0 +1,90 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),zlib=require('node:zlib');
+const E=require('../expression.js'),D=require('../data.js');
+const {createSolver}=require('../tools/solver.cjs');
+const table=require('../data/expressions.json'), solver=createSolver();
+
+// Independent parser for the emitted TeX subset. It knows no serializer rules.
+// Digit markers become slot tokens rather than their values (two zeroes differ).
+function parse(tex) {
+ const s=tex.replace(/\\mathbin\{\\vcenter\{(\\times|\\div|[+\-])\}\}/g,'$1')
+  .replace(/\\mathord\{\\vcenter\{-\}\}/g,'-')
+  .replace(/\\cssId\{fc-d(\d)\}\{(?:\{\\oldstyle\s+\d\}|\d)\}/g,'d$1')
+  .replace(/\\(?:left|right)/g,'').replace(/\s+/g,'');
+ let i=0;
+ const take=x=>s.startsWith(x,i)?(i+=x.length,true):false;
+ const need=x=>{if(!take(x))throw Error(`Expected ${x} at ${i}: ${s}`);};
+ const bin=(op,a,b)=>({op,a,b}), un=(op,a)=>({op,a});
+ function group(){need('{');const x=sum();need('}');return x;}
+ function atom(){
+  if(take('\\frac'))return bin('div',group(),group());
+  if(take('\\sqrt'))return un('sqrt',group());
+  if(s[i]==='{')return group();
+  if(take('(')){const x=sum();need(')');return x;}
+  const slots=[];while(s[i]==='d'){i++;slots.push(Number(s[i++]));}
+  if(!slots.length)throw Error(`Expected digit at ${i}: ${s}`);
+  for(let k=1;k<slots.length;k++)assert.equal(slots[k],slots[k-1]+1);
+  return {op:'lit',i:slots[0],j:slots.at(-1)+1};
+ }
+ function fact(){let x=atom();while(take('!'))x=un('fact',x);return x;}
+ function pow(){let x=fact();if(take('^'))x=bin('pow',x,unary());return x;}
+ function unary(){if(take('-'))return un('neg',unary());return pow();}
+ function product(){let x=unary();while(true){if(take('\\times'))x=bin('mul',x,unary());else if(take('\\div'))x=bin('div',x,unary());else return x;}}
+ function sum(){let x=product();while(true){if(take('+'))x=bin('add',x,product());else if(take('-'))x=bin('sub',x,product());else return x;}}
+ const ast=sum();assert.equal(i,s.length,`Unparsed suffix: ${s.slice(i)}`);return ast;
+}
+// The serializer deliberately flattens ONLY consecutive additions/multiplications.
+function canonical(x){
+ if(x.op==='lit')return [x.op,x.i,x.j];
+ if(x.op==='add'||x.op==='mul'){
+  const list=[]; const flatten=n=>{if(n.op===x.op){flatten(n.a);flatten(n.b);}else list.push(canonical(n));};flatten(x);return [x.op,...list];
+ }
+ return x.b?[x.op,canonical(x.a),canonical(x.b)]:[x.op,canonical(x.a)];
+}
+const profiles=[{oldstyle:false,centerOperators:true},{oldstyle:true,centerOperators:false}];
+let equations=0,serializations=0,rest=0;
+const start=Date.now();
+function roundtrip(ast,code){
+ for(const profile of profiles)for(const division of ['fraction','inline']){
+  const opt={...profile,division},tex=E.expressionTex(ast,code,opt), parsed=parse(tex);
+  assert.deepEqual(canonical(parsed),canonical(ast),`${code}: ${tex}`);
+  assert.ok(!tex.includes('!!'));
+  assert.deepEqual([...tex.matchAll(/\{fc-d(\d)\}/g)].map(m=>+m[1]),[0,1,2,3]);
+  serializations++;
+ }
+}
+for(const [code,seconds] of Object.entries(table.minutes)){
+ D.normalizeMinute({schema:D.SCHEMA,hhmm:code,seconds},code);
+ seconds.forEach((ast,sec)=>{
+  if(!ast){rest++;return;}
+  assert.ok(solver.verify(ast,[...code].map(Number),sec),`${code}:${sec}`);
+  roundtrip(ast,code);equations++;
+ });
+}
+// Random shapes include operators that the cost-limited generator may not choose.
+let seed=20260908;const random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+const choose=xs=>xs[Math.floor(random()*xs.length)];
+function tree(i,j){
+ let x;
+ if(j-i===1 || random()<.18)x={op:'lit',i,j};
+ else{const k=i+1+Math.floor(random()*(j-i-1));x={op:choose(['add','sub','mul','div','pow']),a:tree(i,k),b:tree(k,j)};}
+ for(let k=0;k<2&&random()<.38;k++)x={op:choose(['sqrt','neg','fact']),a:x};
+ return x;
+}
+const fuzz=5000;for(let k=0;k<fuzz;k++)roundtrip(tree(0,4),'1234');
+const L=i=>({op:'lit',i,j:i+1});
+assert.throws(()=>E.validateAst({op:'add',a:L(0),b:L(0)},'1234'));
+assert.throws(()=>D.normalizeMinute({schema:D.SCHEMA,hhmm:'1234',seconds:Array(60)},'1234'));
+assert.throws(()=>D.normalizeMinute({schema:D.SCHEMA,hhmm:'1234',seconds:Array(59).fill(null)},'1234'));
+assert.throws(()=>D.normalizeMinute({schema:D.SCHEMA,hhmm:'1235',seconds:Array(60).fill(null)},'1234'));
+assert.throws(()=>E.validateAst({op:'lit',i:0,j:4},'0000'));
+assert.throws(()=>E.validateAst({op:'tex',source:'1+2+3+4'},'1234'));
+let cycle={op:'neg'};cycle.a=cycle;assert.throws(()=>E.validateAst(cycle,'1234'));
+for(const code of ['2400','2360','123','1234x'])assert.throws(()=>E.assertCode(code));
+const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
+assert.ok(!html.includes('function createSolver'));
+const b64=html.match(/data-encoding="gzip-base64">([^<]+)/)[1];
+assert.deepEqual(JSON.parse(zlib.gunzipSync(Buffer.from(b64,'base64'))),table);
+const report={build:'r5-stix2',minutes:Object.keys(table.minutes).length,equations,rest,fuzzTrees:fuzz,checkedSerializations:serializations,profiles:2,divisionModes:2,elapsedMs:Date.now()-start};
+fs.writeFileSync(__dirname+'/expression-results.json',JSON.stringify(report,null,2)+'\n');console.log(report);
+module.exports={parse,canonical};
