@@ -8,8 +8,7 @@
   const { expressionTex, frameTex, mark, relation } = Expression;
   const PROFILES = Object.freeze({
     stix2: Object.freeze({id:'stix2', label:'STIX Two · Oldstyle', font:'mathjax-stix2', extensions:[], oldstyle:true, centerOperators:false, numericAxis:false}),
-    euler: Object.freeze({id:'euler', label:'Euler', font:'mathjax-modern', extensions:['mathjax-euler'], oldstyle:false, centerOperators:true, numericAxis:true}),
-    oldstyle: Object.freeze({id:'oldstyle', label:'Computer Modern · Oldstyle', font:'mathjax-tex', extensions:[], oldstyle:true, centerOperators:false, numericAxis:false})
+    euler: Object.freeze({id:'euler', label:'Euler', font:'mathjax-modern', extensions:['mathjax-euler'], oldstyle:false, centerOperators:true, numericAxis:true})
   });
   const matrixArray = m => [m.a, m.b, m.c, m.d, m.e, m.f];
   function finiteMatrix(m) { return matrixArray(m).every(Number.isFinite); }
@@ -41,7 +40,7 @@
       this.profile = PROFILES[profile];
       this.mathjax = null;
       // Separate browsing contexts keep Euler's extension and numeric-axis
-      // calibration out of the native STIX Two / Computer Modern fonts. Engines are lazy
+      // calibration out of the native STIX Two font. Engines are lazy
       // and cached: switching back never reloads MathJax or rebuilds digit nodes.
       this.host = document.createElement('iframe');
       this.host.className = 'math-engine-frame';
@@ -185,7 +184,9 @@
         if (!rootCTM) throw new Error('SVG measurement is unavailable');
         const inverse = rootCTM.inverse();
         const secondsText = String(seconds).padStart(2, '0');
+        const equality = svg.querySelector('#fc-eq');
         const slots = ['d0', 'd1', 'd2', 'd3', 's0', 's1'];
+        if (equality) slots.push('eq');
         const tokens = slots.map((slot, i) => {
           const tagged = svg.querySelector(`#fc-${slot}`);
           if (!tagged || !tagged.querySelector('path')) throw new Error(`Missing digit ${slot}`);
@@ -232,12 +233,11 @@
               maxY < v.y - slack || minY > v.y + v.height + slack) {
             throw new Error(`Glyph outside SVG viewBox ${slot}`);
           }
-          return { slot, text: i < 4 ? code[i] : secondsText[i - 4], matrix: matrixArray(local), shape };
+          return { slot, text: slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i - 4], matrix: matrixArray(local), shape };
         });
         // Anchor equations by the actual equal-sign ink, not by the full SVG's
         // height. In time mode use the same mathematical axis (there is no '=').
         let axisY = this.typography.equalCenterY;
-        const equality = svg.querySelector('#fc-eq');
         if (equality) axisY = pathBounds(equality, inverse).centerY;
         if (!Number.isFinite(axisY)) throw new Error('Invalid mathematical axis');
         const decorations = document.createElementNS(NS, 'g');
@@ -248,7 +248,7 @@
         for (const slot of slots) decorations.querySelector(`#fc-${slot}`)?.remove();
         // cssId is only a temporary typesetting marker, never an on-screen id.
         decorations.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-        return { tex, viewBox, tokens, decorations, axisY, typography: this.typography, font: this.profile.id };
+        return { tex, viewBox, tokens:tokens.slice(0,6), equality:equality ? tokens[6] : null, decorations, axisY, typography: this.typography, font: this.profile.id };
       } finally { node.remove(); }
     }
   }

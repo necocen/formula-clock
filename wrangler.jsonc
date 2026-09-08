@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "formula-clock",
+  "account_id": "248fba353bf3b6b491cbd10d1d759bde",
+  "compatibility_date": "2026-09-09",
+  "workers_dev": true,
+  "preview_urls": true,
+  "assets": {
+    "directory": "./dist-external",
+    "not_found_handling": "none"
+  }
+}

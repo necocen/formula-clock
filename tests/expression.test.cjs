@@ -85,6 +85,6 @@ const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),
 assert.ok(!html.includes('function createSolver'));
 const b64=html.match(/data-encoding="gzip-base64">([^<]+)/)[1];
 assert.deepEqual(JSON.parse(zlib.gunzipSync(Buffer.from(b64,'base64'))),table);
-const report={build:'r5-stix2',minutes:Object.keys(table.minutes).length,equations,rest,fuzzTrees:fuzz,checkedSerializations:serializations,profiles:2,divisionModes:2,elapsedMs:Date.now()-start};
-fs.writeFileSync(__dirname+'/expression-results.json',JSON.stringify(report,null,2)+'\n');console.log(report);
+const report={build:'r6-minimal',minutes:Object.keys(table.minutes).length,equations,rest,fuzzTrees:fuzz,checkedSerializations:serializations,profiles:2,divisionModes:2,elapsedMs:Date.now()-start};
+require('./report.cjs')('expression-results.json',report);console.log(report);
 module.exports={parse,canonical};

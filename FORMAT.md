@@ -1,4 +1,4 @@
-# Formula Clock — 式データと表示の仕様（r4）
+# Formula Clock — 式データと表示の仕様（r6）
 
 ## 受け渡すもの
 
@@ -153,7 +153,7 @@ window.FORMULA_CLOCK_CONFIG = {
 };
 ```
 
-画面の「この時計について」→「式データを読み込む」では、1分のレコードか複数分の表をJSONファイルから読み込める。「元に戻す」で起動時の提供元へ戻る。
+画面の設定→「詳細」→「式データを読み込む」では、1分のレコードか複数分の表をJSONファイルから読み込める。「元に戻す」で起動時の提供元へ戻る。
 
 ## 5. 優先度と結合性
 
@@ -186,11 +186,11 @@ TeX生成は `expression.js` に集約した。表示上の優先度は次のと
 ## 6. フォントは別の表示設定
 
 ```js
-await FormulaClock.setDisplay({ font: 'oldstyle', division: 'inline' });
+await FormulaClock.setDisplay({ font: 'stix2', division: 'inline' });
 await FormulaClock.setDisplay({ font: 'euler', division: 'fraction' });
 ```
 
-Eulerは `mathjax-modern` に `mathjax-euler` 拡張を追加し、r3と同じ数字中央の軸へ調整する。Oldstyleは `mathjax-tex` の各数字に `\oldstyle` を指定する。記号はフォント本来の数式軸を使い、数値中心への変更も `\vcenter` の補正も適用しない。両方とも等号の画面上の縦位置を固定する。
+Eulerは `mathjax-modern` に `mathjax-euler` 拡張を追加し、r3と同じ数字中央の軸へ調整する。STIX Twoは `mathjax-stix2` の各数字に `\oldstyle` を指定する。記号はフォント本来の数式軸を使い、数値中心への変更も `\vcenter` の補正も適用しない。両方とも等号の画面上の縦位置を固定する。
 
 異なるフォント・除算表記でもデータを取り直す必要はない。TeXと組版結果のキャッシュは表示設定を区別する。
 
@@ -206,6 +206,26 @@ Eulerは `mathjax-modern` に `mathjax-euler` 拡張を追加し、r3と同じ�
 
 このデータを差し替える場合も、生成側で演算の定義域と計算結果を確認してから渡す。追加演算や桁の並べ替えを導入するときは、スキーマとTeX生成器の双方を更新する。
 
-## r5の書体追加
+## 8. 1時間単位の配信（r6）
 
-`FormulaClock.setDisplay({font: 'stix2'})` でSTIX Twoのオールドスタイル数字を選べる。初期値も `stix2`。既存の `euler` / `oldstyle` はそのまま使える。式データのスキーマ・プロバイダーAPIには変更なし。
+配信用ビルドは `data/manifest.json` と `data/hours/HH.<sha256>.json`（24個）を生成する。
+時間別JSONは `FormulaTable` の部分集合で、該当時間の60分をすべて含む。
+
+```js
+new FormulaData.FetchHourProvider('data/manifest.json')
+```
+
+目録の形式は `schema: "formula-clock-hours/1"`、`version`（64桁のSHA-256）、
+`hours`（"00"〜"23"をURLへ対応させるオブジェクト）。URLは目録の応答URLから解決する。
+版はURLマップから、時間別ファイル名は各JSON本文から計算する。
+
+同じ時間帯の取得を共有し、取得済み時間はLRUで2時間保持する。
+個別のAbortSignalはその利用者だけを中止する。共有ダウンロードは継続できる。
+59分の翌分先読みで次の時間帯も取得する。失敗した要求は保持せず再試行できる。
+
+時間別URLが404なら目録を再検証する。版が変わっていれば時間キャッシュを空にし、
+新URLで一度だけ再試行する。更新前の遅い応答は採用しない。
+同じ版や再試行失敗は通常の取得エラーとして表示側へ返す。nullには変換しない。
+
+公開書体IDは `stix2` / `euler` の2種類。旧 `oldstyle` 設定は初期値の `stix2` へ戻す。
+独立iframe・Euler専用の軸補正・STIX Twoのオールドスタイル数字を維持する。

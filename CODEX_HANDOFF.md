@@ -1,3 +1,6 @@
+> r6更新（2026-09-09）：現行UI・1時間配信・公開手順はREADME.mdとFORMAT.mdを参照。
+> 以下はr5引き継ぎ時の履歴資料。現行書体はSTIX Two / Eulerのみ。
+
 # Formula Clock — Codex引き継ぎ
 
 基準版：**r5-stix2 / package 5.0.0**  

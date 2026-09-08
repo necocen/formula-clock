@@ -1,15 +1,20 @@
 {
   "name": "formula-clock-stix2",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "private": true,
   "description": "A mathematical clock with persistent digits, switchable typography, and AST data providers",
   "scripts": {
     "build": "node build.cjs",
     "build:external": "node build.cjs --external",
     "generate": "node tools/generate.cjs",
-    "test": "node tests/expression.test.cjs && node tests/data.test.cjs"
+    "test": "node tests/expression.test.cjs && node tests/data.test.cjs && node --test tests/hourly.test.cjs tests/build.test.cjs",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler versions upload"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
+  },
+  "devDependencies": {
+    "wrangler": "4.129.1"
   }
 }

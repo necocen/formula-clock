@@ -29,5 +29,5 @@ const table=require('../data/expressions.json');
  checks.push('Async minute fetching checks HTTP status and HHMM identity');
  for(const bad of [undefined,{},[],{op:'lit',i:0,j:5}])assert.throws(()=>normalizeMinute({schema:SCHEMA,hhmm:'1234',seconds:Array(60).fill(bad)},'1234'));
  checks.push('Malformed trees, absent second entries and invalid intervals are rejected');
- const report={build:'r5-stix2',checks};console.log(report);fs.writeFileSync(__dirname+'/provider-results.json',JSON.stringify(report,null,2)+'\n');
+ const report={build:'r6-minimal',checks};console.log(report);require('./report.cjs')('provider-results.json',report);
 })().catch(error=>{console.error(error);process.exitCode=1;});

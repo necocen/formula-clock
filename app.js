@@ -5,6 +5,36 @@
   const stage = $('#stage'), digitsEls = [...stage.querySelectorAll('.digit')];
   const sourceEls = [...$('#source-time').querySelectorAll('[data-digit]')];
   const cache = new Map(), pending = new Map();
+  const settingsDialog = $('#settings'), settingsButton = $('#settings-open');
+  const licenseDialog = $('#licenses');
+  function setupDialog(dialog, opener, closeButton) {
+    opener.addEventListener('click', () => {
+      dialog.showModal(); closeButton.focus({preventScroll:true}); dialog.scrollTop = 0;
+    });
+    closeButton.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => opener.focus({preventScroll:true}));
+    dialog.addEventListener('keydown', event => {
+      if (event.key !== 'Tab') return;
+      const controls = [...dialog.querySelectorAll('button,input,select,summary,a[href]')]
+        .filter(el => !el.disabled && el.getClientRects().length);
+      const first = controls[0], last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
+    // Dragging out from a control must not count as a backdrop click.
+    let backdropPointer = false;
+    function outsideDialog(event) {
+      const r = dialog.getBoundingClientRect();
+      return event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom;
+    }
+    dialog.addEventListener('pointerdown', event => { backdropPointer = outsideDialog(event); });
+    dialog.addEventListener('click', event => {
+      if (backdropPointer && outsideDialog(event)) dialog.close();
+      backdropPointer = false;
+    });
+  }
+  setupDialog(settingsDialog,settingsButton,$('#settings-close'));
+  setupDialog(licenseDialog,$('#licenses-open'),$('#licenses-close'));
   const {normalizeMinute, InlineProvider, TableProvider} = FormulaData;
   const defaultProvider = () => new TableProvider(async () => {
     const embedded = document.querySelector('#clock-data');
@@ -59,7 +89,7 @@
     refresh(true);
   }
 
-  // MathJax computes the layout; the six persistent SVG objects display it.
+  // MathJax computes the layout; persistent digits and equality display it.
   // The four HHMM objects are never recreated, including ordinary clock mode.
   const engines = new Map();
   function engineFor(font) {
@@ -89,7 +119,7 @@
   $('#division-choice').value = displaySettings.division;
   $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
   $('#division-choice').addEventListener('change',e=>{setDisplay({division:e.target.value}).catch(()=>{});});
-  const scene = $('#math-scene'), notationRoot = $('#notation-root');
+  const scene = $('#math-scene'), notationRoot = $('#notation-root'), equalSign = $('#equal-sign');
   const secondsEls = [...scene.querySelectorAll('.answer-digit')];
   const movingEls = [...digitsEls, ...secondsEls];
   const plainTime = $('#plain-time');
@@ -130,6 +160,7 @@
     const full = `${code.slice(0,2)}:${code.slice(2)}:${pad(seconds)}`;
     [...plainTime.querySelectorAll('span')].forEach((el, i) => { el.textContent = full[i]; });
     plainTime.hidden = false; scene.style.visibility = 'hidden';
+    $('#source-time').hidden = true;
     stage.classList.add('resting');
     stage.setAttribute('aria-label', full);
     $('#engine-status').textContent = reason;
@@ -148,8 +179,7 @@
     const fit = new DOMMatrix([scale, 0, 0, scale, x, y]);
     const animated = !instant && !firstFrame && !reducedMotion.matches;
     const items = [];
-    frame.tokens.forEach((token, i) => {
-      const el = movingEls[i];
+    function placeToken(token, el) {
       // Preserve the glyph's child nodes too until this clock position changes digit.
       if (el.dataset.value !== token.text || !el.firstChild || el._shapeKey !== token.shape.innerHTML) {
         el.replaceChildren(token.shape.cloneNode(true));
@@ -160,9 +190,13 @@
       const m = fit.multiply(new DOMMatrix(token.matrix));
       const target = [m.a, m.b, m.c, m.d, m.e, m.f];
       setPosition(el, target, animated);
-      items.push({ slot: token.slot, text: token.text, matrix: target,
-        localMatrix: token.matrix.slice(), scale: Math.hypot(token.matrix[0], token.matrix[1]) });
-    });
+      return { slot: token.slot, text: token.text, matrix: target,
+        localMatrix: token.matrix.slice(), scale: Math.hypot(token.matrix[0], token.matrix[1]) };
+    }
+    frame.tokens.forEach((token, i) => items.push(placeToken(token,movingEls[i])));
+    // Equality keeps its glyph and interpolates with the digits; other signs fade.
+    if (frame.equality) placeToken(frame.equality,equalSign);
+    equalSign.style.opacity = frame.equality ? '1' : '0';
     const layer = document.createElementNS(mathNS, 'g');
     layer.classList.add('notation-layer');
     const content = frame.decorations.cloneNode(true);
@@ -183,6 +217,7 @@
     stage.classList.toggle('resting', !ast);
     stage.classList.toggle('loading', loading);
     plainTime.hidden = true; scene.style.visibility = 'visible';
+    $('#source-time').hidden = !ast || loading;
     $('#engine-status').textContent = `MathJax · ${FormulaTypesetter.PROFILES[frame.font].label} / SVG`;
     stage.setAttribute('aria-label', ast ? `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒。${FormulaExpression.plain(ast, code)} = ${seconds}` : `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒`);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
@@ -241,7 +276,6 @@
   function resetTransport() {
     generation++; lastSecond = null; sound.cancel();
     document.body.classList.toggle('preview-mode', !!preview);
-    $('#mode-label').textContent = preview ? 'PREVIEW' : 'LIVE';
     $('#transport').hidden = !preview;
     $('#play-pause').textContent = preview?.paused ? '再生' : '一時停止';
     $('#slow').setAttribute('aria-pressed', String(!!preview && preview.speed < 1));
@@ -272,13 +306,10 @@
     sourceEls.forEach((el, i) => { el.textContent = code[i]; });
     $('#source-second').textContent = pad(seconds);
     $('#source-time').setAttribute('aria-label', `${pad(now.getHours())}時${pad(now.getMinutes())}分${pad(seconds)}秒`);
-    const day = ['SUN','MON','TUE','WED','THU','FRI','SAT'][now.getDay()];
-    $('#date').textContent = `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())}  ${day}`;
     $('#playback').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(seconds)}`;
     const ast = result?.solutions[seconds] || null;
     renderExpression(ast, code, seconds, !result);
     prepareNext(now);
-    $('#coverage').textContent = result && !result.error ? `${String(result.count).padStart(2,'0')} / 60` : '— / 60';
     ticks.forEach((el, i) => {
       el.classList.toggle('solved', !!result?.solutions[i]); el.classList.toggle('current', i === seconds); el.classList.toggle('past', i < seconds);
       if (i === seconds) el.setAttribute('aria-current', 'time'); else el.removeAttribute('aria-current');
@@ -317,12 +348,12 @@
         await this.ctx.resume();
         if (this.ctx.state !== 'running') throw new Error('Audio could not be enabled');
         this.enabled = true; this.paint(); this.tone(880, this.ctx.currentTime + .02, .15, .28);
-      } catch (error) { console.error(error); this.enabled = false; this.paint(); $('#sound-text').textContent = '音を有効化できない'; }
+      } catch (error) { console.error(error); this.enabled = false; this.paint(); $('#sound').setAttribute('aria-label','音を有効化できない'); $('#sound').title = '音を有効化できない'; }
     }
     paint() {
       $('#sound').setAttribute('aria-pressed', String(this.enabled));
-      $('#sound-text').textContent = this.enabled ? '時報 オン' : '時報 オフ';
-      $('#sound-text').classList.toggle('on', this.enabled);
+      $('#sound').setAttribute('aria-label', this.enabled ? '時報 オン' : '時報 オフ');
+      $('#sound').title = `${this.enabled ? '時報 オン' : '時報 オフ'}（M）`;
       $('#sound-waves').setAttribute('d', this.enabled ? 'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14' : 'm16 9 6 6m0-6-6 6');
     }
     setVolume(v) { this.volume = Math.max(0, Math.min(1, v)); if (this.master) this.master.gain.setTargetAtTime(this.volume * .32, this.ctx.currentTime, .035); }
@@ -369,27 +400,11 @@
   $('#go-live').addEventListener('click', goLive);
   $('#play-pause').addEventListener('click', togglePlay);
   $('#slow').addEventListener('click', toggleSlow);
-  document.querySelectorAll('[data-demo]').forEach(button => button.addEventListener('click', () => {
-    const d = new Date();
-    const demo = button.dataset.demo;
-    if (demo === 'stix') {
-      d.setHours(16,39,19,0);
-      setDisplay({font:'stix2'}).catch(()=>{});
-      setPreview(d, true);
-      return;
-    }
-    if (demo === 'transition') d.setHours(12,34,30,0);
-    if (demo === 'power') d.setHours(12,34,58,0);
-    if (demo === 'division') d.setHours(12,34,8,0);
-    if (demo === 'quiet') d.setHours(0,0,7,0);
-    if (demo === 'midnight') d.setHours(23,59,55,0);
-    setPreview(d, false);
-  }));
   $('#custom-go').addEventListener('click', () => {
     const value = $('#custom-time').value;
     if (!/^\d\d:\d\d(?::\d\d)?$/.test(value)) return;
     const [h,m,s = 0] = value.split(':').map(Number), d = new Date(); d.setHours(h,m,s,0);
-    setPreview(d, true); $('#info').open = false;
+    setPreview(d, true); settingsDialog.close();
   });
   $('#import-data').addEventListener('click',()=>$('#data-file').click());
   $('#data-file').addEventListener('change',async e=>{
@@ -419,7 +434,7 @@
   $('#fullscreen').addEventListener('click', toggleFullscreen);
   document.addEventListener('fullscreenchange', () => { document.body.classList.toggle('fullscreen', !!document.fullscreenElement); renderResize(); });
   document.addEventListener('keydown', e => {
-    if (e.altKey || e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY)$/.test(e.target.tagName)) return;
+    if (settingsDialog.open || licenseDialog.open || e.altKey || e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY)$/.test(e.target.tagName)) return;
     if (e.key.toLowerCase() === 'm') sound.toggle();
     if (e.key.toLowerCase() === 'l') goLive();
     if (e.key.toLowerCase() === 'f') toggleFullscreen();
@@ -436,7 +451,6 @@
     if (document.hidden) clearTimeout(tickTimer);
     else { lastSecond = null; refresh(true); scheduleTick(); }
   });
-  $('#zone').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone || 'LOCAL TIME';
   refresh(true); scheduleTick();
   setInterval(() => sound.poll(), 60);
   // Read-only handles for tests, with explicit transport controls for reproducible previews.
@@ -448,7 +462,7 @@
     diagnostics() {
       const host = stage.getBoundingClientRect();
       return {
-        build: 'r5-stix2', mathjax: typesetter.mathjax?.version || null, display:{...displaySettings},
+        build: 'r6-minimal', mathjax: typesetter.mathjax?.version || null, display:{...displaySettings},
         userAgent: navigator.userAgent, engineError,
         typography: typesetter.typography, axisY: latestLayout?.axisY, localAxisY: latestLayout?.localAxisY,
         time: latestLayout ? `${latestLayout.code}:${pad(latestLayout.seconds)}` : null,

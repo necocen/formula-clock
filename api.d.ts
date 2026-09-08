@@ -15,11 +15,16 @@ export interface FormulaTable {
   readonly schema: 'formula-clock/1';
   readonly minutes: Readonly<Record<string, SecondEntries>>;
 }
+export interface HourManifest {
+  readonly schema: 'formula-clock-hours/1';
+  readonly version: string;
+  readonly hours: Readonly<Record<string, string>>;
+}
 export interface FormulaProvider {
   getMinute(hhmm: string, options?: { signal?: AbortSignal }): Promise<MinuteRecord>;
 }
 export interface DisplayOptions {
-  font: 'stix2' | 'euler' | 'oldstyle';
+  font: 'stix2' | 'euler';
   division: 'fraction' | 'inline';
 }
 export interface FormulaClockAPI {

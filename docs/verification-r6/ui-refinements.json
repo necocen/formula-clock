@@ -1,0 +1,151 @@
+[
+  {
+    "browser": "chromium",
+    "browserVersion": "151.0.7922.34",
+    "mathjax": "4.1.3",
+    "command": [
+      "tests/browser.test.py",
+      "--url",
+      "http://127.0.0.1:8000",
+      "--screenshots",
+      "--output-dir",
+      "test-results/refinements-chromium"
+    ],
+    "at": "2026-09-08T16:39:39.132893+00:00",
+    "checks": [
+      "Minimal UI, two fonts, dialog dismissal/focus trapping, custom preview, stable stage position",
+      "32 formula/time layouts; 2 font profiles × 2 division modes; persistent HHMM elements; equal-sign axis",
+      "Oldstyle 3 descends below the baseline; 1 is shorter; native axis is preserved",
+      "Cached independent font engines; repeated font switching leaves expression and digit identity intact",
+      "320 / 390 / 768 px: no horizontal overflow; fractions, superscripts and plain time visible",
+      "HTTP provider crosses hour and midnight boundaries",
+      "Reduced-motion fractions and powers stay visible",
+      "Nested division produces visible denominator parentheses and remains a valid clock equation",
+      "Late old-provider response discarded; failed data delivery is distinct from null and displays ordinary time",
+      "Minute/table JSON import, malformed import leaves provider intact, restore initial data",
+      "Persistent equal-sign glyph moves continuously on the fixed axis; source time only appears above formulas with equal-size seconds",
+      "Fullscreen enters and exits without losing controls",
+      "Midnight audio: three countdown tones followed by the minute signal"
+    ],
+    "warnings": [
+      "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3",
+      "[Formula Clock] Formula data unavailable. Error: Test transport failure\n    at Object.getMinute (eval at evaluate (:311:30), <anonymous>:1:55)\n    at http://127.0.0.1:8000/:1565:50",
+      "[Formula Clock] Formula data unavailable. Error: Test transport failure\n    at Object.getMinute (eval at evaluate (:311:30), <anonymous>:1:55)\n    at http://127.0.0.1:8000/:1565:50",
+      "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset\n    at InlineProvider.getMinute (http://127.0.0.1:8000/:1089:58)\n    at http://127.0.0.1:8000/:1565:50",
+      "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset\n    at InlineProvider.getMinute (http://127.0.0.1:8000/:1089:58)\n    at http://127.0.0.1:8000/:1565:50"
+    ],
+    "cdnRequests": [
+      "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-euler-font-extension@4.1.3/svg.js",
+      "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-modern-font@4.1.3/svg.js",
+      "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-stix2-font@4.1.3/svg.js",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/input/tex/extensions/html.js",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/base.json",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/en.json",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/nemeth.json",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/speech-worker.js",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-svg-nofont.js"
+    ],
+    "python": "3.14.6",
+    "playwright": "1.62.0"
+  },
+  {
+    "browser": "webkit",
+    "browserVersion": "26.5",
+    "mathjax": "4.1.3",
+    "command": [
+      "tests/browser.test.py",
+      "--url",
+      "http://127.0.0.1:8000/dist-external/",
+      "--browser",
+      "webkit",
+      "--screenshots",
+      "--output-dir",
+      "test-results/refinements-webkit"
+    ],
+    "at": "2026-09-08T16:39:43.789634+00:00",
+    "checks": [
+      "Minimal UI, two fonts, dialog dismissal/focus trapping, custom preview, stable stage position",
+      "32 formula/time layouts; 2 font profiles × 2 division modes; persistent HHMM elements; equal-sign axis",
+      "Oldstyle 3 descends below the baseline; 1 is shorter; native axis is preserved",
+      "Cached independent font engines; repeated font switching leaves expression and digit identity intact",
+      "320 / 390 / 768 px: no horizontal overflow; fractions, superscripts and plain time visible",
+      "HTTP provider crosses hour and midnight boundaries",
+      "Reduced-motion fractions and powers stay visible",
+      "Nested division produces visible denominator parentheses and remains a valid clock equation",
+      "Late old-provider response discarded; failed data delivery is distinct from null and displays ordinary time",
+      "Minute/table JSON import, malformed import leaves provider intact, restore initial data",
+      "Persistent equal-sign glyph moves continuously on the fixed axis; source time only appears above formulas with equal-size seconds",
+      "Fullscreen enters and exits without losing controls",
+      "Midnight audio: three countdown tones followed by the minute signal"
+    ],
+    "warnings": [
+      "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3",
+      "[Formula Clock] Formula data unavailable. Error: Test transport failure",
+      "[Formula Clock] Formula data unavailable. Error: Test transport failure",
+      "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset",
+      "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset"
+    ],
+    "cdnRequests": [
+      "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-euler-font-extension@4.1.3/svg.js",
+      "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-modern-font@4.1.3/svg.js",
+      "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-stix2-font@4.1.3/svg.js",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/input/tex/extensions/html.js",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/base.json",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/en.json",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/nemeth.json",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/speech-worker.js",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-svg-nofont.js"
+    ],
+    "python": "3.14.6",
+    "playwright": "1.62.0"
+  },
+  {
+    "browser": "firefox",
+    "browserVersion": "153.0",
+    "mathjax": "4.1.3",
+    "command": [
+      "tests/browser.test.py",
+      "--url",
+      "http://127.0.0.1:8000/dist-external/",
+      "--browser",
+      "firefox",
+      "--output-dir",
+      "test-results/refinements-firefox"
+    ],
+    "at": "2026-09-08T16:40:35.272958+00:00",
+    "checks": [
+      "Minimal UI, two fonts, dialog dismissal/focus trapping, custom preview, stable stage position",
+      "32 formula/time layouts; 2 font profiles × 2 division modes; persistent HHMM elements; equal-sign axis",
+      "Oldstyle 3 descends below the baseline; 1 is shorter; native axis is preserved",
+      "Cached independent font engines; repeated font switching leaves expression and digit identity intact",
+      "320 / 390 / 768 px: no horizontal overflow; fractions, superscripts and plain time visible",
+      "HTTP provider crosses hour and midnight boundaries",
+      "Reduced-motion fractions and powers stay visible",
+      "Nested division produces visible denominator parentheses and remains a valid clock equation",
+      "Late old-provider response discarded; failed data delivery is distinct from null and displays ordinary time",
+      "Minute/table JSON import, malformed import leaves provider intact, restore initial data",
+      "Persistent equal-sign glyph moves continuously on the fixed axis; source time only appears above formulas with equal-size seconds",
+      "Fullscreen enters and exits without losing controls",
+      "Midnight audio: three countdown tones followed by the minute signal"
+    ],
+    "warnings": [
+      "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3",
+      "[Formula Clock] Formula data unavailable. Error",
+      "[Formula Clock] Formula data unavailable. Error",
+      "[Formula Clock] Formula data unavailable. Error",
+      "[Formula Clock] Formula data unavailable. Error"
+    ],
+    "cdnRequests": [
+      "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-euler-font-extension@4.1.3/svg.js",
+      "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-modern-font@4.1.3/svg.js",
+      "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-stix2-font@4.1.3/svg.js",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/input/tex/extensions/html.js",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/base.json",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/en.json",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/nemeth.json",
+      "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-svg-nofont.js"
+    ],
+    "python": "3.14.6",
+    "playwright": "1.62.0"
+  }
+]

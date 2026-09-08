@@ -160,3 +160,17 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Local development and generated deployment artifacts.
+/dist-external/
+/.wrangler/
+/.venv/
+/test-results/
+/.playwright-cli/
+__pycache__/
+*.pyc
+.dev.vars*
+.env.*
+
+# Preserve the original handoff evidence.
+!docs/verification/*.log
