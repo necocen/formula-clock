@@ -2,10 +2,17 @@
 
 設定の「記号も動かす（実験的）」で、`＋ − × ÷ !` を次の数式へ引き継いで移動できます。
 初期値はオフ。設定はブラウザに保存し、いつでも従来のフェード表示へ戻せます。
-分数線・根号・括弧は従来の表示を維持します。等号はこの設定にかかわらず常に移動します。
+等号はこの設定にかかわらず常に移動します。
+
+パート2は「分数・√・括弧も動かす（実験的2）」で独立してオンにできます（初期値はオフ）。
+分数線と√の上線は位置と長さを補間します。√の開き部分と括弧は、持ち場に加えて
+フォント・MathJaxのサイズバリアント・文字コードが同じ場合だけ字形を保持します。
+√のサイズが変わるときは、開き部分と上線を一緒にフェードさせます。
+複数の部品から組み立てる極端に大きな√・括弧は、従来どおりフェード表示します。
 
 ```js
 await FormulaClock.setDisplay({symbolMotion: true});
+await FormulaClock.setDisplay({structureMotion: true});
 ```
 
 記号は同じ持ち場に残る場合だけ引き継ぎます。二項演算子はHHMMの同じ桁の境界、
@@ -18,8 +25,9 @@ await FormulaClock.setDisplay({symbolMotion: true});
 npm test
 npm run build
 npm run build:external
-python tests/browser.test.py --url http://127.0.0.1:8000/dist-external/ --symbol-motion
+python tests/browser.test.py --url http://127.0.0.1:8000/dist-external/ --symbol-motion --structure-motion
 python tests/symbol-motion.browser.py --url http://127.0.0.1:8000/dist-external/
+python tests/structure-motion.browser.py --url http://127.0.0.1:8000/dist-external/
 ```
 
 以下はr5時点の引き継ぎ資料です。現行UIは右上の設定に集約され、書体はSTIX Two / Eulerの2種類、

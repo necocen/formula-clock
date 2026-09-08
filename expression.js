@@ -39,7 +39,7 @@
   function options(value = {}) {
     const division = value.division ?? 'fraction';
     if (!['fraction','inline'].includes(division)) throw new TypeError('Unknown division style');
-    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true };
+    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true, structureMotion: value.structureMotion === true };
   }
   function mark(slot, digit, opt) {
     const glyph = opt.oldstyle ? `{\\oldstyle ${digit}}` : digit;
@@ -67,6 +67,15 @@
       const left = interval(a.a);
       return [left[0],a.b ? interval(a.b)[1] : left[1]];
     }
+    function structure(role, a, tex) {
+      if (!opt.structureMotion) return tex;
+      const [i,j] = interval(a);
+      const site = `${role}-${role === 'frac' ? `b${interval(a.a)[1]}` : `u${i}${j}`}`;
+      const ordinal = siteCounts.get(site) || 0;
+      siteCounts.set(site,ordinal+1);
+      return `\\cssId{fc-struct-${site}-${ordinal}}{${tex}}`;
+    }
+    const enclose = (a,tex) => structure('paren',a,parens(tex));
     function symbol(a, glyph, texClass) {
       if (!opt.symbolMotion) {
         if (a.op === 'neg') return negative(opt);
@@ -80,6 +89,9 @@
       const ordinal = siteCounts.get(site) || 0;
       siteCounts.set(site,ordinal+1);
       const id = `fc-op-${symbolId++}-${site}-${ordinal}`;
+      // Keep the native postfix spacing of ! (notably after \left...\right).
+      // A forced mathclose atom discards that spacing in MathJax 4.
+      if (a.op === 'fact') return `\\cssId{${id}}{${glyph}}`;
       return `\\${texClass}{\\cssId{${id}}{${a.op === 'fact' ? glyph : center(glyph,opt)}}}`;
     }
     function write(a) {
@@ -87,23 +99,23 @@
         let out = ''; for (let i = a.i; i < a.j; i++) out += mark(`d${i}`,code[i],opt);
         return out;
       }
-      if (a.op === 'sqrt') return `\\sqrt{${write(a.a)}}`;
+      if (a.op === 'sqrt') return structure('root',a,`\\sqrt{${write(a.a)}}`);
       if (a.op === 'neg') {
         let x = write(a.a);
-        if (precedence(a.a,opt) <= 30) x = parens(x);
+        if (precedence(a.a,opt) <= 30) x = enclose(a.a,x);
         return symbol(a,'-','mathord') + x;
       }
       if (a.op === 'fact') {
         // (n!)! must not become n!!, which conventionally means double factorial.
         const x = write(a.a);
-        return (['lit','sqrt'].includes(a.a.op) ? x : parens(x)) + symbol(a,'!','mathclose');
+        return (['lit','sqrt'].includes(a.a.op) ? x : enclose(a.a,x)) + symbol(a,'!','mathclose');
       }
       if (a.op === 'pow') {
         let x = write(a.a);
-        if (precedence(a.a,opt) <= 40 || ['div','sqrt'].includes(a.a.op)) x = parens(x);
+        if (precedence(a.a,opt) <= 40 || ['div','sqrt'].includes(a.a.op)) x = enclose(a.a,x);
         return `{${x}}^{${write(a.b)}}`;
       }
-      if (a.op === 'div' && opt.division === 'fraction') return `\\frac{${write(a.a)}}{${write(a.b)}}`;
+      if (a.op === 'div' && opt.division === 'fraction') return structure('frac',a,`\\frac{${write(a.a)}}{${write(a.b)}}`);
       const p = precedence(a,opt);
       function child(x, right) {
         const q = precedence(x,opt), tex = write(x);
@@ -112,7 +124,7 @@
         const homogeneous = n => precedence(n,opt) !== p ||
           (n.op === a.op && homogeneous(n.a) && homogeneous(n.b));
         const associative = (a.op === 'add' || a.op === 'mul') && x.op === a.op && homogeneous(x);
-        return q < p || (right && ((q === p && !associative) || x.op === 'neg')) ? parens(tex) : tex;
+        return q < p || (right && ((q === p && !associative) || x.op === 'neg')) ? enclose(x,tex) : tex;
       }
       const glyph = {add:'+', sub:'-', mul:'\\times', div:'\\div'}[a.op];
       if (!glyph) throw new TypeError(`Unsupported operation: ${a.op}`);

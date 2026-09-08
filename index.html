@@ -70,6 +70,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
   <label class="custom-time-label" for="custom-time">時刻を指定</label>
   <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go">表示</button></div>
   <label class="setting-row experimental-option"><span>記号も動かす <small>実験的</small></span><input id="symbol-motion" type="checkbox"></label>
+  <label class="setting-row experimental-option"><span>分数・√・括弧も動かす <small>実験的2</small></span><input id="structure-motion" type="checkbox"></label>
   <details class="advanced" id="advanced-settings"><summary>詳細</summary>
     <div class="data-controls"><button class="small-button" id="import-data">式データを読み込む</button><button class="small-button" id="restore-data">元に戻す</button><input id="data-file" type="file" accept=".json,application/json" hidden></div>
     <p id="data-status" role="status">formula-clock/1 形式のJSON。</p>
@@ -977,7 +978,7 @@ Important Recommendations
   function options(value = {}) {
     const division = value.division ?? 'fraction';
     if (!['fraction','inline'].includes(division)) throw new TypeError('Unknown division style');
-    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true };
+    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true, structureMotion: value.structureMotion === true };
   }
   function mark(slot, digit, opt) {
     const glyph = opt.oldstyle ? `{\\oldstyle ${digit}}` : digit;
@@ -1005,6 +1006,15 @@ Important Recommendations
       const left = interval(a.a);
       return [left[0],a.b ? interval(a.b)[1] : left[1]];
     }
+    function structure(role, a, tex) {
+      if (!opt.structureMotion) return tex;
+      const [i,j] = interval(a);
+      const site = `${role}-${role === 'frac' ? `b${interval(a.a)[1]}` : `u${i}${j}`}`;
+      const ordinal = siteCounts.get(site) || 0;
+      siteCounts.set(site,ordinal+1);
+      return `\\cssId{fc-struct-${site}-${ordinal}}{${tex}}`;
+    }
+    const enclose = (a,tex) => structure('paren',a,parens(tex));
     function symbol(a, glyph, texClass) {
       if (!opt.symbolMotion) {
         if (a.op === 'neg') return negative(opt);
@@ -1018,6 +1028,9 @@ Important Recommendations
       const ordinal = siteCounts.get(site) || 0;
       siteCounts.set(site,ordinal+1);
       const id = `fc-op-${symbolId++}-${site}-${ordinal}`;
+      // Keep the native postfix spacing of ! (notably after \left...\right).
+      // A forced mathclose atom discards that spacing in MathJax 4.
+      if (a.op === 'fact') return `\\cssId{${id}}{${glyph}}`;
       return `\\${texClass}{\\cssId{${id}}{${a.op === 'fact' ? glyph : center(glyph,opt)}}}`;
     }
     function write(a) {
@@ -1025,23 +1038,23 @@ Important Recommendations
         let out = ''; for (let i = a.i; i < a.j; i++) out += mark(`d${i}`,code[i],opt);
         return out;
       }
-      if (a.op === 'sqrt') return `\\sqrt{${write(a.a)}}`;
+      if (a.op === 'sqrt') return structure('root',a,`\\sqrt{${write(a.a)}}`);
       if (a.op === 'neg') {
         let x = write(a.a);
-        if (precedence(a.a,opt) <= 30) x = parens(x);
+        if (precedence(a.a,opt) <= 30) x = enclose(a.a,x);
         return symbol(a,'-','mathord') + x;
       }
       if (a.op === 'fact') {
         // (n!)! must not become n!!, which conventionally means double factorial.
         const x = write(a.a);
-        return (['lit','sqrt'].includes(a.a.op) ? x : parens(x)) + symbol(a,'!','mathclose');
+        return (['lit','sqrt'].includes(a.a.op) ? x : enclose(a.a,x)) + symbol(a,'!','mathclose');
       }
       if (a.op === 'pow') {
         let x = write(a.a);
-        if (precedence(a.a,opt) <= 40 || ['div','sqrt'].includes(a.a.op)) x = parens(x);
+        if (precedence(a.a,opt) <= 40 || ['div','sqrt'].includes(a.a.op)) x = enclose(a.a,x);
         return `{${x}}^{${write(a.b)}}`;
       }
-      if (a.op === 'div' && opt.division === 'fraction') return `\\frac{${write(a.a)}}{${write(a.b)}}`;
+      if (a.op === 'div' && opt.division === 'fraction') return structure('frac',a,`\\frac{${write(a.a)}}{${write(a.b)}}`);
       const p = precedence(a,opt);
       function child(x, right) {
         const q = precedence(x,opt), tex = write(x);
@@ -1050,7 +1063,7 @@ Important Recommendations
         const homogeneous = n => precedence(n,opt) !== p ||
           (n.op === a.op && homogeneous(n.a) && homogeneous(n.b));
         const associative = (a.op === 'add' || a.op === 'mul') && x.op === a.op && homogeneous(x);
-        return q < p || (right && ((q === p && !associative) || x.op === 'neg')) ? parens(tex) : tex;
+        return q < p || (right && ((q === p && !associative) || x.op === 'neg')) ? enclose(x,tex) : tex;
       }
       const glyph = {add:'+', sub:'-', mul:'\\times', div:'\\div'}[a.op];
       if (!glyph) throw new TypeError(`Unsupported operation: ${a.op}`);
@@ -1264,18 +1277,19 @@ Important Recommendations
   // A site encodes the operator's role plus either a binary gap or a unary
   // operand interval/nesting ordinal. Screen coordinates never decide identity.
   // Result maps each destination to a source index, or -1 for a new glyph.
+  const identity = token => `${token.kind}:${token.site}:${token.glyphKey || ''}`;
   function match(previous,next) {
     const available=new Map();
     previous.forEach((token,index)=>{
       if(typeof token.site!=='string')return;
-      const key=`${token.kind}:${token.site}`,group=available.get(key)||[];
+      const key=identity(token),group=available.get(key)||[];
       // An active glyph takes precedence over a fading remnant at the same site.
       if(token.exiting)group.push(index);else group.unshift(index);
       available.set(key,group);
     });
     return next.map(token=>{
       if(typeof token.site!=='string')return -1;
-      return available.get(`${token.kind}:${token.site}`)?.shift() ?? -1;
+      return available.get(identity(token))?.shift() ?? -1;
     });
   }
   const api=Object.freeze({match});
@@ -1385,10 +1399,29 @@ Important Recommendations
         script.onload = () => {
           const startup = engineWindow.MathJax?.startup?.promise;
           if (!startup) return finish(new Error('MathJax startup is unavailable'));
-          startup.then(() => { this.mathjax = engineWindow.MathJax; return this.calibrateTypography(); }).then(() => finish(), finish);
+          startup.then(() => {
+            this.mathjax = engineWindow.MathJax;
+            this.identifyGlyphs();
+            return this.calibrateTypography();
+          }).then(() => finish(), finish);
         };
         engineDocument.head.append(script);
       });
+    }
+    identifyGlyphs() {
+      // With fontCache:none, MathJax's pathNode keeps the Unicode code but drops
+      // its size variant. Capture that identity before it is lost. The isolated
+      // engine owns this prototype; never patch another font's browsing context.
+      const exports = this.mathjax._?.output?.svg?.Wrapper;
+      const prototype = (exports?.SvgWrapper || exports?.SVGWrapper)?.prototype;
+      if (typeof prototype?.charNode !== 'function') return; // Compatibility engines keep decorations fading.
+      const original = prototype.charNode;
+      const font = `${this.profile.id}@${this.mathjax.version}`;
+      prototype.charNode = function (variant, code, path) {
+        const node = original.call(this,variant,code,path);
+        this.adaptor.setAttribute(node,'data-glyph-key',`${font}:${variant}:${code}`);
+        return node;
+      };
     }
     async calibrateTypography() {
       // FontData.params.axis_height is MathJax's TeX math-axis parameter.
@@ -1482,10 +1515,9 @@ Important Recommendations
         }));
         const symbolOffset = slots.length;
         slots.push(...symbolMarks.keys());
-        const tokens = slots.map((slot, i) => {
-          const tagged = svg.querySelector(`#fc-${slot}`);
-          if (!tagged || !tagged.querySelector('path')) throw new Error(`Missing digit ${slot}`);
-          const paths = [...tagged.querySelectorAll('path')];
+        function glyphToken(paths, metadata) {
+          const {slot} = metadata;
+          if (!paths.length) throw new Error(`Missing glyph ${slot}`);
           if (paths.some(path => !path.getAttribute('d')?.trim())) {
             throw new Error(`Empty glyph path ${slot}`);
           }
@@ -1501,7 +1533,7 @@ Important Recommendations
           const corners = [];
           for (const path of paths) {
             const copy = path.cloneNode(true);
-            copy.removeAttribute('id'); copy.removeAttribute('transform');
+            copy.removeAttribute('id'); copy.removeAttribute('transform'); copy.removeAttribute('data-fc-extract');
             const pathCTM = path.getScreenCTM();
             if (!pathCTM) throw new Error(`Missing path transform ${slot}`);
             const relative = glyphInverse.multiply(pathCTM);
@@ -1528,9 +1560,60 @@ Important Recommendations
               maxY < v.y - slack || minY > v.y + v.height + slack) {
             throw new Error(`Glyph outside SVG viewBox ${slot}`);
           }
+          return { ...metadata, matrix: matrixArray(local), shape };
+        }
+        const tokens = slots.map((slot, i) => {
           const symbol = symbolMarks.get(slot);
-          return { slot, text: symbol ? symbol.kind : slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i - 4], matrix: matrixArray(local), shape, ...symbol };
+          return glyphToken([...svg.querySelectorAll(`#fc-${slot} path`)], {
+            slot, text:symbol ? symbol.kind : slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i-4], ...symbol
+          });
         });
+        const structures = [];
+        function ruleToken(rect, metadata) {
+          const box = rect.getBBox(), ctm = rect.getScreenCTM();
+          if (!ctm || !(box.width > 0 && box.height > 0)) throw new Error('Invalid mathematical rule');
+          // A unit rectangle makes width and thickness independent coordinates.
+          // Its shape never changes while the six matrix components interpolate.
+          const local = new DOMMatrix(matrixArray(inverse.multiply(ctm))).multiply(new DOMMatrix([box.width,0,0,box.height,box.x,box.y]));
+          if (!finiteMatrix(local)) throw new Error('Non-finite rule coordinates');
+          const shape = document.createElementNS(NS,'g'), unit = document.createElementNS(NS,'rect');
+          unit.setAttribute('width','1'); unit.setAttribute('height','1'); shape.append(unit);
+          rect.setAttribute('data-fc-extract','');
+          return {...metadata,slot:metadata.site,text:metadata.kind,matrix:matrixArray(local),shape};
+        }
+        const coreOf = (tag,name) => tag.matches(`[data-mml-node="${name}"]`) ? tag : tag.querySelector(`[data-mml-node="${name}"]`);
+        const ownRules = core => [...core.querySelectorAll('rect')].filter(rect => rect.closest('[data-mml-node="mfrac"],[data-mml-node="msqrt"]') === core);
+        const singleGlyph = path => path?.hasAttribute('data-glyph-key') && path.closest('[data-mml-node="mo"]')?.querySelectorAll('path').length === 1;
+        function takeGlyph(path, metadata) {
+          structures.push(glyphToken([path],{...metadata,slot:metadata.site,text:metadata.kind}));
+          path.setAttribute('data-fc-extract','');
+        }
+        for (const tag of svg.querySelectorAll('[id^="fc-struct-"]')) {
+          const [,role,attachment,ordinal] = tag.id.match(/^fc-struct-(frac|root|paren)-(b[1-3]|u[0-3][1-4])-(\d+)$/);
+          const site = `${role}-${attachment}-${ordinal}`;
+          if (role === 'frac') {
+            const core = coreOf(tag,'mfrac'), rules = core ? ownRules(core) : [];
+            if (rules.length === 1) structures.push(ruleToken(rules[0],{kind:'fraction-rule',site,glyphKey:'rule'}));
+          } else if (role === 'root') {
+            const core = coreOf(tag,'msqrt');
+            if (!core) continue;
+            const paths = [...core.querySelectorAll('path[data-c="221A"]')].filter(path => path.closest('[data-mml-node="msqrt"]') === core);
+            const rules = ownRules(core), path = paths[0];
+            // An assembled radical stays in the fading layer. For a single
+            // glyph, the sign and overbar share an identity and timing so their
+            // junction remains connected, including when a size variant changes.
+            if (paths.length !== 1 || !singleGlyph(path) || rules.length !== 1) continue;
+            const glyphKey = path.getAttribute('data-glyph-key');
+            takeGlyph(path,{kind:'root-sign',site,glyphKey});
+            structures.push(ruleToken(rules[0],{kind:'root-rule',site,glyphKey}));
+          } else {
+            const paths = [...tag.querySelectorAll('path[data-c="28"],path[data-c="29"]')].filter(path => path.closest('[id^="fc-struct-"]') === tag);
+            for (const path of paths) if (singleGlyph(path)) {
+              const kind = path.getAttribute('data-c') === '28' ? 'paren-left' : 'paren-right';
+              takeGlyph(path,{kind,site,glyphKey:path.getAttribute('data-glyph-key')});
+            }
+          }
+        }
         // Anchor equations by the actual equal-sign ink, not by the full SVG's
         // height. In time mode use the same mathematical axis (there is no '=').
         let axisY = this.typography.equalCenterY;
@@ -1542,9 +1625,10 @@ Important Recommendations
         decorations.setAttribute('stroke-width', '0');
         for (const child of svg.children) decorations.append(child.cloneNode(true));
         for (const slot of slots) decorations.querySelector(`#fc-${slot}`)?.remove();
+        decorations.querySelectorAll('[data-fc-extract]').forEach(el => el.remove());
         // cssId is only a temporary typesetting marker, never an on-screen id.
         decorations.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-        return { tex, viewBox, tokens:tokens.slice(0,6), equality:equality ? tokens[6] : null, symbols:tokens.slice(symbolOffset), decorations, axisY, typography: this.typography, font: this.profile.id };
+        return { tex, viewBox, tokens:tokens.slice(0,6), equality:equality ? tokens[6] : null, symbols:[...tokens.slice(symbolOffset),...structures], decorations, axisY, typography: this.typography, font: this.profile.id };
       } finally { node.remove(); }
     }
   }
@@ -1609,7 +1693,8 @@ Important Recommendations
   let displaySettings = {
     font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
     division: ['fraction','inline'].includes(saved.division) ? saved.division : 'fraction',
-    symbolMotion: saved.symbolMotion === true
+    symbolMotion: saved.symbolMotion === true,
+    structureMotion: saved.structureMotion === true
   };
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
@@ -1666,9 +1751,10 @@ Important Recommendations
   let typesetter = engineFor(displaySettings.font);
   async function setDisplay(changes) {
     const next = {...displaySettings,...changes};
-    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division) || typeof next.symbolMotion !== 'boolean') throw new TypeError('Invalid display options');
-    displaySettings = {font:next.font,division:next.division,symbolMotion:next.symbolMotion};
+    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division) || typeof next.symbolMotion !== 'boolean' || typeof next.structureMotion !== 'boolean') throw new TypeError('Invalid display options');
+    displaySettings = {font:next.font,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion};
     $('#symbol-motion').checked = next.symbolMotion;
+    $('#structure-motion').checked = next.structureMotion;
     $('#font-choice').value = next.font; $('#division-choice').value = next.division;
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
     typesetter = engineFor(next.font); engineError=null; lastVisual='';
@@ -1677,6 +1763,8 @@ Important Recommendations
   }
   $('#symbol-motion').checked = displaySettings.symbolMotion;
   $('#symbol-motion').addEventListener('change',e=>{setDisplay({symbolMotion:e.target.checked}).catch(()=>{});});
+  $('#structure-motion').checked = displaySettings.structureMotion;
+  $('#structure-motion').addEventListener('change',e=>{setDisplay({structureMotion:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
   $('#division-choice').value = displaySettings.division;
   $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
@@ -1708,8 +1796,8 @@ Important Recommendations
     }
     animationId = active ? requestAnimationFrame(animatePositions) : 0;
   }
-  function setPosition(el, target, animated) {
-    const now = performance.now(), old = movement.get(el);
+  function setPosition(el, target, animated, now) {
+    const old = movement.get(el);
     const from = old ? matrixAt(old, now) : target;
     movement.set(el, { from: animated ? from : target, to: target, started: animated ? now : now - DURATION });
     el.setAttribute('transform', matrixString(animated ? from : target));
@@ -1737,6 +1825,7 @@ Important Recommendations
       used.add(record);record.exiting=false;record.token=token;
       record.el.dataset.kind=token.kind;
       record.el.dataset.site=token.site;
+      record.el.dataset.glyphKey=token.glyphKey || '';
       placeToken(token,record.el);
     });
     for(const record of previous) if(!used.has(record)) {
@@ -1771,8 +1860,13 @@ Important Recommendations
     const y = axis - frame.axisY * scale;
     const fit = new DOMMatrix([scale, 0, 0, scale, x, y]);
     const animated = !instant && !firstFrame && !reducedMotion.matches;
+    // One clock for the entire frame keeps a radical and its rule joined, even
+    // if DOM work between their updates takes a few milliseconds.
+    const positionTime = performance.now();
     const items = [];
     function placeToken(token, el) {
+      // A preference change may interrupt an existing fade on a reused glyph.
+      if (!animated) el.getAnimations({subtree:true}).forEach(animation => animation.cancel());
       // Preserve the glyph's child nodes too until this clock position changes digit.
       if (el.dataset.value !== token.text || !el.firstChild || el._shapeKey !== token.shape.innerHTML) {
         el.replaceChildren(token.shape.cloneNode(true));
@@ -1782,7 +1876,7 @@ Important Recommendations
       }
       const m = fit.multiply(new DOMMatrix(token.matrix));
       const target = [m.a, m.b, m.c, m.d, m.e, m.f];
-      setPosition(el, target, animated);
+      setPosition(el, target, animated, positionTime);
       return { slot: token.slot, text: token.text, matrix: target,
         localMatrix: token.matrix.slice(), scale: Math.hypot(token.matrix[0], token.matrix[1]) };
     }
@@ -1819,7 +1913,7 @@ Important Recommendations
   }
   function renderExpression(ast, code, seconds, loading, instant = false) {
     const engine = typesetter, view = {...displaySettings};
-    const key = `${view.font}:${view.division}:${view.symbolMotion}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
+    const key = `${view.font}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;

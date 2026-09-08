@@ -51,7 +51,8 @@
   let displaySettings = {
     font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
     division: ['fraction','inline'].includes(saved.division) ? saved.division : 'fraction',
-    symbolMotion: saved.symbolMotion === true
+    symbolMotion: saved.symbolMotion === true,
+    structureMotion: saved.structureMotion === true
   };
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
@@ -108,9 +109,10 @@
   let typesetter = engineFor(displaySettings.font);
   async function setDisplay(changes) {
     const next = {...displaySettings,...changes};
-    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division) || typeof next.symbolMotion !== 'boolean') throw new TypeError('Invalid display options');
-    displaySettings = {font:next.font,division:next.division,symbolMotion:next.symbolMotion};
+    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division) || typeof next.symbolMotion !== 'boolean' || typeof next.structureMotion !== 'boolean') throw new TypeError('Invalid display options');
+    displaySettings = {font:next.font,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion};
     $('#symbol-motion').checked = next.symbolMotion;
+    $('#structure-motion').checked = next.structureMotion;
     $('#font-choice').value = next.font; $('#division-choice').value = next.division;
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
     typesetter = engineFor(next.font); engineError=null; lastVisual='';
@@ -119,6 +121,8 @@
   }
   $('#symbol-motion').checked = displaySettings.symbolMotion;
   $('#symbol-motion').addEventListener('change',e=>{setDisplay({symbolMotion:e.target.checked}).catch(()=>{});});
+  $('#structure-motion').checked = displaySettings.structureMotion;
+  $('#structure-motion').addEventListener('change',e=>{setDisplay({structureMotion:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
   $('#division-choice').value = displaySettings.division;
   $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
@@ -150,8 +154,8 @@
     }
     animationId = active ? requestAnimationFrame(animatePositions) : 0;
   }
-  function setPosition(el, target, animated) {
-    const now = performance.now(), old = movement.get(el);
+  function setPosition(el, target, animated, now) {
+    const old = movement.get(el);
     const from = old ? matrixAt(old, now) : target;
     movement.set(el, { from: animated ? from : target, to: target, started: animated ? now : now - DURATION });
     el.setAttribute('transform', matrixString(animated ? from : target));
@@ -179,6 +183,7 @@
       used.add(record);record.exiting=false;record.token=token;
       record.el.dataset.kind=token.kind;
       record.el.dataset.site=token.site;
+      record.el.dataset.glyphKey=token.glyphKey || '';
       placeToken(token,record.el);
     });
     for(const record of previous) if(!used.has(record)) {
@@ -213,8 +218,13 @@
     const y = axis - frame.axisY * scale;
     const fit = new DOMMatrix([scale, 0, 0, scale, x, y]);
     const animated = !instant && !firstFrame && !reducedMotion.matches;
+    // One clock for the entire frame keeps a radical and its rule joined, even
+    // if DOM work between their updates takes a few milliseconds.
+    const positionTime = performance.now();
     const items = [];
     function placeToken(token, el) {
+      // A preference change may interrupt an existing fade on a reused glyph.
+      if (!animated) el.getAnimations({subtree:true}).forEach(animation => animation.cancel());
       // Preserve the glyph's child nodes too until this clock position changes digit.
       if (el.dataset.value !== token.text || !el.firstChild || el._shapeKey !== token.shape.innerHTML) {
         el.replaceChildren(token.shape.cloneNode(true));
@@ -224,7 +234,7 @@
       }
       const m = fit.multiply(new DOMMatrix(token.matrix));
       const target = [m.a, m.b, m.c, m.d, m.e, m.f];
-      setPosition(el, target, animated);
+      setPosition(el, target, animated, positionTime);
       return { slot: token.slot, text: token.text, matrix: target,
         localMatrix: token.matrix.slice(), scale: Math.hypot(token.matrix[0], token.matrix[1]) };
     }
@@ -261,7 +271,7 @@
   }
   function renderExpression(ast, code, seconds, loading, instant = false) {
     const engine = typesetter, view = {...displaySettings};
-    const key = `${view.font}:${view.division}:${view.symbolMotion}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
+    const key = `${view.font}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;

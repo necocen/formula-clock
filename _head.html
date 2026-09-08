@@ -70,6 +70,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
   <label class="custom-time-label" for="custom-time">時刻を指定</label>
   <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go">表示</button></div>
   <label class="setting-row experimental-option"><span>記号も動かす <small>実験的</small></span><input id="symbol-motion" type="checkbox"></label>
+  <label class="setting-row experimental-option"><span>分数・√・括弧も動かす <small>実験的2</small></span><input id="structure-motion" type="checkbox"></label>
   <details class="advanced" id="advanced-settings"><summary>詳細</summary>
     <div class="data-controls"><button class="small-button" id="import-data">式データを読み込む</button><button class="small-button" id="restore-data">元に戻す</button><input id="data-file" type="file" accept=".json,application/json" hidden></div>
     <p id="data-status" role="status">formula-clock/1 形式のJSON。</p>

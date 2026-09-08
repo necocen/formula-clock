@@ -36,3 +36,17 @@ test('each source can be consumed once and a live glyph wins over an exiting one
   const old=[glyph('+','add-b1-0',{exiting:true}),glyph('+','add-b1-0')];
   assert.deepEqual(match(old,[glyph('+','add-b1-0'),glyph('+','add-b1-0'),glyph('+','add-b1-0')]),[1,0,-1]);
 });
+test('structural glyphs reuse only the same font, size variant and attachment',()=>{
+  const a=glyph('root-sign','root-u04-0',{glyphKey:'stix2@4.1.3:-smallop:221A'});
+  assert.deepEqual(match([a],[{...a}]),[0]);
+  assert.deepEqual(match([a],[{...a,glyphKey:'stix2@4.1.3:-largeop:221A'}]),[-1]);
+  assert.deepEqual(match([a],[{...a,glyphKey:'euler@4.1.3:-smallop:221A'}]),[-1]);
+  assert.deepEqual(match([a],[{...a,site:'root-u14-0'}]),[-1]);
+});
+test('radical sign and rule are replaced together on size change; fraction rules retain their gap',()=>{
+  const a=['root-sign','root-rule'].map(kind=>glyph(kind,'root-u04-0',{glyphKey:'normal:221A'}));
+  assert.deepEqual(match(a,a),[0,1]);
+  assert.deepEqual(match(a,a.map(x=>({...x,glyphKey:'-smallop:221A'}))),[-1,-1]);
+  const f=glyph('fraction-rule','frac-b2-0',{glyphKey:'rule'});
+  assert.deepEqual(match([f],[f,{...f,site:'frac-b3-0'}]),[0,-1]);
+});

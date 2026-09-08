@@ -14,6 +14,7 @@ ap=argparse.ArgumentParser()
 ap.add_argument('--local-mathjax',type=Path)
 ap.add_argument('--screenshots',action='store_true')
 ap.add_argument('--symbol-motion',action='store_true')
+ap.add_argument('--structure-motion',action='store_true')
 ap.add_argument('--url',default=(ROOT/'index.html').as_uri())
 ap.add_argument('--browser',choices=['chromium','firefox','webkit'],default='chromium')
 ap.add_argument('--output-dir',type=Path)
@@ -26,8 +27,9 @@ with sync_playwright() as p:
     browser=getattr(p,args.browser).launch(headless=True)
     report['browserVersion']=browser.version
     ctx=browser.new_context(viewport={'width':1440,'height':1000},timezone_id='Asia/Tokyo')
-    if args.symbol_motion:
-        ctx.add_init_script("localStorage.setItem('formula-clock-display-v2',JSON.stringify({symbolMotion:true}))")
+    if args.symbol_motion or args.structure_motion:
+        saved=json.dumps({'symbolMotion':args.symbol_motion,'structureMotion':args.structure_motion})
+        ctx.add_init_script("localStorage.setItem('formula-clock-display-v2',"+json.dumps(saved)+")")
     if args.local_mathjax:
         lib=args.local_mathjax
         def route_local(route):
@@ -48,6 +50,7 @@ with sync_playwright() as p:
     if not args.local_mathjax:assert report['mathjax']=='4.1.3'
     assert page.evaluate('FormulaClock.state.display.font')=='stix2'
     assert page.locator('#symbol-motion').is_checked()==args.symbol_motion
+    assert page.locator('#structure-motion').is_checked()==args.structure_motion
 
     assert page.locator('#font-choice option').evaluate_all('(options)=>options.map(x=>x.value)')==['stix2','euler']
     assert page.locator('.intro,.source-caption,.mode,.minute-head,.demo-panel,footer,#info,#coverage,#date,#zone').count()==0

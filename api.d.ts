@@ -28,6 +28,8 @@ export interface DisplayOptions {
   division: 'fraction' | 'inline';
   /** Experimental reuse of +, −, ×, ÷ and ! glyphs. Defaults to false. */
   symbolMotion: boolean;
+  /** Experimental rule/√/parenthesis motion, retaining font size identity. Defaults to false. */
+  structureMotion: boolean;
 }
 export interface FormulaClockAPI {
   setDisplay(options: Partial<DisplayOptions>): Promise<void>;
