@@ -188,9 +188,9 @@
         const slots = ['d0', 'd1', 'd2', 'd3', 's0', 's1'];
         if (equality) slots.push('eq');
         const symbolMarks = new Map([...svg.querySelectorAll('[id^="fc-op-"]')].map(el => {
-          const [,role,start,end] = el.id.match(/^fc-op-\d+-(add|sub|neg|mul|div|fact)-(\d)-(\d)$/);
+          const [,role,attachment,ordinal] = el.id.match(/^fc-op-\d+-(add|sub|neg|mul|div|fact)-(b[1-3]|u[0-3][1-4])-(\d+)$/);
           const kind = {add:'+',sub:'−',neg:'−',mul:'×',div:'÷',fact:'!'}[role];
-          return [el.id.slice(3),{kind,role,start:Number(start),end:Number(end)}];
+          return [el.id.slice(3),{kind,role,site:`${role}-${attachment}-${ordinal}`}];
         }));
         const symbolOffset = slots.length;
         slots.push(...symbolMarks.keys());

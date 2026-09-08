@@ -161,15 +161,10 @@
     if (reducedMotion.matches) return;
     el.animate(delayed ? [{ opacity: 0 }, { opacity: 0, offset: .18 }, { opacity: 1 }] : [{ opacity: .15 }, { opacity: 1 }], { duration, easing: 'ease-out' });
   }
-  function updateSymbols(tokens,fit,animated,placeToken) {
-    const now=performance.now(), previous=[...symbolRecords];
-    const position=(token,matrix,exiting=false)=>({...token,x:matrix[4],y:matrix[5],scale:Math.hypot(matrix[0],matrix[1]),exiting});
-    const old=previous.map(record=>position(record.token,matrixAt(movement.get(record.el),now),record.exiting));
-    const next=tokens.map(token=>{
-      const m=fit.multiply(new DOMMatrix(token.matrix));
-      return position(token,[m.a,m.b,m.c,m.d,m.e,m.f]);
-    });
-    const matches=FormulaSymbols.match(old,next,Math.max(1,stage.clientWidth)),used=new Set();
+  function updateSymbols(tokens,animated,placeToken) {
+    const previous=[...symbolRecords];
+    const old=previous.map(record=>({...record.token,exiting:record.exiting}));
+    const matches=FormulaSymbols.match(old,tokens),used=new Set();
     tokens.forEach((token,i)=>{
       let record=previous[matches[i]];
       if(!record) {
@@ -183,6 +178,7 @@
       }
       used.add(record);record.exiting=false;record.token=token;
       record.el.dataset.kind=token.kind;
+      record.el.dataset.site=token.site;
       placeToken(token,record.el);
     });
     for(const record of previous) if(!used.has(record)) {
@@ -236,7 +232,7 @@
     // Equality keeps its glyph and interpolates with the digits; other signs fade.
     if (frame.equality) placeToken(frame.equality,equalSign);
     equalSign.style.opacity = frame.equality ? '1' : '0';
-    updateSymbols(frame.symbols,fit,animated,placeToken);
+    updateSymbols(frame.symbols,animated,placeToken);
     const layer = document.createElementNS(mathNS, 'g');
     layer.classList.add('notation-layer');
     const content = frame.decorations.cloneNode(true);

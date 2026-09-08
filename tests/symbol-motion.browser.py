@@ -85,6 +85,42 @@ with sync_playwright() as p:
     assert page.evaluate('oldPluses.filter(x=>x.isConnected).length')==2
     report['checks'].append('Two of three repeated plus signs are reused without duplicating nodes')
 
+    # Different roles or slot attachments must fade, even when their glyphs match.
+    page.evaluate("""()=>{
+      const L=i=>({op:'lit',i,j:i+1}),B=(op,a,b)=>({op,a,b}),F=i=>({op:'fact',a:L(i)});
+      const formulas={
+        6:B('add',B('add',B('sub',L(0),L(1)),L(2)),L(3)),
+        4:B('add',B('sub',B('add',L(0),L(1)),L(2)),L(3)),
+        13:B('add',B('add',B('add',L(0),L(1)),F(2)),L(3)),
+        14:B('sub',B('mul',B('add',L(0),L(1)),F(2)),L(3)),
+        30:B('add',B('add',B('add',L(0),L(1)),L(2)),F(3))
+      };
+      FormulaClock.setDataProvider({async getMinute(hhmm){return {schema:'formula-clock/1',hhmm,seconds:Array.from({length:60},(_,i)=>hhmm==='1234'?formulas[i]||null:null)};}});
+    }""")
+    page.wait_for_function('FormulaClock.state.coverage===5')
+    for font in ['stix2','euler']:
+        display(font=font)
+        preview('12:34:06')
+        page.evaluate("""()=>{
+          window.oldMinus=document.querySelector('[data-site="sub-b1-0"]');
+          window.oldPlus=document.querySelector('[data-site="add-b2-0"]');
+          window.fixedPlus=document.querySelector('[data-site="add-b3-0"]');
+        }""")
+        preview('12:34:04');check_symbols()
+        assert page.evaluate('!oldMinus.isConnected && !oldPlus.isConnected && fixedPlus.isConnected')
+        assert page.locator('[data-site="add-b1-0"]').count()==1
+        assert page.locator('[data-site="sub-b2-0"]').count()==1
+        preview('12:34:13')
+        page.evaluate("""window.oldFactorial=document.querySelector('[data-site="fact-u23-0"]');window.factorialShape=oldFactorial.firstChild""")
+        preview('12:34:14');check_symbols()
+        assert page.evaluate('oldFactorial.isConnected && oldFactorial.firstChild===factorialShape')
+        preview('12:34:30');check_symbols()
+        assert page.evaluate('!oldFactorial.isConnected')
+        assert page.locator('[data-site="fact-u34-0"]').count()==1
+    report['checks'].append('Swapped plus/minus are replaced at their gaps; factorial stays with its operand and is replaced when attachment changes, in both fonts')
+    page.evaluate("document.querySelector('#restore-data').click()")
+    page.wait_for_function('FormulaClock.state.coverage>10')
+
     # Interrupt movement and fades repeatedly, including hour changes and time-only frames.
     for i in range(36):
         preview(['12:34:30','12:34:31','16:39:19','00:00:08'][i%4],wait=0)

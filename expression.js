@@ -61,6 +61,7 @@
     assertCode(code);
     const opt = options(settings);
     let symbolId = 0;
+    const siteCounts = new Map();
     function interval(a) {
       if (a.op === 'lit') return [a.i,a.j];
       const left = interval(a.a);
@@ -72,7 +73,13 @@
         return a.op === 'fact' ? glyph : binary(glyph,opt);
       }
       const [i,j] = interval(a);
-      const id = `fc-op-${symbolId++}-${a.op}-${i}-${j}`;
+      // Binary operators belong to a gap between HHMM slots. Unary operators
+      // belong to their operand's slot interval, with an ordinal for nesting.
+      const attachment = a.b ? `b${interval(a.a)[1]}` : `u${i}${j}`;
+      const site = `${a.op}-${attachment}`;
+      const ordinal = siteCounts.get(site) || 0;
+      siteCounts.set(site,ordinal+1);
+      const id = `fc-op-${symbolId++}-${site}-${ordinal}`;
       return `\\${texClass}{\\cssId{${id}}{${a.op === 'fact' ? glyph : center(glyph,opt)}}}`;
     }
     function write(a) {

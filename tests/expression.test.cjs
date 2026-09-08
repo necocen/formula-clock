@@ -7,7 +7,7 @@ const table=require('../data/expressions.json'), solver=createSolver();
 // Independent parser for the emitted TeX subset. It knows no serializer rules.
 // Digit markers become slot tokens rather than their values (two zeroes differ).
 function parse(tex) {
- const s=tex.replace(/\\cssId\{fc-op-\d+-(?:add|sub|neg|mul|div|fact)-\d-\d\}\{(\\vcenter\{[^{}]+\}|[^{}]+)\}/g,'$1').replace(/\\mathbin\{\\vcenter\{(\\times|\\div|[+\-])\}\}/g,'$1')
+ const s=tex.replace(/\\cssId\{fc-op-\d+-(?:add|sub|neg|mul|div|fact)-(?:b[1-3]|u[0-3][1-4])-\d+\}\{(\\vcenter\{[^{}]+\}|[^{}]+)\}/g,'$1').replace(/\\mathbin\{\\vcenter\{(\\times|\\div|[+\-])\}\}/g,'$1')
   .replace(/\\mathord\{\\vcenter\{-\}\}/g,'-')
   .replace(/\\(?:mathbin|mathord|mathclose)\{(\\times|\\div|[+!\-])\}/g,'$1')
   .replace(/\\cssId\{fc-d(\d)\}\{(?:\{\\oldstyle\s+\d\}|\d)\}/g,'d$1')

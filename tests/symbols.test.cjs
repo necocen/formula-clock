@@ -2,27 +2,37 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {match}=require('../symbols.js');
-const glyph=(kind,x,start=0,end=4,scale=1)=>({kind,x,y:0,start,end,scale,role:kind});
-test('only equal glyph kinds can be reused; empty frames are supported',()=>{
+const glyph=(kind,site,extra={})=>({kind,site,...extra});
+test('empty frames and glyphs without an attachment are never accidentally reused',()=>{
   assert.deepEqual(match([],[]),[]);
-  assert.deepEqual(match([],[glyph('+',0)]),[-1]);
-  assert.deepEqual(match([glyph('+',0)],[glyph('×',0)]),[-1]);
+  assert.deepEqual(match([],[glyph('+','add-b1-0')]),[-1]);
+  assert.deepEqual(match([glyph('+')],[glyph('+')]),[-1]);
 });
-test('duplicate operators match nearby positions and each old glyph is used once',()=>{
-  const old=[glyph('+',0),glyph('+',200),glyph('+',400)];
-  assert.deepEqual(match(old,[glyph('+',410),glyph('+',190)]),[2,1]);
-  assert.deepEqual(match(old.slice(0,2),[glyph('+',10),glyph('+',190),glyph('+',500)]),[0,1,-1]);
+test('swapped minus and plus signs disappear instead of exchanging gaps',()=>{
+  const old=[glyph('−','sub-b1-0'),glyph('+','add-b2-0'),glyph('+','add-b3-0')];
+  const next=[glyph('+','add-b1-0'),glyph('−','sub-b2-0'),glyph('+','add-b3-0')];
+  assert.deepEqual(match(old,next),[-1,-1,2]);
 });
-test('surrounding digit slots and scale resolve otherwise equally distant symbols',()=>{
-  assert.deepEqual(match([glyph('!',0,0,1),glyph('!',0,2,3)],[glyph('!',0,2,3)]),[1]);
-  assert.deepEqual(match([glyph('+',0,0,4,.7),glyph('+',0)],[glyph('+',0)]),[1]);
+test('factorials stay with the same operand slots; equal digit values do not confer identity',()=>{
+  assert.deepEqual(match([glyph('!','fact-u01-0')],[glyph('!','fact-u12-0')]),[-1]);
+  assert.deepEqual(match([glyph('!','fact-u02-0')],[glyph('!','fact-u12-0')]),[-1]);
+  assert.deepEqual(match([glyph('!','fact-u23-0')],[glyph('!','fact-u23-0')]),[0]);
 });
-test('assignment finds a global minimum instead of consuming the nearest glyph greedily',()=>{
-  assert.deepEqual(match([glyph('+',0),glyph('+',10)],[glyph('+',6),glyph('+',11)]),[0,1]);
+test('unary minus cannot become subtraction or attach to another operand',()=>{
+  assert.deepEqual(match([glyph('−','neg-u01-0')],[glyph('−','sub-b1-0')]),[-1]);
+  assert.deepEqual(match([glyph('−','neg-u01-0')],[glyph('−','neg-u04-0')]),[-1]);
 });
-test('96 repeated symbols stay bounded, deterministic and one-to-one',()=>{
-  const old=Array.from({length:96},(_,i)=>glyph('!',i*10));
-  const next=old.slice().reverse();
-  const expected=Array.from({length:96},(_,i)=>95-i);
-  assert.deepEqual(match(old,next),expected);
+test('a stable attachment survives movement, resizing, and unrelated operator insertions',()=>{
+  const old=[glyph('+','add-b2-0',{x:0,scale:1}),glyph('×','mul-b3-0')];
+  const next=[glyph('−','neg-u01-0'),glyph('+','add-b2-0',{x:200,scale:.7})];
+  assert.deepEqual(match(old,next),[-1,0]);
+});
+test('nested unary operators keep their inner/outer ordinal instead of swapping',()=>{
+  const old=[glyph('!','fact-u23-0'),glyph('!','fact-u23-1')];
+  assert.deepEqual(match(old,[glyph('!','fact-u23-0')]),[0]);
+  assert.deepEqual(match(old,[glyph('!','fact-u23-1'),glyph('!','fact-u23-0')]),[1,0]);
+});
+test('each source can be consumed once and a live glyph wins over an exiting one',()=>{
+  const old=[glyph('+','add-b1-0',{exiting:true}),glyph('+','add-b1-0')];
+  assert.deepEqual(match(old,[glyph('+','add-b1-0'),glyph('+','add-b1-0'),glyph('+','add-b1-0')]),[1,0,-1]);
 });
