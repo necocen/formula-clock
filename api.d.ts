@@ -24,7 +24,9 @@ export interface FormulaProvider {
   getMinute(hhmm: string, options?: { signal?: AbortSignal }): Promise<MinuteRecord>;
 }
 export interface DisplayOptions {
-  font: 'stix2' | 'euler';
+  font: 'stix2' | 'termes' | 'fira' | 'euler';
+  /** Lining centers mathematical signs on the digits; oldstyle uses the native font axis. */
+  numerals: 'lining' | 'oldstyle';
   division: 'fraction' | 'inline';
   /** Experimental reuse of +, −, ×, ÷ and ! glyphs. Defaults to false. */
   symbolMotion: boolean;

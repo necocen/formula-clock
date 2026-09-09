@@ -186,11 +186,13 @@ TeX生成は `expression.js` に集約した。表示上の優先度は次のと
 ## 6. フォントは別の表示設定
 
 ```js
-await FormulaClock.setDisplay({ font: 'stix2', division: 'inline' });
-await FormulaClock.setDisplay({ font: 'euler', division: 'fraction' });
+await FormulaClock.setDisplay({ font: 'stix2', numerals: 'oldstyle', division: 'inline' });
+await FormulaClock.setDisplay({ font: 'euler', numerals: 'lining', division: 'fraction' });
 ```
 
-Eulerは `mathjax-modern` に `mathjax-euler` 拡張を追加し、r3と同じ数字中央の軸へ調整する。STIX Twoは `mathjax-stix2` の各数字に `\oldstyle` を指定する。記号はフォント本来の数式軸を使い、数値中心への変更も `\vcenter` の補正も適用しない。両方とも等号の画面上の縦位置を固定する。
+字体は `stix2` / `termes` / `fira` / `euler`、数字スタイルは独立した `numerals: lining | oldstyle`。初期値は `stix2` + `oldstyle`。Eulerは `mathjax-modern` に `mathjax-euler` 拡張を追加し、ほかは対応するMathJaxフォントを使う。全書体のliningでは、0の実字形の中心から数式軸を求め、記号を `\vcenter` で合わせる。oldstyleは各数字に `\oldstyle` を指定し、記号と構造には書体本来の数式軸を使う。等号の画面上の縦位置は全組み合わせで固定する。
+
+書体と数字スタイルの組み合わせごとにエンジンと小時計の字形をキャッシュする。設定・上の時計・式の非同期更新も両方を区別する。字体のみ変更すると数字スタイルは維持する。
 
 異なるフォント・除算表記でもデータを取り直す必要はない。TeXと組版結果のキャッシュは表示設定を区別する。
 
@@ -229,5 +231,5 @@ new FormulaData.FetchHourProvider('data/manifest.json')
 新URLで一度だけ再試行する。更新前の遅い応答は採用しない。
 同じ版や再試行失敗は通常の取得エラーとして表示側へ返す。nullには変換しない。
 
-公開書体IDは `stix2` / `euler` の2種類。旧 `oldstyle` 設定は初期値の `stix2` へ戻す。
-独立iframe・Euler専用の軸補正・STIX Twoのオールドスタイル数字を維持する。
+公開書体IDは `stix2` / `termes` / `fira` / `euler` の4種類。旧 `oldstyle` 書体設定は初期値の `stix2` へ戻す。`numerals` が未保存なら旧Eulerはlining、それ以外はoldstyleへ移行する。
+独立iframe・数字スタイルごとの軸設定・各書体本来の数字の字形を維持する。

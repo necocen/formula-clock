@@ -7,9 +7,12 @@
   const Expression = typeof module !== 'undefined' && module.exports ? require('./expression.js') : root.FormulaExpression;
   const { expressionTex, frameTex, mark, relation } = Expression;
   const PROFILES = Object.freeze({
-    stix2: Object.freeze({id:'stix2', label:'STIX Two · Oldstyle', font:'mathjax-stix2', extensions:[], oldstyle:true, centerOperators:false, numericAxis:false}),
-    euler: Object.freeze({id:'euler', label:'Euler', font:'mathjax-modern', extensions:['mathjax-euler'], oldstyle:false, centerOperators:true, numericAxis:true})
+    stix2: Object.freeze({id:'stix2', label:'STIX Two', font:'mathjax-stix2', extensions:[]}),
+    termes: Object.freeze({id:'termes', label:'Termes', font:'mathjax-termes', extensions:[]}),
+    fira: Object.freeze({id:'fira', label:'Fira', font:'mathjax-fira', extensions:[]}),
+    euler: Object.freeze({id:'euler', label:'Euler', font:'mathjax-modern', extensions:['mathjax-euler']})
   });
+  const NUMERALS = Object.freeze({lining:'Lining',oldstyle:'Oldstyle'});
   const matrixArray = m => [m.a, m.b, m.c, m.d, m.e, m.f];
   function finiteMatrix(m) { return matrixArray(m).every(Number.isFinite); }
 
@@ -35,12 +38,15 @@
   }
 
   class Typesetter {
-    constructor(profile = 'stix2') {
+    constructor(profile = 'stix2', numerals = 'oldstyle') {
       if (!Object.hasOwn(PROFILES,profile)) throw new TypeError('Unknown font profile');
-      this.profile = PROFILES[profile];
+      if (!Object.hasOwn(NUMERALS,numerals)) throw new TypeError('Unknown numeral style');
+      this.profile = Object.freeze({...PROFILES[profile], numerals,
+        label:`${PROFILES[profile].label} · ${NUMERALS[numerals]}`,
+        oldstyle:numerals === 'oldstyle', centerOperators:numerals === 'lining', numericAxis:numerals === 'lining'});
       this.mathjax = null;
-      // Separate browsing contexts keep Euler's extension and numeric-axis
-      // calibration out of the native STIX Two font. Engines are lazy
+      // Separate contexts for each font/style keep extensions and lining-axis
+      // calibration out of other fonts and native oldstyle axes. Engines are lazy
       // and cached: switching back never reloads MathJax or rebuilds digit nodes.
       this.host = document.createElement('iframe');
       this.host.className = 'math-engine-frame';
@@ -145,7 +151,7 @@
           throw new Error('Unexpected numeral metrics during math-axis calibration');
         }
         this.typography = Object.freeze({
-          profile: this.profile.id, axisMode: this.profile.numericAxis ? 'numeric' : 'font',
+          profile: this.profile.id, numerals:this.profile.numerals, axisMode: this.profile.numericAxis ? 'numeric' : 'font',
           referenceDigit: '0', originalAxisEm: params.axis_height,
           numericAxisEm: numericAxis, zeroTop: top, zeroBottom: bottom
         });
@@ -199,7 +205,11 @@
             glyphs[':'] = frame.colons[0];
           }
           if (!glyphs[':'] || Object.keys(glyphs).length !== 11) throw new Error('Incomplete clock font');
-          return Object.freeze({font:this.profile.id,glyphs:Object.freeze(glyphs)});
+          // Some proportional oldstyle zeros (notably Fira) exceed a 500-unit
+          // clock cell. Fit the entire face uniformly, retaining fixed centers
+          // and identical sizes for hours, minutes, seconds and colons.
+          const scale = Math.min(1,480 / Math.max(...'0123456789'.split('').map(n => glyphs[n].bounds.w)));
+          return Object.freeze({font:this.profile.id,numerals:this.profile.numerals,scale,glyphs:Object.freeze(glyphs)});
         });
         this.clockFaceTask = task;
         this.tail = task.catch(() => {});
@@ -349,11 +359,11 @@
         decorations.querySelectorAll('[data-fc-extract]').forEach(el => el.remove());
         // cssId is only a temporary typesetting marker, never an on-screen id.
         decorations.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-        return { tex, viewBox, tokens:tokens.slice(0,6), colons, equality:equality ? tokens[6] : null, symbols:[...tokens.slice(symbolOffset),...structures], decorations, axisY, typography: this.typography, font: this.profile.id };
+        return { tex, viewBox, tokens:tokens.slice(0,6), colons, equality:equality ? tokens[6] : null, symbols:[...tokens.slice(symbolOffset),...structures], decorations, axisY, typography: this.typography, font: this.profile.id, numerals:this.profile.numerals };
       } finally { node.remove(); }
     }
   }
-  const api = { Typesetter, PROFILES, expressionTex, frameTex };
+  const api = { Typesetter, PROFILES, NUMERALS, expressionTex, frameTex };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FormulaTypesetter = Object.freeze(api);
 })(typeof window === 'undefined' ? globalThis : window);

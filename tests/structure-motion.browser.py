@@ -18,6 +18,7 @@ fixtures=[
  ('fraction-wide','1212',2,B('div',U('fact',B('add',L(0),L(1))),B('add',L(2),L(3)))),
  ('root-narrow','1444',16,B('add',U('sqrt',L(0,3)),L(3))),
  ('root-wide','1444',7,B('add',U('sqrt',B('add',B('add',L(0),L(1)),L(2))),L(3))),
+ ('root-wide-mul','1444',8,B('add',U('sqrt',B('mul',B('mul',L(0),L(1)),L(2))),L(3))),
  ('root-tall','1444',5,B('add',U('sqrt',B('mul',B('div',L(0),L(1)),L(2))),L(3))),
  ('paren-wide','1444',36,B('mul',B('add',B('add',L(0),L(1)),L(2)),L(3))),
  ('paren-narrow','1444',32,B('mul',B('add',B('mul',L(0),L(1)),L(2)),L(3))),
@@ -43,7 +44,7 @@ for name,code,seconds,ast in fixtures:assert value(ast,code)==seconds,(name,valu
 
 report={'at':datetime.now(timezone.utc).isoformat(),'command':sys.argv,'browser':args.browser,
         'url':args.url,'python':platform.python_version(),'playwright':version('playwright'),
-        'fonts':['stix2','euler'],'checks':[]}
+        'fonts':['stix2','termes','fira','euler'],'numerals':['lining','oldstyle'],'checks':[]}
 errors=[];warnings=[];cdn=[]
 with sync_playwright() as p:
     browser=getattr(p,args.browser).launch();report['browserVersion']=browser.version
@@ -83,8 +84,8 @@ with sync_playwright() as p:
         }).sort((a,b)=>a.key.localeCompare(b.key)||a.box[0]-b.box[0]||a.box[1]-b.box[1]);}
         finally{svg.remove();}
       }
-      for(const font of ['stix2','euler']){
-        const engine=new FormulaTypesetter.Typesetter(font);await engine.boot;
+      for(const font of ['stix2','termes','fira','euler'])for(const numerals of ['lining','oldstyle']){
+        const engine=new FormulaTypesetter.Typesetter(font,numerals);await engine.boot;
         for(const division of ['fraction','inline'])for(const [name,code,seconds,ast] of fixtures){
           const baseline=await engine.frame(ast,code,seconds,{division});const expected=geometry(baseline);
           for(const symbolMotion of [false,true])for(const structureMotion of [false,true]){
@@ -97,13 +98,13 @@ with sync_playwright() as p:
               differences:expected.map((p,i)=>({key:p.key.slice(0,40),before:p.box,after:actual[i].box})).filter(p=>p.before.some((x,j)=>Math.abs(x-p.after[j])>1)),
               digitDelta:Math.max(...baseline.tokens.flatMap((t,i)=>t.matrix.map((x,j)=>Math.abs(x-frame.tokens[i].matrix[j]))))}));
             if(JSON.stringify(baseline.viewBox)!==JSON.stringify(frame.viewBox))throw Error('ViewBox changed');
-            out.push({font,name,division,symbolMotion,structureMotion,delta});
+            out.push({font,numerals,name,division,symbolMotion,structureMotion,delta});
           }
         }
         engine.host.remove();engine.staging.remove();
       }return out;
     }''')
-    report['checks'].append('All glyph/rule bounds and viewBox match in both fonts, division styles and all four experiment combinations')
+    report['checks'].append('All glyph/rule bounds and viewBox match in all four fonts and both numeral styles, division styles and all four experiment combinations')
 
     def display(**opts):
         page.evaluate('(opts)=>FormulaClock.setDisplay(opts)',opts)
@@ -133,8 +134,8 @@ with sync_playwright() as p:
         }''',[fixture[1],fixture[2],kinds])
 
     report['motion']=[]
-    for font in ['stix2','euler']:
-        display(font=font,division='fraction',symbolMotion=True,structureMotion=True)
+    for font,numerals in [(f,n) for f in ['stix2','termes','fira','euler'] for n in ['lining','oldstyle']]:
+        display(font=font,numerals=numerals,division='fraction',symbolMotion=True,structureMotion=True)
         preview('fraction-narrow');samples=sample_transition('fraction-wide',['fraction-rule'])
         assert all(s['state'][0]['same'] and s['state'][0]['opacity']=='1' for s in samples)
         assert len(set(round(s['state'][0]['width'],2) for s in samples))>8
@@ -143,7 +144,10 @@ with sync_playwright() as p:
         for s in samples:
             row=s['state'][0];progress=(row['width']-start['width'])/(end['width']-start['width'])
             assert abs(row['height']-(start['height']+(end['height']-start['height'])*progress))<.12
-        preview('root-narrow');samples=sample_transition('root-wide',['root-sign','root-rule'])
+        # Euler oldstyle's native + selects a larger radical than its low
+        # digits. Multiplication keeps the same size while widening the rule.
+        wide_root='root-wide-mul' if (font,numerals)==('euler','oldstyle') else 'root-wide'
+        preview('root-narrow');samples=sample_transition(wide_root,['root-sign','root-rule'])
         assert all(r['same'] and r['opacity']=='1' for s in samples for r in s['state'])
         assert len(set(round(s['state'][1]['width'],2) for s in samples))>8
         origin=samples[0]['junction'];drift=max(abs(x-y) for s in samples for x,y in zip(s['junction'],origin))
@@ -152,7 +156,7 @@ with sync_playwright() as p:
         preview('root-tall')
         assert page.evaluate("oldRoot.every(x=>!x.isConnected) && document.querySelector('[data-kind=\"root-sign\"]').dataset.glyphKey!==oldRootKey")
         assert page.evaluate("document.querySelector('[data-kind=\"root-sign\"]').dataset.glyphKey===document.querySelector('[data-kind=\"root-rule\"]').dataset.glyphKey")
-        page.screenshot(path=str(args.output_dir/f'root-{font}.png'))
+        page.screenshot(path=str(args.output_dir/f'root-{font}-{numerals}.png'))
         preview('paren-wide');samples=sample_transition('paren-narrow',['paren-left','paren-right'])
         assert all(r['same'] and r['opacity']=='1' for s in samples for r in s['state'])
         page.evaluate("window.oldParens=[...document.querySelectorAll('[data-kind=\"paren-left\"],[data-kind=\"paren-right\"]')];window.oldParenKeys=oldParens.map(x=>x.dataset.glyphKey)")
@@ -163,7 +167,7 @@ with sync_playwright() as p:
         preview('assembled-root')
         assert page.locator('#notation-root path').count()>0 # Larger radicals assembled from pieces still fade.
         assert page.evaluate('FormulaClock.state.layout.mode')=='formula'
-        report['motion'].append({'font':font,'maxRootJunctionDriftEm':drift/1000})
+        report['motion'].append({'font':font,'numerals':numerals,'maxRootJunctionDriftEm':drift/1000})
     report['checks'].append('Rules resize continuously with independent thickness; same radicals/parentheses retain DOM and glyphs; size/attachment changes replace them; assembled radicals keep fading')
 
     # Real dataset, rapid interruptions, resize, settings persistence and reduced motion.

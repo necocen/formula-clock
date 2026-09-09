@@ -39,7 +39,7 @@ python tests/symbol-morph.browser.py --url http://127.0.0.1:8000/dist-external/
 python tests/audio.browser.py --url http://127.0.0.1:8000/dist-external/
 ```
 
-以下はr5時点の引き継ぎ資料です。現行UIは右上の設定に集約され、書体はSTIX Two / Eulerの2種類、
+以下はr5時点の引き継ぎ資料です。現行UIは右上の設定に集約され、書体はSTIX Two / Termes / Fira / Eulerの4種類とLining / Oldstyleの独立設定、
 配信用ビルドは1時間単位の24ファイルを生成します。現在の形式は[FORMAT.md](FORMAT.md)を参照してください。
 
 ---
@@ -80,25 +80,22 @@ npm run build
 
 ## 書体の実装
 
-`typesetter.js` のプロファイルを追加した。
+字体は **STIX Two / Termes / Fira / Euler**、数字は **Lining / Oldstyle** を独立して選択する。初期値はSTIX Two + Oldstyle。
+4書体とも配布フォントにある数字の字形を使用し、Oldstyleでは各数字に `\oldstyle` を指定する。
+Liningでは実際の0の字形から数字の中心を一度だけ測り、数式軸と記号の `\vcenter` を合わせる。
+Oldstyleでは書体本来の数式軸を保つ。どちらでも等号の画面上の上下中央を固定する。
+
+書体×数字スタイルごとに独立した非表示iframeでMathJaxを遅延起動し、再利用する。
+Euler拡張やLiningの軸補正が別の組み合わせへ混ざらない。数字の常設SVG要素は切り替え前後で同一。
+上の小さい時計も同じ字形を使用する。
 
 ```js
-stix2: {
-  id: 'stix2',
-  label: 'STIX Two · Oldstyle',
-  font: 'mathjax-stix2',
-  extensions: [],
-  oldstyle: true,
-  centerOperators: false,
-  numericAxis: false
-}
+await FormulaClock.setDisplay({font: 'termes', numerals: 'lining', division: 'inline'});
+await FormulaClock.setDisplay({numerals: 'oldstyle'});
 ```
 
-数字には `\\oldstyle` を使い、MathJaxのSTIX2フォントセットに組版させる。各書体は独立した非表示iframeのMathJaxインスタンスで処理する。Eulerの拡張や数式軸設定がSTIX Twoへ混入しない。表示側の数字要素は切り替え前後で同一。
-
-```js
-await FormulaClock.setDisplay({font: 'stix2', division: 'inline'});
-```
+設定は `formula-clock-display-v2` に保存する。数字スタイル未保存の旧設定は、EulerならLining、STIX TwoならOldstyleとして従来の見た目を引き継ぐ。
+以後、字体だけを変えても数字スタイルは維持する。
 
 ## 式データと非同期配信
 

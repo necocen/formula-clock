@@ -1,0 +1,429 @@
+{
+  "at": "2026-09-09T13:26:12.189616+00:00",
+  "change": "Independent STIX Two / Termes / Fira / Euler and lining / oldstyle selections; lining numeric axis; native oldstyle axis; matching persistent small clock",
+  "sourceSHA256": {
+    "_head.html": "5ebef1446855a6c2c45f561e5a9a87b6dcc1cd9fc44d80892937b4e72017187e",
+    "expression.js": "d39477bdc6d9cc3451cc32b24e21b8755828720b5d61400a4df06afb5825049a",
+    "data.js": "69a930b830e6b987f254b0fa6d647f422f4461d48fd142a85b6abbc923f3a543",
+    "typesetter.js": "f12005d0895cf7667a09368c29c6123eb11bde5264528c84be54a7c0329f7c00",
+    "symbols.js": "891548063acd53a971103b4ee292d79330b8d94c058c041d0770e8bfbda89478",
+    "app.js": "4d4d0c5dab5c1bff4e6af4ae7c38d94deac210fde25daf69e5b5b0a4a82719b6",
+    "licenses.html": "29486b465103b6f3164175c5d13f8da966806dc552fd6e7819048b5c3bce0bd3",
+    "tests/browser.test.py": "8e234a01030bd1618bf52556e2fbc96d1971167e0dadd35fa836bc79a229fa69",
+    "tests/symbol-motion.browser.py": "5b9fa0268e49677dee650f51322176f4000207c6b2b1d17b730d3f026bd534e4",
+    "tests/structure-motion.browser.py": "f5e6f7b6daf1c6d59ae8acb344fde424c9360370d6f7e8ba9cc370a2ece08f9e",
+    "tests/symbol-morph.browser.py": "4ae9993f069994a66fbb5390e1d7e24b0066b15f9d777c7a7055b74276f0acd0"
+  },
+  "node": {
+    "version": "22.17.1",
+    "path": "/Users/necocen/.local/share/mise/installs/node/22.17.1/bin",
+    "commands": [
+      "npm run build",
+      "npm run build:external",
+      "npm test"
+    ],
+    "passed": true,
+    "builtinTestsPassed": 25,
+    "expression": {
+      "build": "r6-minimal",
+      "minutes": 1440,
+      "equations": 71456,
+      "rest": 14944,
+      "fuzzTrees": 5000,
+      "checkedSerializations": 2446592,
+      "profiles": 2,
+      "divisionModes": 2,
+      "elapsedMs": 15157
+    },
+    "providers": {
+      "build": "r6-minimal",
+      "checks": [
+        "Missing minute is an error; explicit null is an ordinary-clock instruction",
+        "One async all-day load is shared; failed load retries; abort is respected",
+        "Async minute fetching checks HTTP status and HHMM identity",
+        "Malformed trees, absent second entries and invalid intervals are rejected"
+      ]
+    },
+    "serializationPolicies": "Two font-independent TeX policies: lining and oldstyle. CDN font coverage is recorded separately below."
+  },
+  "builds": {
+    "index.html": {
+      "bytes": 502336,
+      "sha256": "ada945182f518cb63f6405707e0a296b2b69807a2334540c2c1f677f273b458d"
+    },
+    "dist-external/index.html": {
+      "bytes": 153647,
+      "sha256": "60e8ffca903d411b731c6bac97b1adb20f7ed475798bc98e582b64352f666a66"
+    }
+  },
+  "mathjax": "4.1.3",
+  "compatibilityOnly": false,
+  "fonts": [
+    "stix2",
+    "termes",
+    "fira",
+    "euler"
+  ],
+  "numerals": [
+    "lining",
+    "oldstyle"
+  ],
+  "layoutChecks": [
+    "Minimal UI, four fonts and an independent numeral selector, dialog dismissal/focus trapping, custom preview, stable stage position",
+    "128 formula/time layouts; 4 fonts × 2 numeral styles × 2 division modes; distinct native glyphs; persistent HHMM elements; lining numeric axis and oldstyle native axis",
+    "Small clock uses the selected math font with six persistent fixed-width digit cells, fixed colon centers, equal-size seconds and no clipped ascenders/descenders",
+    "Independent font/numeral UI controls preserve the chosen style, expression and time; style changes update both clocks; rapid switches discard stale results",
+    "Small-clock glyphs match the formula glyphs; unchanged digits and colon paths survive second changes",
+    "Oldstyle 3 descends below the baseline; 1 is shorter; native axis is preserved",
+    "Cached independent font engines; repeated font switching leaves expression and digit identity intact",
+    "320 / 390 / 768 px: no horizontal overflow; fractions, superscripts and plain time visible",
+    "HTTP provider crosses hour and midnight boundaries",
+    "Reduced-motion fractions and powers stay visible",
+    "Nested division produces visible denominator parentheses and remains a valid clock equation",
+    "Late old-provider response discarded; failed data delivery is distinct from null and displays ordinary time",
+    "Minute/table JSON import, malformed import leaves provider intact, restore initial data",
+    "Persistent equal-sign glyph moves continuously on the fixed axis; source time only appears above formulas with equal-size seconds",
+    "Fullscreen enters and exits without losing controls",
+    "117-style midnight audio: three 500 Hz countdown pulses followed by the 1000 Hz minute signal",
+    "Live hour prefetch is jittered once within :59:00–30; midnight, immediate current/preview/late-entry requests and skipped-minute/provider cleanup",
+    "Old STIX/Euler/Computer Modern settings migrate without changing their appearance; independent font/numeral selections survive reload"
+  ],
+  "browsers": [
+    {
+      "at": "2026-09-09T13:16:49.540079+00:00",
+      "command": [
+        "tests/browser.test.py",
+        "--url",
+        "http://127.0.0.1:8000/dist-external/",
+        "--browser",
+        "chromium",
+        "--symbol-motion",
+        "--structure-motion",
+        "--symbol-morph",
+        "--screenshots",
+        "--output-dir",
+        "test-results/font-numerals-chromium"
+      ],
+      "browser": "chromium",
+      "browserVersion": "151.0.7922.34",
+      "playwright": "1.62.0",
+      "python": "3.14.6",
+      "mathjax": "4.1.3",
+      "url": "http://127.0.0.1:8000/dist-external/",
+      "pageErrors": [],
+      "passed": true,
+      "cases": 128,
+      "maxEqualAxisErrorPx": 0,
+      "axesEm": {
+        "stix2": {
+          "lining": 0.3155,
+          "oldstyle": 0.25
+        },
+        "termes": {
+          "lining": 0.331,
+          "oldstyle": 0.25
+        },
+        "fira": {
+          "lining": 0.3445,
+          "oldstyle": 0.25
+        },
+        "euler": {
+          "lining": 0.345,
+          "oldstyle": 0.25
+        }
+      },
+      "warnings": [
+        "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3",
+        "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset\n    at InlineProvider.getMinute (http://127.0.0.1:8000/dist-external/:1354:58)\n    at http://127.0.0.1:8000/dist-external/:1997:50",
+        "[Formula Clock] Formula data unavailable. Error: Test transport failure\n    at Object.getMinute (eval at evaluate (:311:30), <anonymous>:1:55)\n    at http://127.0.0.1:8000/dist-external/:1997:50"
+      ]
+    },
+    {
+      "at": "2026-09-09T13:16:50.521567+00:00",
+      "command": [
+        "tests/browser.test.py",
+        "--url",
+        "http://127.0.0.1:8000/dist-external/",
+        "--browser",
+        "firefox",
+        "--symbol-motion",
+        "--structure-motion",
+        "--symbol-morph",
+        "--screenshots",
+        "--output-dir",
+        "test-results/font-numerals-firefox"
+      ],
+      "browser": "firefox",
+      "browserVersion": "153.0",
+      "playwright": "1.62.0",
+      "python": "3.14.6",
+      "mathjax": "4.1.3",
+      "url": "http://127.0.0.1:8000/dist-external/",
+      "pageErrors": [],
+      "passed": true,
+      "cases": 128,
+      "maxEqualAxisErrorPx": 2.288818359375e-05,
+      "axesEm": {
+        "stix2": {
+          "lining": 0.3155,
+          "oldstyle": 0.25
+        },
+        "termes": {
+          "lining": 0.331,
+          "oldstyle": 0.25
+        },
+        "fira": {
+          "lining": 0.3445,
+          "oldstyle": 0.25
+        },
+        "euler": {
+          "lining": 0.345,
+          "oldstyle": 0.25
+        }
+      },
+      "warnings": [
+        "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3",
+        "[Formula Clock] Formula data unavailable. Error"
+      ]
+    },
+    {
+      "at": "2026-09-09T13:16:49.852514+00:00",
+      "command": [
+        "tests/browser.test.py",
+        "--url",
+        "http://127.0.0.1:8000/dist-external/",
+        "--browser",
+        "webkit",
+        "--symbol-motion",
+        "--structure-motion",
+        "--symbol-morph",
+        "--screenshots",
+        "--output-dir",
+        "test-results/font-numerals-webkit"
+      ],
+      "browser": "webkit",
+      "browserVersion": "26.5",
+      "playwright": "1.62.0",
+      "python": "3.14.6",
+      "mathjax": "4.1.3",
+      "url": "http://127.0.0.1:8000/dist-external/",
+      "pageErrors": [],
+      "passed": true,
+      "cases": 128,
+      "maxEqualAxisErrorPx": 0,
+      "axesEm": {
+        "stix2": {
+          "lining": 0.3155,
+          "oldstyle": 0.25
+        },
+        "termes": {
+          "lining": 0.331,
+          "oldstyle": 0.25
+        },
+        "fira": {
+          "lining": 0.3445,
+          "oldstyle": 0.25
+        },
+        "euler": {
+          "lining": 0.345,
+          "oldstyle": 0.25
+        }
+      },
+      "warnings": [
+        "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3",
+        "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset",
+        "[Formula Clock] Formula data unavailable. Error: Test transport failure"
+      ]
+    }
+  ],
+  "cdnRequests": [
+    "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-euler-font-extension@4.1.3/svg.js",
+    "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-fira-font@4.1.3/svg.js",
+    "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-modern-font@4.1.3/svg.js",
+    "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-stix2-font@4.1.3/svg.js",
+    "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-termes-font@4.1.3/svg.js",
+    "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/input/tex/extensions/html.js",
+    "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/base.json",
+    "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/en.json",
+    "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/mathmaps/nemeth.json",
+    "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/sre/speech-worker.js",
+    "https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-svg-nofont.js"
+  ],
+  "symbolTests": [
+    {
+      "at": "2026-09-09T13:20:55.323001+00:00",
+      "command": [
+        "tests/symbol-motion.browser.py",
+        "--url",
+        "http://127.0.0.1:8000/dist-external/",
+        "--browser",
+        "chromium",
+        "--output-dir",
+        "test-results/font-numerals-symbols-chromium"
+      ],
+      "browser": "chromium",
+      "url": "http://127.0.0.1:8000/dist-external/",
+      "fonts": [
+        "stix2",
+        "termes",
+        "fira",
+        "euler"
+      ],
+      "numerals": [
+        "lining",
+        "oldstyle"
+      ],
+      "checks": [
+        "96 font/numeral/division/time comparisons preserve digit layout within 0.12px",
+        "Shared plus retains its element and glyph, moving continuously at full opacity; surplus multiplication disappears",
+        "Two of three repeated plus signs are reused without duplicating nodes",
+        "Swapped plus/minus are replaced at their gaps; factorial stays with its operand and is replaced when attachment changes, in all four fonts and both numeral styles",
+        "Rapid previews and disabling the experiment leave no stale or duplicate glyphs",
+        "Settings switch persists across reload; reduced motion immediately places symbols"
+      ],
+      "browserVersion": "151.0.7922.34",
+      "mathjax": "4.1.3",
+      "maxMatrixDelta": 0,
+      "pageErrors": [],
+      "passed": true
+    },
+    {
+      "at": "2026-09-09T13:20:53.289663+00:00",
+      "command": [
+        "tests/structure-motion.browser.py",
+        "--url",
+        "http://127.0.0.1:8000/dist-external/",
+        "--browser",
+        "chromium",
+        "--output-dir",
+        "test-results/font-numerals-structure-chromium"
+      ],
+      "browser": "chromium",
+      "url": "http://127.0.0.1:8000/dist-external/",
+      "python": "3.14.6",
+      "playwright": "1.62.0",
+      "fonts": [
+        "stix2",
+        "termes",
+        "fira",
+        "euler"
+      ],
+      "numerals": [
+        "lining",
+        "oldstyle"
+      ],
+      "checks": [
+        "All glyph/rule bounds and viewBox match in all four fonts and both numeral styles, division styles and all four experiment combinations",
+        "Rules resize continuously with independent thickness; same radicals/parentheses retain DOM and glyphs; size/attachment changes replace them; assembled radicals keep fading",
+        "No stale symbols after rapid previews/null; mobile fits; independent toggle persists; reduced motion snaps; persistent digits/equality remain intact"
+      ],
+      "browserVersion": "151.0.7922.34",
+      "mathjax": "4.1.3",
+      "motion": [
+        {
+          "font": "stix2",
+          "numerals": "lining",
+          "maxRootJunctionDriftEm": 2.724783857956936e-07
+        },
+        {
+          "font": "stix2",
+          "numerals": "oldstyle",
+          "maxRootJunctionDriftEm": 2.724783857956936e-07
+        },
+        {
+          "font": "termes",
+          "numerals": "lining",
+          "maxRootJunctionDriftEm": 4.087175789209141e-07
+        },
+        {
+          "font": "termes",
+          "numerals": "oldstyle",
+          "maxRootJunctionDriftEm": 4.087175784661667e-07
+        },
+        {
+          "font": "fira",
+          "numerals": "lining",
+          "maxRootJunctionDriftEm": 2.724783857956936e-07
+        },
+        {
+          "font": "fira",
+          "numerals": "oldstyle",
+          "maxRootJunctionDriftEm": 2.724783867051883e-07
+        },
+        {
+          "font": "euler",
+          "numerals": "lining",
+          "maxRootJunctionDriftEm": 2.7247838534094625e-07
+        },
+        {
+          "font": "euler",
+          "numerals": "oldstyle",
+          "maxRootJunctionDriftEm": 9.999956760020723e-05
+        }
+      ],
+      "pageErrors": [],
+      "warnings": [
+        "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3"
+      ],
+      "passed": true,
+      "geometryComparisons": 768,
+      "maxGlyphBoundsDeltaFontUnits": 0.00079345703125
+    },
+    {
+      "at": "2026-09-09T13:18:09.422726+00:00",
+      "command": [
+        "tests/symbol-morph.browser.py",
+        "--url",
+        "http://127.0.0.1:8000/dist-external/",
+        "--browser",
+        "chromium",
+        "--output-dir",
+        "test-results/font-numerals-morph-chromium"
+      ],
+      "browser": "chromium",
+      "url": "http://127.0.0.1:8000/dist-external/",
+      "playwright": "1.62.0",
+      "fonts": [
+        "stix2",
+        "termes",
+        "fira",
+        "euler"
+      ],
+      "numerals": [
+        "lining",
+        "oldstyle"
+      ],
+      "checks": [
+        "Every settled glyph/rule matches the original layout with part 3 alone and combined with parts 1/2 in all four fonts and both numeral styles/division styles",
+        "Same-gap +↔× retains its group, rotates 45° around glyph centers with complementary opacity, and reverses continuously; simultaneous changes retain their own gaps",
+        "All 12 directed +/−/×/÷ pairs in each font/numeral combination retain their gap, crossfade continuously, keep horizontal signs level, rotate × by 45°, and settle to exact original geometry",
+        "Third/fourth destinations preserve current opacity, angle and child nodes with at most four glyphs; fraction mode retires the obelus without morphing a rule",
+        "Rapid interruptions keep bounded glyph layers and clean up fully; reduced motion cancels rotation/fades; null/off clear signs; independent mobile setting persists"
+      ],
+      "browserVersion": "151.0.7922.34",
+      "mathjax": "4.1.3",
+      "geometryComparisons": 384,
+      "maxGlyphBoundsDeltaPx": 6.103515625e-05,
+      "directedArithmeticPairs": 96,
+      "pageErrors": [],
+      "warnings": [
+        "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3"
+      ],
+      "passed": true
+    }
+  ],
+  "notes": [
+    "Browser layout suites used all three experimental motion settings together, the delivered CDN font configuration, and the external hourly-data build. Each browser covered 128 font/numeral/division/time combinations, settings migration/reload, geometry, and regression checks.",
+    "Detailed basic-symbol, structural-symbol and arithmetic-morph tests were run in Chromium for all eight font/numeral combinations.",
+    "Fira oldstyle has a zero wider than one small-clock cell. The whole small clock is scaled uniformly to a maximum 480-unit digit width, keeping all six digit centers and both colon centers fixed.",
+    "Euler oldstyle selects a larger radical for a sum than for a literal. The motion test uses a product to check same-size radical reuse, and a fraction to check size replacement.",
+    "The existing Euler extension metadata warning (component 4.0.0 with MathJax 4.1.3) remains visible. Data-failure warnings in the layout suites are deliberate fault injections.",
+    "The final build and Node suite ran with Node 22.17.1. Its external HTML matches the browser-tested output; the embedded gzip payload was rebuilt with Node 22."
+  ],
+  "fontSources": [
+    "https://docs.mathjax.org/en/v4.1/output/fonts.html",
+    "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-euler-font-extension@4.1.3/def/mathjax-euler.ts",
+    "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-termes-font@4.1.3/def/mathjax-termes.ts",
+    "https://cdn.jsdelivr.net/npm/@mathjax/mathjax-fira-font@4.1.3/def/mathjax-fira.ts"
+  ]
+}

@@ -51,11 +51,13 @@ with sync_playwright() as p:
     report['mathjax']=page.evaluate('FormulaClock.diagnostics().mathjax')
     if not args.local_mathjax:assert report['mathjax']=='4.1.3'
     assert page.evaluate('FormulaClock.state.display.font')=='stix2'
+    assert page.evaluate('FormulaClock.state.display.numerals')=='oldstyle'
+    assert page.locator('#numeral-choice option').evaluate_all('(options)=>options.map(x=>x.value)')==['lining','oldstyle']
     assert page.locator('#symbol-motion').is_checked()==args.symbol_motion
     assert page.locator('#structure-motion').is_checked()==args.structure_motion
     assert page.locator('#symbol-morph').is_checked()==args.symbol_morph
 
-    assert page.locator('#font-choice option').evaluate_all('(options)=>options.map(x=>x.value)')==['stix2','euler']
+    assert page.locator('#font-choice option').evaluate_all('(options)=>options.map(x=>x.value)')==['stix2','termes','fira','euler']
     assert page.locator('.intro,.source-caption,.mode,.minute-head,.demo-panel,footer,#info,#coverage,#date,#zone').count()==0
     assert page.locator('#settings').is_hidden()
     stage_before=page.locator('#stage').bounding_box()
@@ -96,7 +98,7 @@ with sync_playwright() as p:
     page.click('#go-live')
     assert page.locator('#transport').is_hidden()
     assert page.locator('#stage').bounding_box()==stage_before
-    report['checks'].append('Minimal UI, two fonts, dialog dismissal/focus trapping, custom preview, stable stage position')
+    report['checks'].append('Minimal UI, four fonts and an independent numeral selector, dialog dismissal/focus trapping, custom preview, stable stage position')
 
     def preview(time,wait=700):
         page.evaluate('(t)=>FormulaClock.preview("2026-09-08T"+t+"+09:00",true)',time)
@@ -105,9 +107,9 @@ with sync_playwright() as p:
         if wait:page.wait_for_timeout(wait)
         assert not page.evaluate('FormulaClock.state.engineError')
 
-    def settings(font,division):
-        page.evaluate('([font,division])=>FormulaClock.setDisplay({font,division})',[font,division])
-        page.wait_for_function('([f,d])=>FormulaClock.state.layout?.display.font===f && FormulaClock.state.layout?.display.division===d',arg=[font,division])
+    def settings(font,division,numerals='oldstyle'):
+        page.evaluate('([font,division,numerals])=>FormulaClock.setDisplay({font,division,numerals})',[font,division,numerals])
+        page.wait_for_function('([f,d,n])=>FormulaClock.state.layout?.display.font===f && FormulaClock.state.layout?.display.division===d && FormulaClock.state.layout?.display.numerals===n',arg=[font,division,numerals])
         page.wait_for_timeout(720)
 
     def check_geometry():
@@ -135,32 +137,77 @@ with sync_playwright() as p:
             const r=g.getBoundingClientRect(),p=new DOMPoint((r.left+r.right)/2,(r.top+r.bottom)/2).matrixTransform(inverse);
             return {x:p.x,y:p.y,inside:r.left>=el.getBoundingClientRect().left && r.right<=el.getBoundingClientRect().right && r.top>=el.getBoundingClientRect().top && r.bottom<=el.getBoundingClientRect().bottom};
           }
-          return {font:el.dataset.font,text:digits.map(g=>g.dataset.value).join(''),
+          return {font:el.dataset.font,numerals:el.dataset.numerals,text:digits.map(g=>g.dataset.value).join(''),
             persistent:digits.every((g,i)=>g===originalSourceDigits[i]) && colons.every((g,i)=>g===originalSourceColons[i]),
             digits:digits.map(bounds),colons:colons.map(bounds),
             glyphFonts:digits.map(g=>g.querySelector('path').getAttribute('data-glyph-key'))};
         }''')
         state=page.evaluate('FormulaClock.state.layout')
         assert source['font']==state['display']['font'] and source['persistent'],source
+        assert source['numerals']==state['display']['numerals'],source
         assert source['text']==state['code']+f"{state['seconds']:02d}",source
         assert all(g['inside'] for g in source['digits']+source['colons']),source
         assert all(abs(g['x']-x)<1 for g,x in zip(source['digits'],[400,900,1850,2350,3300,3800])),source
         assert all(abs(g['x']-x)<1 and abs(g['y']-550)<1 for g,x in zip(source['colons'],[1375,2825])),source
-        if not args.local_mathjax:assert all(key.startswith(source['font']+'@4.1.3:') for key in source['glyphFonts']),source
+        if not args.local_mathjax:
+            assert all(key.startswith(source['font']+'@4.1.3:') for key in source['glyphFonts']),source
+            assert all(('-tex-oldstyle:' in key)==(source['numerals']=='oldstyle') for key in source['glyphFonts']),source
+        assert page.evaluate('''()=>[...document.querySelectorAll('#source-time .source-digit')].every((g,i,all)=>{
+          const lower=i<4?FormulaClock.digits[i]:document.querySelector('.answer-digit[data-second="'+(i-4)+'"]');
+          const paths=el=>JSON.stringify([...el.querySelectorAll('path')].map(p=>p.getAttribute('d')));
+          return paths(g)===paths(lower) && (!i || all[i-1].getBoundingClientRect().right<g.getBoundingClientRect().left);
+        })''')
         assert page.locator('#notation-root path[data-c="3D"]').count()==0
         return {'time':diag['time'],'display':diag['display'],'axisErrorPx':delta,'fontAxis':diag['typography']['axisEm']}
 
-    for font in ['stix2','euler']:
-        for division in ['fraction','inline']:
-            settings(font,division)
-            for time in ['12:34:08','12:34:16','12:34:17','12:34:30','12:34:31','12:34:59','08:59:05','00:00:08']:
-                preview(time)
-                report['cases'].append(check_geometry())
-            diag=page.evaluate('FormulaClock.diagnostics()')
-            if font!='euler':assert diag['typography']['axisEm']==diag['typography']['originalAxisEm']
-            else:assert diag['typography']['axisEm']==diag['typography']['numericAxisEm']
-    report['checks'].append('32 formula/time layouts; 2 font profiles × 2 division modes; persistent HHMM elements; equal-sign axis')
+    numeral_shapes={}
+    for font in ['stix2','termes','fira','euler']:
+        for numerals in ['lining','oldstyle']:
+            for division in ['fraction','inline']:
+                settings(font,division,numerals)
+                for time in ['12:34:08','12:34:16','12:34:17','12:34:30','12:34:31','12:34:59','08:59:05','00:00:08']:
+                    preview(time)
+                    report['cases'].append(check_geometry())
+                    if time=='12:34:08':
+                        numeral_shapes[font,numerals]=page.locator('#source-time [data-digit="2"] path').first.get_attribute('d')
+                diag=page.evaluate('FormulaClock.diagnostics()')
+                assert diag['typography']['numerals']==numerals
+                if numerals=='oldstyle':
+                    assert diag['typography']['axisMode']=='font'
+                    assert diag['typography']['axisEm']==diag['typography']['originalAxisEm']
+                else:
+                    assert diag['typography']['axisMode']=='numeric'
+                    assert diag['typography']['axisEm']==diag['typography']['numericAxisEm']
+            if args.screenshots:
+                preview('16:39:19');page.screenshot(path=str(out/f'{font}-{numerals}.png'),full_page=True)
+        if not args.local_mathjax:assert numeral_shapes[font,'lining']!=numeral_shapes[font,'oldstyle'],font
+    if not args.local_mathjax:assert len(set(numeral_shapes.values()))==8
+    report['checks'].append('128 formula/time layouts; 4 fonts × 2 numeral styles × 2 division modes; distinct native glyphs; persistent HHMM elements; lining numeric axis and oldstyle native axis')
     report['checks'].append('Small clock uses the selected math font with six persistent fixed-width digit cells, fixed colon centers, equal-size seconds and no clipped ascenders/descenders')
+
+    # The two controls are independent; same-family style changes replace glyph
+    # children, while retaining the six slots and the currently previewed formula.
+    settings('stix2','fraction','lining');preview('12:34:08')
+    page.click('#settings-open');page.select_option('#font-choice','fira')
+    page.wait_for_function("FormulaClock.state.layout.display.font==='fira'")
+    assert page.evaluate('FormulaClock.state.display.numerals')=='lining'
+    page.evaluate("window.beforeStyle=[...document.querySelectorAll('#source-time .source-digit')][2].querySelector('path').getAttribute('d')")
+    page.select_option('#numeral-choice','oldstyle')
+    page.wait_for_function("FormulaClock.state.layout.display.numerals==='oldstyle'")
+    page.wait_for_timeout(750)
+    if not args.local_mathjax:
+        assert page.locator('#source-time [data-digit="2"] path').first.get_attribute('d')!=page.evaluate('beforeStyle')
+    assert page.evaluate('FormulaClock.state.layout.code')=='1234'
+    assert page.evaluate('FormulaClock.state.layout.seconds')==8
+    stored=page.evaluate("JSON.parse(localStorage.getItem('formula-clock-display-v2'))")
+    assert stored['font']=='fira' and stored['numerals']=='oldstyle'
+    page.keyboard.press('Escape')
+    # Rapid switches can complete out of order. Both the main and small clock
+    # must settle to the last font AND numeral style.
+    page.evaluate("Promise.all([FormulaClock.setDisplay({font:'euler',numerals:'lining'}),FormulaClock.setDisplay({font:'termes',numerals:'oldstyle'}),FormulaClock.setDisplay({font:'fira',numerals:'lining'}),FormulaClock.setDisplay({font:'stix2',numerals:'oldstyle'})])")
+    page.wait_for_function("FormulaClock.state.layout.display.font==='stix2' && FormulaClock.state.layout.display.numerals==='oldstyle'")
+    page.wait_for_timeout(750);check_geometry()
+    report['checks'].append('Independent font/numeral UI controls preserve the chosen style, expression and time; style changes update both clocks; rapid switches discard stale results')
 
     # Reusing unchanged small-clock digits must preserve their glyph children too.
     settings('stix2','fraction');preview('12:34:30')
@@ -188,10 +235,11 @@ with sync_playwright() as p:
 
     # Switching changes typography, not the active expression, slots, or transport.
     ast=page.evaluate('JSON.stringify(FormulaClock.state.layout.ast)')
-    for font in ['euler','stix2','euler','stix2']:
-        settings(font,'fraction');assert page.evaluate('JSON.stringify(FormulaClock.state.layout.ast)')==ast
-        check_geometry()
-    assert page.locator('.math-engine-frame').count()==2
+    for font in ['euler','termes','fira','stix2']:
+        for numerals in ['lining','oldstyle']:
+            settings(font,'fraction',numerals);assert page.evaluate('JSON.stringify(FormulaClock.state.layout.ast)')==ast
+            check_geometry()
+    assert page.locator('.math-engine-frame').count()==8
     report['checks'].append('Cached independent font engines; repeated font switching leaves expression and digit identity intact')
 
     for width in [320,390,768]:
@@ -371,6 +419,26 @@ with sync_playwright() as p:
     live_at('14:00:30')
     assert page.evaluate('prefetchReads')==['1400','1401']
     report['checks'].append('Live hour prefetch is jittered once within :59:00–30; midnight, immediate current/preview/late-entry requests and skipped-minute/provider cleanup')
+    migrations=[({'font':'stix2'},'stix2','oldstyle'),({'font':'euler'},'euler','lining'),({'font':'oldstyle'},'stix2','oldstyle'),({'font':'termes','numerals':'lining'},'termes','lining'),({'font':'euler','numerals':'oldstyle'},'euler','oldstyle')]
+    for saved,font,numerals in migrations:
+        migration_ctx=browser.new_context(timezone_id='Asia/Tokyo')
+        if args.local_mathjax:migration_ctx.route('https://cdn.jsdelivr.net/**',route_local)
+        migration=migration_ctx.new_page()
+        # A session flag applies the input once, allowing reload to read the
+        # settings written by the real controls/API on the previous page load.
+        migration.add_init_script("if(!sessionStorage.fontMigration){localStorage.setItem('formula-clock-display-v2',"+json.dumps(json.dumps(saved))+");sessionStorage.fontMigration='1';}")
+        migration.goto(args.url)
+        migration.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout')
+        assert migration.evaluate('FormulaClock.state.display.font')==font
+        assert migration.evaluate('FormulaClock.state.display.numerals')==numerals
+        assert migration.locator('#font-choice').input_value()==font
+        assert migration.locator('#numeral-choice').input_value()==numerals
+        migration.evaluate("FormulaClock.setDisplay({font:'fira',numerals:'lining'})")
+        migration.reload();migration.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout')
+        assert migration.evaluate('FormulaClock.state.display.font')=='fira'
+        assert migration.evaluate('FormulaClock.state.display.numerals')=='lining'
+        migration_ctx.close()
+    report['checks'].append('Old STIX/Euler/Computer Modern settings migrate without changing their appearance; independent font/numeral selections survive reload')
     assert not errors,errors
     report['pageErrors']=errors
     report['warnings']=warnings

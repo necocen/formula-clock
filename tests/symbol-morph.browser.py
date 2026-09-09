@@ -11,7 +11,7 @@ ap.add_argument('--browser',choices=['chromium','firefox','webkit'],default='chr
 ap.add_argument('--output-dir',type=Path,default=Path('test-results/symbol-morph'))
 args=ap.parse_args();args.output_dir.mkdir(parents=True,exist_ok=True)
 report={'at':datetime.now(timezone.utc).isoformat(),'command':sys.argv,'browser':args.browser,
-        'url':args.url,'playwright':version('playwright'),'fonts':['stix2','euler'],'checks':[]}
+        'url':args.url,'playwright':version('playwright'),'fonts':['stix2','termes','fira','euler'],'numerals':['lining','oldstyle'],'checks':[]}
 errors=[];warnings=[]
 with sync_playwright() as p:
     browser=getattr(p,args.browser).launch();report['browserVersion']=browser.version
@@ -43,10 +43,10 @@ with sync_playwright() as p:
     page.emulate_media(reduced_motion='reduce')
     page.wait_for_timeout(750) # Let any initial live frame's pre-existing fade retire.
     max_delta=0;comparisons=0
-    for font in ['stix2','euler']:
+    for font,numerals in [(f,n) for f in ['stix2','termes','fira','euler'] for n in ['lining','oldstyle']]:
         for division in ['fraction','inline']:
             for time in ['12:34:08','12:34:30','12:34:31','12:34:59','16:39:19','00:00:08']:
-                display(font=font,division=division,symbolMotion=False,structureMotion=False,symbolMorph=False);preview(time)
+                display(font=font,numerals=numerals,division=division,symbolMotion=False,structureMotion=False,symbolMorph=False);preview(time)
                 baseline=page.evaluate('geometry()')
                 for basic in [False,True]:
                     for structure in [False,True]:
@@ -57,7 +57,7 @@ with sync_playwright() as p:
                         assert delta<.12,(font,division,time,basic,structure,delta)
                         max_delta=max(max_delta,delta);comparisons+=1
     report['geometryComparisons']=comparisons;report['maxGlyphBoundsDeltaPx']=max_delta
-    report['checks'].append('Every settled glyph/rule matches the original layout with part 3 alone and combined with parts 1/2 in both fonts/division styles')
+    report['checks'].append('Every settled glyph/rule matches the original layout with part 3 alone and combined with parts 1/2 in all four fonts and both numeral styles/division styles')
     page.evaluate('''()=>{
       const L=i=>({op:'lit',i,j:i+1}),B=(op,a,b)=>({op,a,b});
       const formulas={
@@ -74,8 +74,8 @@ with sync_playwright() as p:
         seconds:Array.from({length:60},(_,s)=>(hhmm==='1234'?formulas:hhmm==='1236'?arithmetic:{})[s]||null)};}});
     }''')
     page.emulate_media(reduced_motion='no-preference')
-    for font in ['stix2','euler']:
-        display(font=font,division='fraction',symbolMotion=False,structureMotion=False,symbolMorph=True)
+    for font,numerals in [(f,n) for f in ['stix2','termes','fira','euler'] for n in ['lining','oldstyle']]:
+        display(font=font,numerals=numerals,division='fraction',symbolMotion=False,structureMotion=False,symbolMorph=True)
         preview('12:34:10',750)
         samples=page.evaluate('''async()=>{
           const el=document.querySelector('[data-site="add-b1-0"]');window.rotating=el;
@@ -113,7 +113,7 @@ with sync_playwright() as p:
         page.evaluate("window.gap1=document.querySelector('[data-site=\"add-b1-0\"]');window.gap2=document.querySelector('[data-site=\"mul-b2-0\"]')")
         preview('12:34:09',200)
         assert page.evaluate("gap1.dataset.site==='mul-b1-0' && gap2.dataset.site==='add-b2-0' && gap1.dataset.morphing && gap2.dataset.morphing")
-        page.screenshot(path=str(args.output_dir/f'rotating-{font}.png'))
+        page.screenshot(path=str(args.output_dir/f'rotating-{font}-{numerals}.png'))
         preview('12:34:06',750)
         assert page.evaluate("gap1.isConnected && gap1.dataset.kind==='−'")
         assert page.locator('[data-morphing]').count()==0
@@ -121,9 +121,9 @@ with sync_playwright() as p:
 
     arithmetic=[('+','add',21),('−','sub',15),('×','mul',42),('÷','div',10)]
     directed_pairs=0
-    for font in ['stix2','euler']:
+    for font,numerals in [(f,n) for f in ['stix2','termes','fira','euler'] for n in ['lining','oldstyle']]:
         page.emulate_media(reduced_motion='reduce')
-        display(font=font,division='inline',symbolMotion=False,structureMotion=False,symbolMorph=False)
+        display(font=font,numerals=numerals,division='inline',symbolMotion=False,structureMotion=False,symbolMorph=False)
         baseline={}
         for kind,op,second in arithmetic:
             preview(f'12:36:{second:02}')
@@ -188,7 +188,7 @@ with sync_playwright() as p:
         assert page.evaluate('!multiSign.isConnected')
         assert page.locator('[data-morph-glyph],[data-morphing]').count()==0
     report['directedArithmeticPairs']=directed_pairs
-    report['checks'].append('All 12 directed +/−/×/÷ pairs in each font retain their gap, crossfade continuously, keep horizontal signs level, rotate × by 45°, and settle to exact original geometry')
+    report['checks'].append('All 12 directed +/−/×/÷ pairs in each font/numeral combination retain their gap, crossfade continuously, keep horizontal signs level, rotate × by 45°, and settle to exact original geometry')
     report['checks'].append('Third/fourth destinations preserve current opacity, angle and child nodes with at most four glyphs; fraction mode retires the obelus without morphing a rule')
 
     for i in range(42):

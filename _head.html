@@ -70,7 +70,8 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
 </div>
 <dialog class="settings-dialog" id="settings" aria-labelledby="settings-title">
   <div class="settings-header"><h2 id="settings-title">設定</h2><button class="settings-close" id="settings-close" aria-label="設定を閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-  <label class="setting-row">字体<select id="font-choice" aria-label="数式の字体"><option value="stix2" selected>STIX Two</option><option value="euler">Euler</option></select></label>
+  <label class="setting-row">字体<select id="font-choice" aria-label="数式の字体"><option value="stix2" selected>STIX Two</option><option value="termes">Termes</option><option value="fira">Fira</option><option value="euler">Euler</option></select></label>
+  <label class="setting-row">数字<select id="numeral-choice" aria-label="数字のスタイル"><option value="lining">Lining</option><option value="oldstyle" selected>Oldstyle</option></select></label>
   <label class="setting-row">除算<select id="division-choice" aria-label="除算の表記"><option value="fraction">分数</option><option value="inline">÷</option></select></label>
   <label class="setting-row">音量<input id="volume" type="range" min="0" max="100" value="25" aria-label="時報の音量"></label>
   <label class="custom-time-label" for="custom-time">時刻を指定</label>

@@ -51,6 +51,8 @@
   const saved = savedDisplay();
   let displaySettings = {
     font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
+    // Preserve the appearance of settings saved before numeral styles were independent.
+    numerals: Object.hasOwn(FormulaTypesetter.NUMERALS,saved.numerals) ? saved.numerals : saved.font === 'euler' ? 'lining' : 'oldstyle',
     division: ['fraction','inline'].includes(saved.division) ? saved.division : 'fraction',
     symbolMotion: saved.symbolMotion === true,
     structureMotion: saved.structureMotion === true,
@@ -96,33 +98,36 @@
   // MathJax computes the layout; persistent digits and equality display it.
   // The four HHMM objects are never recreated, including ordinary clock mode.
   const engines = new Map(), clockFaces = new Map();
-  function engineFor(font) {
-    if (!engines.has(font)) {
-      const engine = new FormulaTypesetter.Typesetter(font);
-      engines.set(font,engine);
+  const typographyKey = (font,numerals) => `${font}:${numerals}`;
+  function engineFor(font,numerals) {
+    const key = typographyKey(font,numerals);
+    const selected = () => typographyKey(displaySettings.font,displaySettings.numerals) === key;
+    if (!engines.has(key)) {
+      const engine = new FormulaTypesetter.Typesetter(font,numerals);
+      engines.set(key,engine);
       engine.clockFace().then(face => {
-        clockFaces.set(font,face);
-        if (displaySettings.font === font) { lastVisual=''; refresh(true); }
+        clockFaces.set(key,face);
+        if (selected()) { lastVisual=''; refresh(true); }
       }).catch(error => console.warn('[Formula Clock] Small clock font unavailable.',error));
       engine.boot.then(() => {
-        if (displaySettings.font === font) { lastVisual=''; refresh(true); }
+        if (selected()) { lastVisual=''; refresh(true); }
       }).catch(error => {
-        if (displaySettings.font === font) { engineError=String(error); lastVisual=''; refresh(true); }
+        if (selected()) { engineError=String(error); lastVisual=''; refresh(true); }
       });
     }
-    return engines.get(font);
+    return engines.get(key);
   }
-  let typesetter = engineFor(displaySettings.font);
+  let typesetter = engineFor(displaySettings.font,displaySettings.numerals);
   async function setDisplay(changes) {
     const next = {...displaySettings,...changes};
-    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
-    displaySettings = {font:next.font,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
+    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
+    displaySettings = {font:next.font,numerals:next.numerals,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
     $('#symbol-motion').checked = next.symbolMotion;
     $('#structure-motion').checked = next.structureMotion;
     $('#symbol-morph').checked = next.symbolMorph;
-    $('#font-choice').value = next.font; $('#division-choice').value = next.division;
+    $('#font-choice').value = next.font; $('#numeral-choice').value = next.numerals; $('#division-choice').value = next.division;
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
-    typesetter = engineFor(next.font); engineError=null; lastVisual='';
+    typesetter = engineFor(next.font,next.numerals); engineError=null; lastVisual='';
     refresh(true);
     await typesetter.boot;
   }
@@ -133,8 +138,10 @@
   $('#symbol-morph').checked = displaySettings.symbolMorph;
   $('#symbol-morph').addEventListener('change',e=>{setDisplay({symbolMorph:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
+  $('#numeral-choice').value = displaySettings.numerals;
   $('#division-choice').value = displaySettings.division;
   $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
+  $('#numeral-choice').addEventListener('change',e=>{setDisplay({numerals:e.target.value}).catch(()=>{});});
   $('#division-choice').addEventListener('change',e=>{setDisplay({division:e.target.value}).catch(()=>{});});
   const scene = $('#math-scene'), notationRoot = $('#notation-root'), equalSign = $('#equal-sign');
   const operatorRoot = $('#operator-root'), symbolRecords = new Set();
@@ -265,28 +272,29 @@
     stage.setAttribute('aria-label', full);
     $('#engine-status').textContent = reason;
   }
-  function renderSourceTime(font, code, seconds, visible) {
-    const face = clockFaces.get(font);
+  function renderSourceTime(font, numerals, code, seconds, visible) {
+    const face = clockFaces.get(typographyKey(font,numerals));
     if (face) {
       const colon = face.glyphs[':'];
       // Six equal 500-unit cells keep every digit stationary, even with oldstyle
       // or proportional glyphs. Fixed 450-unit separators match ordinary clock spacing.
       const centers = [400,900,1850,2350,3300,3800];
-      const baseline = 550 - (colon.bounds.y + colon.bounds.h / 2);
+      const baseline = 550 - (colon.bounds.y + colon.bounds.h / 2) * face.scale;
       function place(el, text, center) {
         const token = face.glyphs[text];
-        if (el.dataset.font === font && el.dataset.value === text) return;
-        const matrix = token.matrix.slice();
-        matrix[4] += center - (token.bounds.x + token.bounds.w / 2);
+        if (el.dataset.font === font && el.dataset.numerals === numerals && el.dataset.value === text) return;
+        const matrix = token.matrix.map(value => value * face.scale);
+        matrix[4] += center - (token.bounds.x + token.bounds.w / 2) * face.scale;
         matrix[5] += baseline;
         el.replaceChildren(token.shape.cloneNode(true));
         el.setAttribute('transform',matrixString(matrix));
-        el.dataset.font = font; el.dataset.value = text;
+        el.dataset.font = font; el.dataset.numerals = numerals; el.dataset.value = text;
       }
       const text = code + pad(seconds);
       sourceEls.forEach((el,i) => place(el,text[i],centers[i]));
       sourceColons.forEach((el,i) => place(el,':',1375 + i * 1450));
       sourceTime.dataset.font = font;
+      sourceTime.dataset.numerals = numerals;
     }
     sourceTime.hidden = !visible || !face;
   }
@@ -350,15 +358,15 @@
     stage.classList.toggle('resting', !ast);
     stage.classList.toggle('loading', loading);
     plainTime.hidden = true; scene.style.visibility = 'visible';
-    renderSourceTime(frame.font,code,seconds,!!ast && !loading);
-    $('#engine-status').textContent = `MathJax · ${FormulaTypesetter.PROFILES[frame.font].label} / SVG`;
+    renderSourceTime(frame.font,frame.numerals,code,seconds,!!ast && !loading);
+    $('#engine-status').textContent = `MathJax · ${FormulaTypesetter.PROFILES[frame.font].label} · ${FormulaTypesetter.NUMERALS[frame.numerals]} / SVG`;
     stage.setAttribute('aria-label', ast ? `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒。${FormulaExpression.plain(ast, code)} = ${seconds}` : `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒`);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
     firstFrame = false;
   }
   function renderExpression(ast, code, seconds, loading, instant = false) {
     const engine = typesetter, view = {...displaySettings};
-    const key = `${view.font}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
+    const key = `${view.font}:${view.numerals}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;

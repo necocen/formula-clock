@@ -9,7 +9,7 @@ ap.add_argument('--url',default='http://127.0.0.1:8000/dist-external/')
 ap.add_argument('--browser',choices=['chromium','firefox','webkit'],default='chromium')
 ap.add_argument('--output-dir',type=Path,default=Path('test-results/symbol-motion'))
 args=ap.parse_args();args.output_dir.mkdir(parents=True,exist_ok=True)
-report={'at':datetime.now(timezone.utc).isoformat(),'command':sys.argv,'browser':args.browser,'url':args.url,'fonts':['stix2','euler'],'checks':[]}
+report={'at':datetime.now(timezone.utc).isoformat(),'command':sys.argv,'browser':args.browser,'url':args.url,'fonts':['stix2','termes','fira','euler'],'numerals':['lining','oldstyle'],'checks':[]}
 errors=[]
 with sync_playwright() as p:
     browser=getattr(p,args.browser).launch()
@@ -52,17 +52,17 @@ with sync_playwright() as p:
 
     # Marking a symbol must preserve MathJax spacing, glyph sizes and digit placement.
     max_delta=0
-    for font in ['stix2','euler']:
+    for font,numerals in [(f,n) for f in ['stix2','termes','fira','euler'] for n in ['lining','oldstyle']]:
         for division in ['fraction','inline']:
             for time in ['12:34:08','12:34:30','12:34:31','12:34:59','16:39:19','00:00:08']:
-                display(font=font,division=division,symbolMotion=False);preview(time)
+                display(font=font,numerals=numerals,division=division,symbolMotion=False);preview(time)
                 baseline=page.evaluate('FormulaClock.state.layout.items.map(x=>x.matrix).flat()')
                 display(symbolMotion=True)
                 moved=page.evaluate('FormulaClock.state.layout.items.map(x=>x.matrix).flat()')
                 delta=max(abs(a-b) for a,b in zip(baseline,moved));max_delta=max(max_delta,delta)
                 assert delta<.12,(font,division,time,delta)
                 check_symbols()
-    report['checks'].append('24 font/division/time comparisons preserve digit layout within 0.12px')
+    report['checks'].append('96 font/numeral/division/time comparisons preserve digit layout within 0.12px')
     report['maxMatrixDelta']=max_delta
 
     display(font='stix2',division='fraction',symbolMotion=True);preview('12:34:30')
@@ -98,8 +98,8 @@ with sync_playwright() as p:
       FormulaClock.setDataProvider({async getMinute(hhmm){return {schema:'formula-clock/1',hhmm,seconds:Array.from({length:60},(_,i)=>hhmm==='1234'?formulas[i]||null:null)};}});
     }""")
     page.wait_for_function('FormulaClock.state.coverage===5')
-    for font in ['stix2','euler']:
-        display(font=font)
+    for font,numerals in [(f,n) for f in ['stix2','termes','fira','euler'] for n in ['lining','oldstyle']]:
+        display(font=font,numerals=numerals)
         preview('12:34:06')
         page.evaluate("""()=>{
           window.oldMinus=document.querySelector('[data-site="sub-b1-0"]');
@@ -117,7 +117,7 @@ with sync_playwright() as p:
         preview('12:34:30');check_symbols()
         assert page.evaluate('!oldFactorial.isConnected')
         assert page.locator('[data-site="fact-u34-0"]').count()==1
-    report['checks'].append('Swapped plus/minus are replaced at their gaps; factorial stays with its operand and is replaced when attachment changes, in both fonts')
+    report['checks'].append('Swapped plus/minus are replaced at their gaps; factorial stays with its operand and is replaced when attachment changes, in all four fonts and both numeral styles')
     page.evaluate("document.querySelector('#restore-data').click()")
     page.wait_for_function('FormulaClock.state.coverage>10')
 
