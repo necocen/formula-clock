@@ -285,6 +285,58 @@ with sync_playwright() as p:
     audio=page.evaluate('FormulaClock.state.audio')
     assert [x['frequency'] for x in audio[-4:]]==[440,440,440,880],audio
     report['checks'].append('Midnight audio: three countdown tones followed by the minute signal')
+
+    # Fix wall time while leaving rendering timers running. Observe the public
+    # provider contract so the same scheduling checks apply to either delivery mode.
+    page.click('#sound')
+    def live_at(time):
+        page.clock.set_fixed_time('2026-09-09T'+time+'+09:00')
+        page.evaluate('FormulaClock.live()')
+
+    def track_prefetch():
+        page.evaluate('''()=>{
+          Math.random=()=>.5;
+          window.prefetchReads=[];
+          FormulaClock.setDataProvider({async getMinute(hhmm){
+            prefetchReads.push(hhmm);
+            return {schema:'formula-clock/1',hhmm,seconds:Array(60).fill(null)};
+          }});
+        }''')
+        page.wait_for_function('FormulaClock.state.coverage===0')
+
+    live_at('12:59:00');track_prefetch()
+    assert page.evaluate('prefetchReads')==['1259']
+    page.evaluate('Math.random=()=>0') # A redraw must not draw a new deadline.
+    live_at('12:59:14')
+    assert page.evaluate('prefetchReads')==['1259']
+    live_at('12:59:15')
+    page.wait_for_function("prefetchReads.includes('1300')")
+    live_at('12:59:29')
+    assert page.evaluate('prefetchReads')==['1259','1300']
+
+    live_at('23:59:00');track_prefetch()
+    assert page.evaluate('prefetchReads')==['2359']
+    live_at('23:59:15')
+    page.wait_for_function("prefetchReads.includes('0000')")
+    assert page.evaluate('prefetchReads')==['2359','0000']
+
+    live_at('12:59:00');track_prefetch()
+    page.evaluate("FormulaClock.preview('2026-09-09T12:59:00+09:00')")
+    page.wait_for_function("prefetchReads.includes('1300')")
+    assert page.evaluate('prefetchReads')==['1259','1300']
+
+    live_at('13:59:50');track_prefetch()
+    page.wait_for_function("prefetchReads.includes('1400')")
+    assert page.evaluate('prefetchReads')==['1359','1400']
+
+    live_at('12:59:00');track_prefetch()
+    live_at('14:00:00') # Resume after skipping the pending hour boundary.
+    page.wait_for_function("prefetchReads.includes('1401')")
+    assert page.evaluate('prefetchReads')==['1259','1400','1401']
+    track_prefetch() # Replacing the provider must discard the earlier plan.
+    live_at('14:00:30')
+    assert page.evaluate('prefetchReads')==['1400','1401']
+    report['checks'].append('Live hour prefetch is jittered once within :59:00–30; midnight, immediate current/preview/late-entry requests and skipped-minute/provider cleanup')
     assert not errors,errors
     report['pageErrors']=errors
     report['warnings']=warnings

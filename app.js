@@ -367,6 +367,7 @@
   }
   // Transport time is anchored to the wall clock (live) or a monotonic clock (preview).
   let preview = null, generation = 0, lastSecond = null, lastCode = null, tickTimer = null;
+  let nextPrefetch = null;
   const eventHistory = [];
   function getNow() { return preview ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started) * preview.speed) : new Date(); }
   function setPreview(date, paused = false) {
@@ -399,10 +400,17 @@
     if (!changed && !force) return;
     const previousSecond = lastSecond; lastSecond = secondKey;
     const result = cache.get(code); requestSolutions(code);
-    // Prefetch the next minute; data delivery never touches the moving DOM.
+    // Spread live hour-boundary prefetches across the first 30 seconds of :59.
+    // Use clock ticks instead of a timer so skipped minutes cannot leave stale work.
     if (code !== lastCode) {
       lastCode = code;
-      const next = new Date(+now); next.setMinutes(next.getMinutes() + 1, 0, 0); requestSolutions(timeCode(next));
+      const next = new Date(+now); next.setMinutes(next.getMinutes() + 1, 0, 0);
+      const minuteStart = +now - seconds * 1000 - now.getMilliseconds();
+      nextPrefetch = {code:timeCode(next), at:minuteStart + (!preview && now.getMinutes() === 59 ? Math.random() * 30000 : 0)};
+    }
+    if (nextPrefetch && (preview || +now >= nextPrefetch.at)) {
+      requestSolutions(nextPrefetch.code);
+      nextPrefetch = null;
     }
     sourceEls.forEach((el, i) => { el.textContent = code[i]; });
     $('#source-second').textContent = pad(seconds);
