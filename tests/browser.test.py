@@ -52,7 +52,7 @@ with sync_playwright() as p:
     if not args.local_mathjax:assert report['mathjax']=='4.1.3'
     assert page.evaluate('FormulaClock.state.display.font')=='stix2'
     assert page.evaluate('FormulaClock.state.display.numerals')=='oldstyle'
-    assert page.locator('#numeral-choice option').evaluate_all('(options)=>options.map(x=>x.value)')==['lining','oldstyle']
+    assert page.locator('#numeral-choice input').evaluate_all('(options)=>options.map(x=>x.value)')==['lining','oldstyle']
     assert page.locator('#symbol-motion').is_checked()==args.symbol_motion
     assert page.locator('#structure-motion').is_checked()==args.structure_motion
     assert page.locator('#symbol-morph').is_checked()==args.symbol_morph
@@ -192,7 +192,7 @@ with sync_playwright() as p:
     page.wait_for_function("FormulaClock.state.layout.display.font==='fira'")
     assert page.evaluate('FormulaClock.state.display.numerals')=='lining'
     page.evaluate("window.beforeStyle=[...document.querySelectorAll('#source-time .source-digit')][2].querySelector('path').getAttribute('d')")
-    page.select_option('#numeral-choice','oldstyle')
+    page.locator('#numeral-choice input[value=oldstyle]').check()
     page.wait_for_function("FormulaClock.state.layout.display.numerals==='oldstyle'")
     page.wait_for_timeout(750)
     if not args.local_mathjax:
@@ -432,7 +432,7 @@ with sync_playwright() as p:
         assert migration.evaluate('FormulaClock.state.display.font')==font
         assert migration.evaluate('FormulaClock.state.display.numerals')==numerals
         assert migration.locator('#font-choice').input_value()==font
-        assert migration.locator('#numeral-choice').input_value()==numerals
+        assert migration.locator('#numeral-choice input:checked').input_value()==numerals
         migration.evaluate("FormulaClock.setDisplay({font:'fira',numerals:'lining'})")
         migration.reload();migration.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout')
         assert migration.evaluate('FormulaClock.state.display.font')=='fira'

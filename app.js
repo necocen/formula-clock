@@ -118,6 +118,7 @@
     return engines.get(key);
   }
   let typesetter = engineFor(displaySettings.font,displaySettings.numerals);
+  const numeralChoices = [...$('#numeral-choice').querySelectorAll('input')];
   async function setDisplay(changes) {
     const next = {...displaySettings,...changes};
     if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
@@ -125,7 +126,8 @@
     $('#symbol-motion').checked = next.symbolMotion;
     $('#structure-motion').checked = next.structureMotion;
     $('#symbol-morph').checked = next.symbolMorph;
-    $('#font-choice').value = next.font; $('#numeral-choice').value = next.numerals; $('#division-choice').value = next.division;
+    $('#font-choice').value = next.font; $('#division-choice').value = next.division;
+    numeralChoices.forEach(input => { input.checked = input.value === next.numerals; });
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
     typesetter = engineFor(next.font,next.numerals); engineError=null; lastVisual='';
     refresh(true);
@@ -138,7 +140,7 @@
   $('#symbol-morph').checked = displaySettings.symbolMorph;
   $('#symbol-morph').addEventListener('change',e=>{setDisplay({symbolMorph:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
-  $('#numeral-choice').value = displaySettings.numerals;
+  numeralChoices.forEach(input => { input.checked = input.value === displaySettings.numerals; });
   $('#division-choice').value = displaySettings.division;
   $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
   $('#numeral-choice').addEventListener('change',e=>{setDisplay({numerals:e.target.value}).catch(()=>{});});

@@ -1,0 +1,63 @@
+{
+  "at": "2026-09-09T13:35:17.253202+00:00",
+  "change": "Lining/Oldstyle segmented control using native radio buttons",
+  "sourceSHA256": {
+    "_head.html": "7563b3700c692bbbd10a8dec8ebb51342d403e9798753a4665dd4af507f4275f",
+    "app.js": "2a7fc6a435339e0c0800dd2a913b84c5680ada75ef42d1236e08708028073fde",
+    "index.html": "3fd721ac2773407a1ddca02cb4fc7cb2bbb64c95cf04546d54db3030ce430a7f"
+  },
+  "node": {
+    "version": "22.17.1",
+    "commands": [
+      "npm run build",
+      "npm run build:external",
+      "npm test"
+    ],
+    "passed": true,
+    "serializationChecks": 2446592,
+    "builtinTestsPassed": 25
+  },
+  "browserChecks": [
+    "Click and left/right arrows change the mutually exclusive selection and actual numeral style",
+    "API changes and reload keep checked controls synchronized with saved settings",
+    "Four fonts × two numeral styles display fractions, powers and ordinary time without engine errors or replacing persistent digit elements",
+    "Desktop and 320px layout inspected visually; control stays within the viewport"
+  ],
+  "browsers": [
+    {
+      "browser": "chromium",
+      "browserVersion": "151.0.7922.34",
+      "mathjax": "4.1.3",
+      "at": "2026-09-09T13:33:05.803786+00:00",
+      "command": [
+        "/tmp/formula-clock-segment-check.py",
+        "chromium"
+      ],
+      "pageErrors": []
+    },
+    {
+      "browser": "firefox",
+      "browserVersion": "153.0",
+      "mathjax": "4.1.3",
+      "at": "2026-09-09T13:33:09.269007+00:00",
+      "command": [
+        "/tmp/formula-clock-segment-check.py",
+        "firefox"
+      ],
+      "pageErrors": []
+    },
+    {
+      "browser": "webkit",
+      "browserVersion": "26.5",
+      "mathjax": "4.1.3",
+      "at": "2026-09-09T13:33:06.751532+00:00",
+      "command": [
+        "/tmp/formula-clock-segment-check.py",
+        "webkit"
+      ],
+      "pageErrors": []
+    }
+  ],
+  "keyboardFocus": "Chromium and Firefox show the focus outline after arrow navigation. WebKit shows it on entry with Option+Tab; arrow navigation then follows the selected segment using its native focus-visible behavior.",
+  "verificationScriptSHA256": "c046a2c8ccda0b5e2d193e7ae2dbf416dad0a7930698459ff014b57e96587678"
+}

@@ -35,7 +35,7 @@ FormulaClock.diagnostics();
 最初に `const original = FormulaClock.digits` を保存し、遷移後に
 `FormulaClock.digits.every((el, i) => el === original[i])` を確認する。
 
-設定には字体4種と数字2種類の別々の選択欄があること。字体のみの変更で数字スタイルを変えず、再読み込み後も両方を復元すること。
+設定には字体4種の選択欄と、数字2種類のセグメントコントロールがあること。数字はクリック・タップ・左右キーで選択し、選択状態とフォーカスが分かること。字体のみの変更で数字スタイルを変えず、再読み込み後も両方を復元すること。
 旧保存設定はEuler→Lining、STIX Two→Oldstyleへ移行すること。
 
 ## 高さ・画面幅
