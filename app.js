@@ -184,7 +184,8 @@
   function morphStateAt(record,now) {
     const p = Math.min(1,Math.max(0,(now-record.started)/MORPH_DURATION));
     const k = p*p*(3-2*p), mix = (a,b)=>a+(b-a)*k;
-    return {angle:mix(record.from.angle,record.to.angle),blend:mix(record.from.blend,record.to.blend),
+    return {angle:mix(record.from.angle,record.to.angle),
+      weights:Object.fromEntries(Object.keys(record.parts).map(kind=>[kind,mix(record.from.weights[kind] || 0,kind===record.target?1:0)])),
       center:record.from.center.map((v,i)=>mix(v,record.to.center[i]))};
   }
   function paintMorph(record,now) {
@@ -192,7 +193,7 @@
     for (const [kind,part] of Object.entries(record.parts)) {
       const angle=state.angle-(kind==='×'?45:0);
       part.group.setAttribute('transform',`translate(${state.center.join(' ')}) rotate(${angle}) translate(${-part.center[0]} ${-part.center[1]})`);
-      part.group.setAttribute('opacity',kind==='+' ? 1-state.blend : state.blend);
+      part.group.setAttribute('opacity',state.weights[kind]);
     }
     return state;
   }
@@ -205,7 +206,7 @@
   function startMorph(el,oldToken,token,now) {
     const existing=morphs.get(el);
     const from=existing ? paintMorph(existing,now) : {
-      angle:oldToken.kind==='+'?0:45,blend:oldToken.kind==='+'?0:1,center:oldToken.inkCenter
+      angle:oldToken.kind==='×'?45:0,weights:{[oldToken.kind]:1},center:oldToken.inkCenter
     };
     el.getAnimations({subtree:true}).forEach(animation=>animation.cancel());
     const parts=existing?.parts || {};
@@ -215,10 +216,11 @@
       group.dataset.morphGlyph=glyph.kind;group.append(shape);
       parts[glyph.kind]={group,shape,center:glyph.inkCenter};
     }
-    // Reversal reuses these same two glyphs and their current angle/opacity,
-    // so repeated interruptions never accumulate nested snapshots or layers.
-    const record={parts,from,to:{angle:token.kind==='+'?0:45,blend:token.kind==='+'?0:1,center:token.inkCenter},started:now,target:token.kind};
-    el.replaceChildren(parts['+'].group,parts['×'].group);
+    // Preserve every visible contribution when interrupted by a third sign.
+    // One layer per arithmetic glyph bounds even rapid switching to four;
+    // completion restores the exact native destination glyph.
+    const record={parts,from,to:{angle:token.kind==='×'?45:0,center:token.inkCenter},started:now,target:token.kind};
+    el.replaceChildren(...Object.values(parts).map(part=>part.group));
     el.dataset.morphing='true';el.dataset.value=token.text;el._shapeKey=token.shape.innerHTML;
     morphs.set(el,record);paintMorph(record,now);
   }

@@ -1,4 +1,4 @@
-"""Part 3: same-gap +/× rotation, crossfade, interruptions and exact final glyphs."""
+"""Part 3: all same-gap arithmetic pairs, continuous interruptions and native final glyphs."""
 from pathlib import Path
 from datetime import datetime, timezone
 from importlib.metadata import version
@@ -67,8 +67,11 @@ with sync_playwright() as p:
         6:B('add',B('add',B('sub',L(0),L(1)),L(2)),L(3)),
         24:B('mul',B('mul',B('mul',L(0),L(1)),L(2)),L(3))
       };
+      // 12 op 3 + 6 gives four distinct, valid seconds at the same b2 gap.
+      const arithmetic=Object.fromEntries(Object.entries({add:21,sub:15,mul:42,div:10}).map(([op,s])=>
+        [s,B('add',B(op,{op:'lit',i:0,j:2},L(2)),L(3))]));
       FormulaClock.setDataProvider({async getMinute(hhmm){return {schema:'formula-clock/1',hhmm,
-        seconds:Array.from({length:60},(_,s)=>hhmm==='1234'?formulas[s]||null:null)};}});
+        seconds:Array.from({length:60},(_,s)=>(hhmm==='1234'?formulas:hhmm==='1236'?arithmetic:{})[s]||null)};}});
     }''')
     page.emulate_media(reduced_motion='no-preference')
     for font in ['stix2','euler']:
@@ -112,13 +115,85 @@ with sync_playwright() as p:
         assert page.evaluate("gap1.dataset.site==='mul-b1-0' && gap2.dataset.site==='add-b2-0' && gap1.dataset.morphing && gap2.dataset.morphing")
         page.screenshot(path=str(args.output_dir/f'rotating-{font}.png'))
         preview('12:34:06',750)
-        assert page.evaluate('!gap1.isConnected') # +/× must not turn into a minus.
+        assert page.evaluate("gap1.isConnected && gap1.dataset.kind==='−'")
         assert page.locator('[data-morphing]').count()==0
-    report['checks'].append('Same-gap +↔× retains its group, rotates 45° around glyph centers with complementary opacity, and reverses continuously; minus and different gaps keep normal identity rules')
+    report['checks'].append('Same-gap +↔× retains its group, rotates 45° around glyph centers with complementary opacity, and reverses continuously; simultaneous changes retain their own gaps')
+
+    arithmetic=[('+','add',21),('−','sub',15),('×','mul',42),('÷','div',10)]
+    directed_pairs=0
+    for font in ['stix2','euler']:
+        page.emulate_media(reduced_motion='reduce')
+        display(font=font,division='inline',symbolMotion=False,structureMotion=False,symbolMorph=False)
+        baseline={}
+        for kind,op,second in arithmetic:
+            preview(f'12:36:{second:02}')
+            baseline[kind]=page.evaluate('geometry()')
+        display(symbolMorph=True)
+        # Warm all frames so the samples measure animation, not typesetting latency.
+        for kind,op,second in arithmetic:preview(f'12:36:{second:02}')
+        page.emulate_media(reduced_motion='no-preference')
+        for source,source_op,source_second in arithmetic:
+            for target,target_op,target_second in arithmetic:
+                if source==target:continue
+                preview(f'12:36:{source_second:02}',750)
+                samples=page.evaluate('''async({site,second})=>{
+                  const el=document.querySelector(`[data-site="${site}"]`);window.arithmeticSign=el;
+                  FormulaClock.preview(`2026-09-08T12:36:${String(second).padStart(2,'0')}+09:00`);
+                  const started=performance.now(),out=[];
+                  while(performance.now()-started<760){await new Promise(requestAnimationFrame);out.push(morphSample(el));}
+                  return out;
+                }''',{'site':f'{source_op}-b2-0','second':target_second})
+                assert all(s['alive'] for s in samples),(font,source,target)
+                middle=[s for s in samples if s['morphing']]
+                assert len(middle)>8,(font,source,target,middle)
+                for s in middle:
+                    parts={part['kind']:part for part in s['parts']}
+                    assert set(parts)=={source,target},(font,source,target,s)
+                    assert abs(sum(p['opacity'] for p in parts.values())-1)<1e-7,s
+                    angles=[p['angle']+(45 if p['kind']=='×' else 0) for p in parts.values()]
+                    assert max(angles)-min(angles)<1e-7,s
+                    if '×' not in (source,target):assert all(abs(a)<1e-7 for a in angles),s
+                target_opacities=[next(p['opacity'] for p in s['parts'] if p['kind']==target) for s in middle]
+                assert len(set(round(v,2) for v in target_opacities))>8,(font,source,target)
+                assert not samples[-1]['morphing'] and samples[-1]['kind']==target
+                actual=page.evaluate('geometry()')
+                assert [x['key'] for x in baseline[target]]==[x['key'] for x in actual],(font,source,target)
+                delta=max(abs(a-b) for x,y in zip(baseline[target],actual) for a,b in zip(x['box'],y['box']))
+                assert delta<.12,(font,source,target,delta)
+                directed_pairs+=1
+
+        # A third/fourth destination keeps every still-visible glyph continuous.
+        preview('12:36:21',750)
+        page.evaluate("window.multiSign=document.querySelector('[data-site=\"add-b2-0\"]')")
+        for second in [42,15,10,21,10,42,15]:
+            change=page.evaluate('''async(second)=>{
+              const before=morphSample(multiSign),parts=[...multiSign.children];
+              FormulaClock.preview(`2026-09-08T12:36:${String(second).padStart(2,'0')}+09:00`);
+              while(FormulaClock.state.layout.seconds!==second)await new Promise(requestAnimationFrame);
+              return {before,after:morphSample(multiSign),retained:before.morphing?parts.every(p=>p.parentNode===multiSign):true};
+            }''',second)
+            assert change['retained'] and change['after']['alive'],change
+            assert len(change['after']['parts'])<=4,change
+            after={p['kind']:p for p in change['after']['parts']}
+            for part in change['before']['parts']:
+                assert abs(part['angle']-after[part['kind']]['angle'])<8,change
+                assert abs(part['opacity']-after[part['kind']]['opacity'])<.2,change
+            assert abs(sum(p['opacity'] for p in after.values())-1)<1e-7,change
+            page.wait_for_timeout(65)
+        page.wait_for_timeout(750)
+        assert page.evaluate("multiSign.isConnected && multiSign.dataset.kind==='−' && !multiSign.dataset.morphing")
+        assert page.locator('[data-morph-glyph]').count()==0
+        # Fraction rules and unary signs are outside this arithmetic morph.
+        preview('12:36:10',80);display(division='fraction');page.wait_for_timeout(750)
+        assert page.evaluate('!multiSign.isConnected')
+        assert page.locator('[data-morph-glyph],[data-morphing]').count()==0
+    report['directedArithmeticPairs']=directed_pairs
+    report['checks'].append('All 12 directed +/−/×/÷ pairs in each font retain their gap, crossfade continuously, keep horizontal signs level, rotate × by 45°, and settle to exact original geometry')
+    report['checks'].append('Third/fourth destinations preserve current opacity, angle and child nodes with at most four glyphs; fraction mode retires the obelus without morphing a rule')
 
     for i in range(42):
-        preview(['12:34:10','12:34:24','12:34:13'][i%3])
-        assert page.locator('[data-morph-glyph]').count()<=6
+        preview(['12:34:10','12:34:24','12:34:13','12:34:06'][i%4])
+        assert page.locator('[data-morph-glyph]').count()<=12
     page.wait_for_timeout(800)
     assert page.locator('[data-morph-glyph],[data-morphing]').count()==0
     assert page.locator('#operator-root > g').count()==3
@@ -136,7 +211,7 @@ with sync_playwright() as p:
     page.reload();page.wait_for_function('FormulaClock.state.engineReady && FormulaClock.state.layout')
     assert page.evaluate('FormulaClock.state.display.symbolMorph && !FormulaClock.state.display.symbolMotion')
     assert not errors,errors
-    report['checks'].append('Rapid interruptions keep at most two glyphs per sign and clean up fully; reduced motion cancels rotation/fades; null/off clear signs; independent mobile setting persists')
+    report['checks'].append('Rapid interruptions keep bounded glyph layers and clean up fully; reduced motion cancels rotation/fades; null/off clear signs; independent mobile setting persists')
     browser.close()
 report['pageErrors']=errors;report['warnings']=sorted(set(warnings))
 (args.output_dir/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')

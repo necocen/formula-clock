@@ -77,7 +77,7 @@
     }
     const enclose = (a,tex) => structure('paren',a,parens(tex));
     function symbol(a, glyph, texClass) {
-      if (!opt.symbolMotion && !(opt.symbolMorph && ['add','mul'].includes(a.op))) {
+      if (!opt.symbolMotion && !(opt.symbolMorph && ['add','sub','mul','div'].includes(a.op))) {
         if (a.op === 'neg') return negative(opt);
         return a.op === 'fact' ? glyph : binary(glyph,opt);
       }

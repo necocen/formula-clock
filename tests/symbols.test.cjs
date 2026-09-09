@@ -50,15 +50,22 @@ test('radical sign and rule are replaced together on size change; fraction rules
   const f=glyph('fraction-rule','frac-b2-0',{glyphKey:'rule'});
   assert.deepEqual(match([f],[f,{...f,site:'frac-b3-0'}]),[0,-1]);
 });
-test('part 3 rotates plus and multiplication only at the same gap and within the same font',()=>{
-  const plus=site=>glyph('+',`add-${site}`,{font:'stix2'}),times=site=>glyph('×',`mul-${site}`,{font:'stix2'});
-  assert.deepEqual(match([plus('b1-0')],[times('b1-0')]),[-1]);
-  assert.deepEqual(match([plus('b1-0')],[times('b1-0')],{morph:true}),[0]);
-  assert.deepEqual(match([times('b1-0')],[plus('b1-0')],{morph:true}),[0]);
-  assert.deepEqual(match([plus('b1-0')],[times('b2-0')],{morph:true}),[-1]);
-  assert.deepEqual(match([plus('b1-0')],[{...times('b1-0'),font:'euler'}],{morph:true}),[-1]);
-  assert.deepEqual(match([{...plus('b1-0'),exiting:true}],[times('b1-0')],{morph:true}),[-1]);
-  assert.deepEqual(match([plus('b1-0')],[glyph('−','sub-b1-0',{font:'stix2'})],{morph:true}),[-1]);
+test('part 3 morphs every directed arithmetic pair only at the same gap and font',()=>{
+  const signs=Object.entries({'+':'add','−':'sub','×':'mul','÷':'div'}).map(([kind,op])=>glyph(kind,`${op}-b1-0`,{font:'stix2'}));
+  for (const a of signs) for (const b of signs) if(a.kind!==b.kind) {
+    assert.deepEqual(match([a],[b]),[-1]);
+    assert.deepEqual(match([a],[b],{morph:true}),[0]);
+    assert.deepEqual(match([a],[{...b,site:b.site.replace('b1','b2')}],{morph:true}),[-1]);
+    assert.deepEqual(match([a],[{...b,site:b.site.replace('-0','-1')}],{morph:true}),[-1]);
+    assert.deepEqual(match([a],[{...b,font:'euler'}],{morph:true}),[-1]);
+    assert.deepEqual(match([{...a,exiting:true}],[b],{morph:true}),[-1]);
+    assert.deepEqual(match([{...a,font:undefined}],[b],{morph:true}),[-1]);
+  }
+  for (const a of signs) for (const b of [glyph('−','neg-u01-0'),glyph('!','fact-u01-0'),glyph('fraction-rule','frac-b1-0')]) {
+    const other={...b,font:'stix2'};
+    assert.deepEqual(match([a],[other],{morph:true}),[-1]);
+    assert.deepEqual(match([other],[a],{morph:true}),[-1]);
+  }
 });
 test('rotation matches never steal an exact identity or exchange gaps',()=>{
   const old=[glyph('+','add-b1-0',{font:'euler'}),glyph('×','mul-b2-0',{font:'euler'})];

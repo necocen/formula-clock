@@ -77,7 +77,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
   <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go">表示</button></div>
   <label class="setting-row experimental-option"><span>記号も動かす <small>実験的</small></span><input id="symbol-motion" type="checkbox"></label>
   <label class="setting-row experimental-option"><span>分数・√・括弧も動かす <small>実験的2</small></span><input id="structure-motion" type="checkbox"></label>
-  <label class="setting-row experimental-option"><span>＋と×を回す <small>実験的3</small></span><input id="symbol-morph" type="checkbox"></label>
+  <label class="setting-row experimental-option"><span>四則記号を変形する <small>実験的3</small></span><input id="symbol-morph" type="checkbox"></label>
   <details class="advanced" id="advanced-settings"><summary>詳細</summary>
     <div class="data-controls"><button class="small-button" id="import-data">式データを読み込む</button><button class="small-button" id="restore-data">元に戻す</button><input id="data-file" type="file" accept=".json,application/json" hidden></div>
     <p id="data-status" role="status">formula-clock/1 形式のJSON。</p>
@@ -1023,7 +1023,7 @@ Important Recommendations
     }
     const enclose = (a,tex) => structure('paren',a,parens(tex));
     function symbol(a, glyph, texClass) {
-      if (!opt.symbolMotion && !(opt.symbolMorph && ['add','mul'].includes(a.op))) {
+      if (!opt.symbolMotion && !(opt.symbolMorph && ['add','sub','mul','div'].includes(a.op))) {
         if (a.op === 'neg') return negative(opt);
         return a.op === 'fact' ? glyph : binary(glyph,opt);
       }
@@ -1287,7 +1287,7 @@ Important Recommendations
   const identity = token => `${token.kind}:${token.site}:${token.glyphKey || ''}`;
   function morphPair(a,b) {
     const gap = token => {
-      const role = token.kind === '+' ? 'add' : token.kind === '×' ? 'mul' : null;
+      const role = {'+':'add','−':'sub','×':'mul','÷':'div'}[token.kind];
       return role && token.site?.match(new RegExp(`^${role}-(b[1-3]-\\d+)$`))?.[1];
     };
     const site = gap(a);
@@ -1306,8 +1306,8 @@ Important Recommendations
       if(typeof token.site!=='string')return -1;
       return available.get(identity(token))?.shift() ?? -1;
     });
-    // Reserve exact identities first. Only a currently active +/× at this very
-    // gap can stand in for the other; fading remnants cannot bridge another op.
+    // Reserve exact identities first. Only an active arithmetic sign at this
+    // very gap can become another; unary signs and fading remnants cannot.
     if (morph) {
       const used = new Set(matches.filter(index=>index >= 0));
       next.forEach((token,i)=>{
@@ -1875,7 +1875,8 @@ Important Recommendations
   function morphStateAt(record,now) {
     const p = Math.min(1,Math.max(0,(now-record.started)/MORPH_DURATION));
     const k = p*p*(3-2*p), mix = (a,b)=>a+(b-a)*k;
-    return {angle:mix(record.from.angle,record.to.angle),blend:mix(record.from.blend,record.to.blend),
+    return {angle:mix(record.from.angle,record.to.angle),
+      weights:Object.fromEntries(Object.keys(record.parts).map(kind=>[kind,mix(record.from.weights[kind] || 0,kind===record.target?1:0)])),
       center:record.from.center.map((v,i)=>mix(v,record.to.center[i]))};
   }
   function paintMorph(record,now) {
@@ -1883,7 +1884,7 @@ Important Recommendations
     for (const [kind,part] of Object.entries(record.parts)) {
       const angle=state.angle-(kind==='×'?45:0);
       part.group.setAttribute('transform',`translate(${state.center.join(' ')}) rotate(${angle}) translate(${-part.center[0]} ${-part.center[1]})`);
-      part.group.setAttribute('opacity',kind==='+' ? 1-state.blend : state.blend);
+      part.group.setAttribute('opacity',state.weights[kind]);
     }
     return state;
   }
@@ -1896,7 +1897,7 @@ Important Recommendations
   function startMorph(el,oldToken,token,now) {
     const existing=morphs.get(el);
     const from=existing ? paintMorph(existing,now) : {
-      angle:oldToken.kind==='+'?0:45,blend:oldToken.kind==='+'?0:1,center:oldToken.inkCenter
+      angle:oldToken.kind==='×'?45:0,weights:{[oldToken.kind]:1},center:oldToken.inkCenter
     };
     el.getAnimations({subtree:true}).forEach(animation=>animation.cancel());
     const parts=existing?.parts || {};
@@ -1906,10 +1907,11 @@ Important Recommendations
       group.dataset.morphGlyph=glyph.kind;group.append(shape);
       parts[glyph.kind]={group,shape,center:glyph.inkCenter};
     }
-    // Reversal reuses these same two glyphs and their current angle/opacity,
-    // so repeated interruptions never accumulate nested snapshots or layers.
-    const record={parts,from,to:{angle:token.kind==='+'?0:45,blend:token.kind==='+'?0:1,center:token.inkCenter},started:now,target:token.kind};
-    el.replaceChildren(parts['+'].group,parts['×'].group);
+    // Preserve every visible contribution when interrupted by a third sign.
+    // One layer per arithmetic glyph bounds even rapid switching to four;
+    // completion restores the exact native destination glyph.
+    const record={parts,from,to:{angle:token.kind==='×'?45:0,center:token.inkCenter},started:now,target:token.kind};
+    el.replaceChildren(...Object.values(parts).map(part=>part.group));
     el.dataset.morphing='true';el.dataset.value=token.text;el._shapeKey=token.shape.innerHTML;
     morphs.set(el,record);paintMorph(record,now);
   }

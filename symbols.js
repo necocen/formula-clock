@@ -7,7 +7,7 @@
   const identity = token => `${token.kind}:${token.site}:${token.glyphKey || ''}`;
   function morphPair(a,b) {
     const gap = token => {
-      const role = token.kind === '+' ? 'add' : token.kind === '×' ? 'mul' : null;
+      const role = {'+':'add','−':'sub','×':'mul','÷':'div'}[token.kind];
       return role && token.site?.match(new RegExp(`^${role}-(b[1-3]-\\d+)$`))?.[1];
     };
     const site = gap(a);
@@ -26,8 +26,8 @@
       if(typeof token.site!=='string')return -1;
       return available.get(identity(token))?.shift() ?? -1;
     });
-    // Reserve exact identities first. Only a currently active +/× at this very
-    // gap can stand in for the other; fading remnants cannot bridge another op.
+    // Reserve exact identities first. Only an active arithmetic sign at this
+    // very gap can become another; unary signs and fading remnants cannot.
     if (morph) {
       const used = new Set(matches.filter(index=>index >= 0));
       next.forEach((token,i)=>{
