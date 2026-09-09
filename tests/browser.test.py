@@ -48,6 +48,7 @@ with sync_playwright() as p:
     page.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout',timeout=35000)
     page.evaluate('window.originalDigits=FormulaClock.digits')
     page.evaluate("window.originalSourceDigits=[...document.querySelectorAll('#source-time .source-digit')];window.originalSourceColons=[...document.querySelectorAll('#source-time .colon')]")
+    page.evaluate("window.originalProvider=window.FORMULA_CLOCK_CONFIG?.provider || new FormulaData.TableProvider(()=>FormulaData.loadEmbedded(document.querySelector('#clock-data')))")
     report['mathjax']=page.evaluate('FormulaClock.diagnostics().mathjax')
     if not args.local_mathjax:assert report['mathjax']=='4.1.3'
     assert page.evaluate('FormulaClock.state.display.font')=='stix2'
@@ -58,6 +59,9 @@ with sync_playwright() as p:
     assert page.locator('#symbol-morph').is_checked()==args.symbol_morph
 
     assert page.locator('#font-choice option').evaluate_all('(options)=>options.map(x=>x.value)')==['stix2','termes','fira','euler']
+    assert page.locator('#division-choice input').evaluate_all('(options)=>options.map(x=>x.value)')==['fraction','inline']
+    assert page.locator('#import-data,#restore-data,#data-file,#data-status').count()==0
+    assert page.locator('#advanced-settings .experimental-option').count()==3
     assert page.locator('.intro,.source-caption,.mode,.minute-head,.demo-panel,footer,#info,#coverage,#date,#zone').count()==0
     assert page.locator('#settings').is_hidden()
     stage_before=page.locator('#stage').bounding_box()
@@ -301,25 +305,8 @@ with sync_playwright() as p:
     page.wait_for_timeout(700);check_geometry()
     assert '読み込めなかった' in page.locator('#state-label').inner_text()
     report['checks'].append('Late old-provider response discarded; failed data delivery is distinct from null and displays ordinary time')
-    page.evaluate("document.querySelector('#restore-data').click()")
+    page.evaluate("FormulaClock.setDataProvider(originalProvider)")
     preview('12:34:30');settings('stix2','inline')
-
-    # The visible import control accepts both envelopes; malformed imports are transactional.
-    revision=page.evaluate('FormulaClock.state.dataRevision')
-    page.locator('#data-file').set_input_files(str(ROOT/'data'/'example-1234.json'))
-    page.wait_for_function('(r)=>FormulaClock.state.dataRevision>r',arg=revision)
-    assert 'example-1234.json' in page.locator('#data-status').text_content()
-    revision=page.evaluate('FormulaClock.state.dataRevision')
-    page.locator('#data-file').set_input_files(str(ROOT/'data'/'example-table.json'))
-    page.wait_for_function('(r)=>FormulaClock.state.dataRevision>r',arg=revision)
-    revision=page.evaluate('FormulaClock.state.dataRevision')
-    page.locator('#data-file').set_input_files({'name':'bad.json','mimeType':'application/json','buffer':b'{"schema":"formula-clock/1","minutes":{"1234":[]}}'})
-    page.wait_for_function("document.querySelector('#data-status').textContent.includes('読込失敗')")
-    assert page.evaluate('FormulaClock.state.dataRevision')==revision
-    page.evaluate("document.querySelector('#restore-data').click()")
-    page.wait_for_function('(r)=>FormulaClock.state.dataRevision>r',arg=revision)
-    preview('12:34:30');settings('stix2','inline')
-    report['checks'].append('Minute/table JSON import, malformed import leaves provider intact, restore initial data')
 
     # The equal sign retains its group AND paths while moving between formulas.
     equality=page.evaluate("""async()=>{

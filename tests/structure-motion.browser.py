@@ -54,6 +54,7 @@ with sync_playwright() as p:
     page.on('request',lambda req:cdn.append(req.url) if 'cdn.jsdelivr.net' in req.url else None)
     page.goto(args.url);page.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout')
     assert not page.evaluate('FormulaClock.state.display.structureMotion')
+    page.evaluate("window.originalProvider=window.FORMULA_CLOCK_CONFIG?.provider || new FormulaData.TableProvider(()=>FormulaData.loadEmbedded(document.querySelector('#clock-data')))")
     report['mathjax']=page.evaluate('FormulaClock.diagnostics().mathjax');assert report['mathjax']=='4.1.3'
     page.evaluate('''fixtures=>{
       window.fixtures=fixtures;window.originalDigits=FormulaClock.digits;window.originalEqual=document.querySelector('#equal-sign');
@@ -171,7 +172,7 @@ with sync_playwright() as p:
     report['checks'].append('Rules resize continuously with independent thickness; same radicals/parentheses retain DOM and glyphs; size/attachment changes replace them; assembled radicals keep fading')
 
     # Real dataset, rapid interruptions, resize, settings persistence and reduced motion.
-    page.evaluate("document.querySelector('#restore-data').click()")
+    page.evaluate("FormulaClock.setDataProvider(originalProvider)")
     for i in range(30):
         page.evaluate('(s)=>FormulaClock.preview("2026-09-08T12:34:"+String(s).padStart(2,"0")+"+09:00")',i)
         page.wait_for_function('(s)=>FormulaClock.state.layout.code==="1234" && FormulaClock.state.layout.seconds===s',arg=i)
@@ -179,7 +180,9 @@ with sync_playwright() as p:
     assert page.locator('#operator-root > g').evaluate_all('(els)=>new Set(els.map(x=>[x.dataset.kind,x.dataset.site,x.dataset.glyphKey].join(":"))).size===els.length')
     page.set_viewport_size({'width':320,'height':640});page.wait_for_timeout(800)
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
-    page.click('#settings-open');page.uncheck('#structure-motion');page.check('#structure-motion');page.keyboard.press('Escape')
+    page.click('#settings-open')
+    if page.locator('#advanced-settings').get_attribute('open') is None:page.click('#advanced-settings summary')
+    page.uncheck('#structure-motion');page.check('#structure-motion');page.keyboard.press('Escape')
     page.emulate_media(reduced_motion='reduce');page.evaluate('FormulaClock.setDataProvider(fixtureProvider)');preview('root-wide',80)
     assert page.locator('#operator-root').evaluate('(el)=>el.getAnimations({subtree:true}).length')==0
     page.screenshot(path=str(args.output_dir/'mobile.png'))

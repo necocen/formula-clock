@@ -18,6 +18,7 @@ with sync_playwright() as p:
     page.on('pageerror',lambda e:errors.append(str(e)))
     page.goto(args.url);page.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout')
     assert not page.evaluate('FormulaClock.state.display.symbolMotion')
+    page.evaluate("window.originalProvider=window.FORMULA_CLOCK_CONFIG?.provider || new FormulaData.TableProvider(()=>FormulaData.loadEmbedded(document.querySelector('#clock-data')))")
     report['mathjax']=page.evaluate('FormulaClock.diagnostics().mathjax')
     assert report['mathjax']=='4.1.3'
     page.evaluate('window.originalDigits=FormulaClock.digits;window.originalEqual=document.querySelector("#equal-sign")')
@@ -118,7 +119,7 @@ with sync_playwright() as p:
         assert page.evaluate('!oldFactorial.isConnected')
         assert page.locator('[data-site="fact-u34-0"]').count()==1
     report['checks'].append('Swapped plus/minus are replaced at their gaps; factorial stays with its operand and is replaced when attachment changes, in all four fonts and both numeral styles')
-    page.evaluate("document.querySelector('#restore-data').click()")
+    page.evaluate("FormulaClock.setDataProvider(originalProvider)")
     page.wait_for_function('FormulaClock.state.coverage>10')
 
     # Interrupt movement and fades repeatedly, including hour changes and time-only frames.
@@ -130,7 +131,9 @@ with sync_playwright() as p:
     check_symbols()
     report['checks'].append('Rapid previews and disabling the experiment leave no stale or duplicate glyphs')
 
-    page.click('#settings-open');page.check('#symbol-motion');page.keyboard.press('Escape')
+    page.click('#settings-open')
+    if page.locator('#advanced-settings').get_attribute('open') is None:page.click('#advanced-settings summary')
+    page.check('#symbol-motion');page.keyboard.press('Escape')
     page.wait_for_function('FormulaClock.state.layout.display.symbolMotion');page.wait_for_timeout(750);check_symbols()
     page.emulate_media(reduced_motion='reduce');preview('12:34:59',wait=60);check_symbols()
     assert page.locator('#operator-root').evaluate('(el)=>el.getAnimations({subtree:true}).length')==0

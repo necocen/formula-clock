@@ -1,0 +1,64 @@
+{
+  "at": "2026-09-09T13:45:04.323289+00:00",
+  "change": "Division segments; remove data import/restore UI; move all three experiments into Details",
+  "sourceSHA256": {
+    "_head.html": "127cd3050795d878c5208de8daded5354cbd7b33fa9b849afe39977611b1abb4",
+    "app.js": "6549a946c039cec2d987f2bd0bd56d61e01b68e9be08632c2f02cec5f82d6030",
+    "index.html": "0e176a8c79ebeb482ee7113eb48b3458f2f9e48e5ebbae259c7dbb0e568bf2fe"
+  },
+  "node": {
+    "version": "22.17.1",
+    "commands": [
+      "npm run build",
+      "npm run build:external",
+      "npm test"
+    ],
+    "passed": true,
+    "serializationChecks": 2446592,
+    "builtinTestsPassed": 25
+  },
+  "checks": [
+    "Division segments respond to click and left/right keys without changing AST or numeral selection",
+    "Removed data import/restore UI; data provider API and test restoration still work",
+    "Three experiments live inside Details, remain active when collapsed, and persist independently",
+    "Fractions, powers, plain time and font switching keep persistent digits visible",
+    "Both segmented controls fit at 320px; collapsed and expanded settings inspected"
+  ],
+  "browsers": [
+    {
+      "browser": "chromium",
+      "browserVersion": "151.0.7922.34",
+      "mathjax": "4.1.3",
+      "at": "2026-09-09T13:43:53.034811+00:00",
+      "command": [
+        "/tmp/formula-clock-settings-check.py",
+        "chromium"
+      ],
+      "pageErrors": []
+    },
+    {
+      "browser": "firefox",
+      "browserVersion": "153.0",
+      "mathjax": "4.1.3",
+      "at": "2026-09-09T13:43:57.679745+00:00",
+      "command": [
+        "/tmp/formula-clock-settings-check.py",
+        "firefox"
+      ],
+      "pageErrors": []
+    },
+    {
+      "browser": "webkit",
+      "browserVersion": "26.5",
+      "mathjax": "4.1.3",
+      "at": "2026-09-09T13:43:55.672251+00:00",
+      "command": [
+        "/tmp/formula-clock-settings-check.py",
+        "webkit"
+      ],
+      "pageErrors": []
+    }
+  ],
+  "scope": "Focused settings and rendering checks against the delivered MathJax 4 CDN configuration. Existing browser suites were adapted to the removed import controls and collapsed experiment controls; full font/motion matrices were not rerun for this UI change.",
+  "verificationScriptSHA256": "f69f3d4ac5f48cf83c8082f2a0d8ee17bf8b7e03e10587087ccddeac651fcd77"
+}

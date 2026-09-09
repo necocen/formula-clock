@@ -36,14 +36,13 @@
   }
   setupDialog(settingsDialog,settingsButton,$('#settings-close'));
   setupDialog(licenseDialog,$('#licenses-open'),$('#licenses-close'));
-  const {normalizeMinute, InlineProvider, TableProvider} = FormulaData;
+  const {normalizeMinute, TableProvider} = FormulaData;
   const defaultProvider = () => new TableProvider(async () => {
     const embedded = document.querySelector('#clock-data');
     if (!embedded) throw new Error('No embedded formula table or custom provider');
     return FormulaData.loadEmbedded(embedded);
   });
-  const initialProvider = window.FORMULA_CLOCK_CONFIG?.provider || defaultProvider();
-  let provider = initialProvider;
+  let provider = window.FORMULA_CLOCK_CONFIG?.provider || defaultProvider();
   let dataRevision = 0;
   function savedDisplay() {
     try { return JSON.parse(localStorage.getItem('formula-clock-display-v2') || '{}') || {}; } catch { return {}; }
@@ -118,7 +117,7 @@
     return engines.get(key);
   }
   let typesetter = engineFor(displaySettings.font,displaySettings.numerals);
-  const numeralChoices = [...$('#numeral-choice').querySelectorAll('input')];
+  const segmentedChoices = [...settingsDialog.querySelectorAll('.segmented-control input')];
   async function setDisplay(changes) {
     const next = {...displaySettings,...changes};
     if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
@@ -126,8 +125,8 @@
     $('#symbol-motion').checked = next.symbolMotion;
     $('#structure-motion').checked = next.structureMotion;
     $('#symbol-morph').checked = next.symbolMorph;
-    $('#font-choice').value = next.font; $('#division-choice').value = next.division;
-    numeralChoices.forEach(input => { input.checked = input.value === next.numerals; });
+    $('#font-choice').value = next.font;
+    segmentedChoices.forEach(input => { input.checked = input.value === next[input.name]; });
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
     typesetter = engineFor(next.font,next.numerals); engineError=null; lastVisual='';
     refresh(true);
@@ -140,8 +139,7 @@
   $('#symbol-morph').checked = displaySettings.symbolMorph;
   $('#symbol-morph').addEventListener('change',e=>{setDisplay({symbolMorph:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
-  numeralChoices.forEach(input => { input.checked = input.value === displaySettings.numerals; });
-  $('#division-choice').value = displaySettings.division;
+  segmentedChoices.forEach(input => { input.checked = input.value === displaySettings[input.name]; });
   $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
   $('#numeral-choice').addEventListener('change',e=>{setDisplay({numerals:e.target.value}).catch(()=>{});});
   $('#division-choice').addEventListener('change',e=>{setDisplay({division:e.target.value}).catch(()=>{});});
@@ -569,24 +567,6 @@
     const [h,m,s = 0] = value.split(':').map(Number), d = new Date(); d.setHours(h,m,s,0);
     setPreview(d, true); settingsDialog.close();
   });
-  $('#import-data').addEventListener('click',()=>$('#data-file').click());
-  $('#data-file').addEventListener('change',async e=>{
-    const file=e.target.files[0]; if(!file)return;
-    try {
-      if(file.size>64*1024*1024)throw new Error('JSON is larger than 64 MB');
-      const input=JSON.parse(await file.text());
-      const table=typeof input?.hhmm === 'string'
-        ? {schema:input.schema,minutes:{[input.hhmm]:normalizeMinute(input,input.hhmm).seconds}}
-        : input;
-      const next=new InlineProvider(table);
-      // Validate the full imported file before replacing the active provider.
-      for(const hhmm of Object.keys(table.minutes)) normalizeMinute({schema:table.schema,hhmm,seconds:table.minutes[hhmm]},hhmm);
-      setDataProvider(next);
-      $('#data-status').textContent=`${file.name} · ${Object.keys(table.minutes).length}分を読み込んだ。`;
-    } catch(error){$('#data-status').textContent=`読込失敗：${error.message}`;}
-    e.target.value='';
-  });
-  $('#restore-data').addEventListener('click',()=>{setDataProvider(initialProvider);$('#data-status').textContent='起動時のデータに戻した。';});
   async function toggleFullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();

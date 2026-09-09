@@ -204,7 +204,9 @@ with sync_playwright() as p:
     preview('12:34:10');display(symbolMorph=False)
     assert page.locator('#operator-root > g').count()==0
     page.set_viewport_size({'width':320,'height':640})
-    page.click('#settings-open');page.check('#symbol-morph');page.keyboard.press('Escape')
+    page.click('#settings-open')
+    if page.locator('#advanced-settings').get_attribute('open') is None:page.click('#advanced-settings summary')
+    page.check('#symbol-morph');page.keyboard.press('Escape')
     page.wait_for_function('FormulaClock.state.layout.display.symbolMorph')
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
     assert page.evaluate('FormulaClock.digits.every((el,i)=>el===originalDigits[i]) && document.querySelector("#equal-sign")===originalEqual')
