@@ -532,10 +532,10 @@
         if (delay < -.16 || delay > .16) continue;
         const date = new Date(boundary), sec = date.getSeconds();
         const countdown = sec % 30 >= 27, marker = sec % 10 === 0;
-        // 117-style timing; lengths follow the published reproduction example,
-        // not an NTT specification. These three categories never overlap.
+        // 117-style timing, with the marker extended 1.5x by listening preference.
+        // These three categories never overlap at their onset.
         const frequency = marker ? 1000 : countdown ? 500 : 2000;
-        const duration = marker ? .9 : countdown ? .05 : .007;
+        const duration = marker ? 1.35 : countdown ? .05 : .007;
         const key = `${generation}:${boundary}`;
         if (this.scheduled.has(key)) continue;
         const when = this.ctx.currentTime + Math.max(0, delay);

@@ -96,7 +96,7 @@ with sync_playwright() as p:
         page.wait_for_timeout(75)
         assert page.evaluate('audioVoices.length')==baseline+second+1,second
     voices=page.evaluate('audioSnapshot()')[baseline:]
-    expected=lambda s:(1000,.9) if s%10==0 else (500,.05) if s%30>=27 else (2000,.007)
+    expected=lambda s:(1000,1.35) if s%10==0 else (500,.05) if s%30>=27 else (2000,.007)
     for second,voice in enumerate(voices):
         frequency,duration=expected(second)
         assert voice['type']=='sine' and voice['frequency']==frequency,(second,voice)
@@ -105,7 +105,7 @@ with sync_playwright() as p:
         assert times==sorted(times),(second,voice) # A 7 ms pulse must not have an 8 ms attack.
         assert abs(times[0]-voice['when'])<1e-7 and abs(times[-1]-voice['stops'][0])<1e-7
     report['minuteFrequencies']=[v['frequency'] for v in voices]
-    report['checks'].append('All 60 seconds produce exactly one native sine oscillator: 48 ticks, 6 countdowns and 6 ten-second markers, with 7/50/900 ms durations')
+    report['checks'].append('All 60 seconds produce exactly one native sine oscillator: 48 ticks, 6 countdowns and 6 ten-second markers, with 7/50/1350 ms durations')
 
     rendered={}
     for second,name in [(1,'tick'),(27,'countdown'),(30,'marker')]:
