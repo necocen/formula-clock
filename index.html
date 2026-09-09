@@ -19,7 +19,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
 .stage{height:clamp(242px,32svh,360px)}
 .minute{max-width:710px;width:calc(100% - 50px);margin:28px auto 0}.ruler{height:32px;display:grid;grid-template-columns:repeat(60,1fr);align-items:center;gap:4px}.tick{position:relative;background:transparent;padding:0;height:32px;border:0;border-radius:2px}.tick:before{content:"";position:absolute;left:50%;top:12px;width:2px;height:7px;transform:translateX(-50%);background:#30372b;transition:background .3s,height .3s,top .3s}.tick.major:before{height:12px;top:9px}.tick.solved:before{background:#7c8970}.tick.past:before{opacity:.55}.tick.current:before{height:22px;top:4px;background:var(--fg);box-shadow:0 0 10px #d5dbc333}.tick:hover:before{background:var(--c2);height:20px;top:5px}.ruler-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim)}
 .transport{display:flex;justify-content:center;align-items:center;gap:10px;height:38px;margin-top:18px}.transport[hidden]{display:flex;visibility:hidden}.transport button{border:0;background:transparent;color:var(--muted);font-size:10px;padding:10px;border-radius:4px;letter-spacing:.5px}.transport .live-return{color:var(--c2)}.transport .divider{height:10px;width:1px;background:var(--line)}.transport .playback{font-family:var(--mono);font-size:10px;color:var(--dim);min-width:76px}.transport #play-pause{min-width:63px}
-.settings-dialog{position:fixed;inset:80px 28px auto auto;margin:0;width:350px;max-width:calc(100vw - 32px);max-height:calc(100svh - 100px);overflow:auto;overscroll-behavior:contain;background:#181d17;border:1px solid #394232;border-radius:12px;color:var(--fg);padding:22px;box-shadow:0 16px 70px #0005;font-size:12px}.settings-dialog::backdrop{background:#0003}.settings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.settings-header h2{font-size:13px;font-weight:500;letter-spacing:1px;margin:0}.settings-close{display:grid;place-items:center;width:32px;height:32px;background:transparent;border:0;border-radius:5px;color:var(--muted)}.setting-row{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:16px 0;color:var(--muted)}.setting-row select{color:var(--fg);background:#111710;border:1px solid var(--line);border-radius:5px;padding:8px;max-width:180px}.setting-row input[type=range]{width:160px;accent-color:var(--c2)}.experimental-option{margin-top:22px;font-size:11px}.experimental-option small{font-size:9px;color:var(--dim);margin-left:5px}.experimental-option input{accent-color:var(--c2);width:16px;height:16px}.custom-time-label{display:block;margin:22px 0 9px;color:var(--muted)}.custom-time{display:flex;gap:8px}.custom-time input{background:#111710;color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:8px;min-width:0;flex:1;font-family:var(--mono)}.settings-dialog .small-button{border:1px solid var(--line);background:transparent;border-radius:5px;padding:8px 10px;font-size:11px}.advanced{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}.advanced summary{color:var(--muted);cursor:pointer;padding:4px 0}.advanced p{font-size:10px;line-height:1.8;color:var(--muted);overflow-wrap:anywhere}.settings-links{display:flex;gap:18px;margin-top:22px}.settings-links a,.license-link{padding:0;border:0;background:none;color:var(--muted);font-size:10px;text-decoration:underline;text-underline-offset:3px}.settings-dialog.license-dialog{inset:0;margin:auto;width:760px;max-height:calc(100svh - 48px);padding:0}.license-dialog .settings-header{position:sticky;top:0;margin:0;padding:16px 22px;background:#181d17;border-bottom:1px solid var(--line);z-index:1}.license-content{padding:0 24px 24px;font-size:12px;line-height:1.8;overflow-wrap:anywhere}.license-content h1{display:none}.license-content h2{font-size:14px;margin-top:28px}.license-content a{color:var(--c2)}.license-content pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 var(--mono);color:var(--muted)}.license-content summary{cursor:pointer;padding:12px 0}.license-content details{border-bottom:1px solid var(--line)}.math-engine-frame{position:fixed;left:-100000px;top:0;width:300px;height:200px;visibility:hidden;pointer-events:none;border:0}
+.settings-dialog{position:fixed;inset:80px 28px auto auto;margin:0;width:350px;max-width:calc(100vw - 32px);max-height:calc(100svh - 100px);overflow:auto;overscroll-behavior:contain;background:#181d17;border:1px solid #394232;border-radius:12px;color:var(--fg);padding:22px;box-shadow:0 16px 70px #0005;font-size:12px}.settings-dialog::backdrop{background:#0003}.settings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.settings-header h2{font-size:13px;font-weight:500;letter-spacing:1px;margin:0}.settings-close{display:grid;place-items:center;width:32px;height:32px;background:transparent;border:0;border-radius:5px;color:var(--muted)}.setting-row{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:16px 0;color:var(--muted)}.setting-row select{color:var(--fg);background:#111710;border:1px solid var(--line);border-radius:5px;padding:8px;max-width:180px}.setting-row input[type=range]{width:160px;accent-color:var(--c2)}.experimental-option{margin-top:22px;font-size:11px}.experimental-option:has(input:disabled){opacity:.45}.experimental-option input{accent-color:var(--c2);width:16px;height:16px}.custom-time-label{display:block;margin:22px 0 9px;color:var(--muted)}.custom-time{display:flex;gap:8px}.custom-time input{background:#111710;color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:8px;min-width:0;flex:1;font-family:var(--mono)}.settings-dialog .small-button{border:1px solid var(--line);background:transparent;border-radius:5px;padding:8px 10px;font-size:11px}.advanced{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}.advanced summary{color:var(--muted);cursor:pointer;padding:4px 0}.advanced p{font-size:10px;line-height:1.8;color:var(--muted);overflow-wrap:anywhere}.settings-links{display:flex;gap:18px;margin-top:22px}.settings-links a,.license-link{padding:0;border:0;background:none;color:var(--muted);font-size:10px;text-decoration:underline;text-underline-offset:3px}.settings-dialog.license-dialog{inset:0;margin:auto;width:760px;max-height:calc(100svh - 48px);padding:0}.license-dialog .settings-header{position:sticky;top:0;margin:0;padding:16px 22px;background:#181d17;border-bottom:1px solid var(--line);z-index:1}.license-content{padding:0 24px 24px;font-size:12px;line-height:1.8;overflow-wrap:anywhere}.license-content h1{display:none}.license-content h2{font-size:14px;margin-top:28px}.license-content a{color:var(--c2)}.license-content pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 var(--mono);color:var(--muted)}.license-content summary{cursor:pointer;padding:12px 0}.license-content details{border-bottom:1px solid var(--line)}.math-engine-frame{position:fixed;left:-100000px;top:0;width:300px;height:200px;visibility:hidden;pointer-events:none;border:0}
 .segmented-control{display:grid;grid-template-columns:repeat(2,1fr);width:180px;flex-shrink:0;gap:2px;padding:3px;background:#111710;border:1px solid var(--line);border-radius:7px}.segmented-control label{position:relative;cursor:pointer}.segmented-control input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}.segmented-control span{display:block;border-radius:4px;padding:6px 9px;text-align:center;line-height:18px;color:var(--muted)}.segmented-control input:hover+span{color:var(--fg)}.segmented-control input:checked+span{background:#35402f;color:var(--fg);box-shadow:0 1px 3px #0005}.segmented-control input:focus-visible+span{outline:2px solid var(--c2);outline-offset:1px}
 @media(max-width:760px){.shell{padding:22px}.brand{font-size:10px;letter-spacing:1.8px}.tools{gap:6px}main{padding:40px 0 48px}.minute{width:100%;margin-top:22px}.ruler{gap:2px}.source-time{font-size:22px}.settings-dialog{right:16px;top:76px;max-height:calc(100svh - 92px)}}
 @media(max-width:480px){.shell{padding:18px 16px}.brand{font-size:9px;letter-spacing:1.4px;gap:8px}.tool{padding:10px;min-width:40px}.tools{gap:5px}.stage{height:226px}.transport{gap:2px}.transport button{padding:10px 7px}.transport .playback{min-width:60px;font-size:9px}.transport #play-pause{min-width:55px}.transport .live-return{white-space:nowrap}.setting-row select{max-width:165px}.segmented-control{width:165px}.settings-dialog{padding:20px}}
@@ -78,10 +78,10 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
   <label class="custom-time-label" for="custom-time">時刻を指定</label>
   <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go">表示</button></div>
   <details class="advanced" id="advanced-settings"><summary>詳細</summary>
-    <label class="setting-row experimental-option"><span>記号も動かす <small>実験的</small></span><input id="symbol-motion" type="checkbox"></label>
-    <label class="setting-row experimental-option"><span>分数・√・括弧も動かす <small>実験的2</small></span><input id="structure-motion" type="checkbox"></label>
-    <label class="setting-row experimental-option"><span>四則記号を変形する <small>実験的3</small></span><input id="symbol-morph" type="checkbox"></label>
-    <p id="engine-status" role="status">MathJax · STIX Two を読み込み中</p>
+    <label class="setting-row experimental-option"><span>記号も動かす</span><input id="symbol-motion" type="checkbox"></label>
+    <label class="setting-row experimental-option"><span>分数・√・括弧も動かす</span><input id="structure-motion" type="checkbox"></label>
+    <label class="setting-row experimental-option"><span>四則記号を変形する</span><input id="symbol-morph" type="checkbox"></label>
+    <p id="render-status" role="status" hidden></p>
     <p id="state-label" role="status"></p>
     <p>M 時報 / F 全画面 / L 現在時刻 / Space プレビューの再生と停止</p>
   </details>
@@ -1968,8 +1968,12 @@ Important Recommendations
   function savedDisplay() {
     try { return JSON.parse(localStorage.getItem('formula-clock-display-v2') || '{}') || {}; } catch { return {}; }
   }
+  function normalizeMotion(options) {
+    return {...options,structureMotion:options.symbolMotion && options.structureMotion,
+      symbolMorph:options.symbolMotion && options.symbolMorph};
+  }
   const saved = savedDisplay();
-  let displaySettings = {
+  let displaySettings = normalizeMotion({
     font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
     // Preserve the appearance of settings saved before numeral styles were independent.
     numerals: Object.hasOwn(FormulaTypesetter.NUMERALS,saved.numerals) ? saved.numerals : saved.font === 'euler' ? 'lining' : 'oldstyle',
@@ -1977,7 +1981,7 @@ Important Recommendations
     symbolMotion: saved.symbolMotion === true,
     structureMotion: saved.structureMotion === true,
     symbolMorph: saved.symbolMorph === true
-  };
+  });
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
   const timeCode = d => pad(d.getHours()) + pad(d.getMinutes());
@@ -2039,13 +2043,19 @@ Important Recommendations
   }
   let typesetter = engineFor(displaySettings.font,displaySettings.numerals);
   const segmentedChoices = [...settingsDialog.querySelectorAll('.segmented-control input')];
+  function syncMotionControls() {
+    $('#symbol-motion').checked = displaySettings.symbolMotion;
+    $('#structure-motion').checked = displaySettings.structureMotion;
+    $('#structure-motion').disabled = !displaySettings.symbolMotion;
+    $('#symbol-morph').checked = displaySettings.symbolMorph;
+    $('#symbol-morph').disabled = !displaySettings.symbolMotion;
+  }
   async function setDisplay(changes) {
-    const next = {...displaySettings,...changes};
+    let next = {...displaySettings,...changes};
     if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
+    next = normalizeMotion(next);
     displaySettings = {font:next.font,numerals:next.numerals,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
-    $('#symbol-motion').checked = next.symbolMotion;
-    $('#structure-motion').checked = next.structureMotion;
-    $('#symbol-morph').checked = next.symbolMorph;
+    syncMotionControls();
     $('#font-choice').value = next.font;
     segmentedChoices.forEach(input => { input.checked = input.value === next[input.name]; });
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
@@ -2053,11 +2063,9 @@ Important Recommendations
     refresh(true);
     await typesetter.boot;
   }
-  $('#symbol-motion').checked = displaySettings.symbolMotion;
+  syncMotionControls();
   $('#symbol-motion').addEventListener('change',e=>{setDisplay({symbolMotion:e.target.checked}).catch(()=>{});});
-  $('#structure-motion').checked = displaySettings.structureMotion;
   $('#structure-motion').addEventListener('change',e=>{setDisplay({structureMotion:e.target.checked}).catch(()=>{});});
-  $('#symbol-morph').checked = displaySettings.symbolMorph;
   $('#symbol-morph').addEventListener('change',e=>{setDisplay({symbolMorph:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
   segmentedChoices.forEach(input => { input.checked = input.value === displaySettings[input.name]; });
@@ -2184,6 +2192,10 @@ Important Recommendations
       animation.onfinish=()=>{if(record.animation===animation && record.exiting)remove();};
     }
   }
+  function renderStatus(message = '') {
+    const status = $('#render-status');
+    status.textContent = message; status.hidden = !message;
+  }
   function plainFallback(code, seconds, reason) {
     const full = `${code.slice(0,2)}:${code.slice(2)}:${pad(seconds)}`;
     [...plainTime.querySelectorAll('span')].forEach((el, i) => { el.textContent = full[i]; });
@@ -2191,7 +2203,7 @@ Important Recommendations
     sourceTime.hidden = true;
     stage.classList.add('resting');
     stage.setAttribute('aria-label', full);
-    $('#engine-status').textContent = reason;
+    renderStatus(reason);
   }
   function renderSourceTime(font, numerals, code, seconds, visible) {
     const face = clockFaces.get(typographyKey(font,numerals));
@@ -2280,7 +2292,7 @@ Important Recommendations
     stage.classList.toggle('loading', loading);
     plainTime.hidden = true; scene.style.visibility = 'visible';
     renderSourceTime(frame.font,frame.numerals,code,seconds,!!ast && !loading);
-    $('#engine-status').textContent = `MathJax · ${FormulaTypesetter.PROFILES[frame.font].label} · ${FormulaTypesetter.NUMERALS[frame.numerals]} / SVG`;
+    renderStatus();
     stage.setAttribute('aria-label', ast ? `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒。${FormulaExpression.plain(ast, code)} = ${seconds}` : `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒`);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
     firstFrame = false;
@@ -2291,7 +2303,7 @@ Important Recommendations
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;
-    if (!engine.ready) plainFallback(code,seconds,engine.error ? '組版を読み込めなかった。通常の時計を表示中。' : `MathJax · ${engine.profile.label} を読み込み中`);
+    if (!engine.ready) plainFallback(code,seconds,engine.error ? '組版を読み込めなかった。通常の時計を表示中。' : '時計を準備中。');
     if (engine.error) return;
     engine.frame(ast, code, seconds, view).then(frame => {
       if (serial !== requestSerial) return; // Discard any stale async result.
@@ -2310,7 +2322,7 @@ Important Recommendations
           const clockFrame = await engine.frame(null, code, seconds, view);
           if (serial !== requestSerial) return;
           applyFrame(clockFrame, null, code, seconds, false, instant, view);
-          $('#engine-status').textContent = 'この式を組版できなかった。通常の時計を表示中。';
+          renderStatus('この式を組版できなかった。通常の時計を表示中。');
           return;
         } catch { /* Ordinary text fallback below. */ }
       }

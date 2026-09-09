@@ -1,0 +1,243 @@
+{
+  "at": "2026-09-09T14:07:11.476259+00:00",
+  "change": "Remove engine and experiment labels; structure motion and arithmetic morph each require basic symbol motion, independently of one another",
+  "sourceSHA256": {
+    "_head.html": "734646b6e73ef7fe88aab2fa6ece38e48aff666dfbc968ad6c6f30003c2d04fd",
+    "app.js": "6fe3a54ecd9d573dcb57cd54cbf7ad6001af8320f788899c6cd05b52693c0708",
+    "index.html": "a24f464e4e8e153ffe2a818c64c1f8db11762f0fd54522b5417a0e37dca15083",
+    "dist-external/index.html": "e78c259c49e5f3a1df2ba11f85d3b3e0a6888f7404879c6d95005829d42da735",
+    "tests/motion-settings.browser.py": "c5b742fb1fefc4656cc697ea72ad3af29d8748e8b2deb3fe5a10126f2da9b5d5",
+    "tests/symbol-morph.browser.py": "cd60b5b04641a47faceca28b5aa7afc147fe4d0165843fc93152994c10d0b1e1"
+  },
+  "node": {
+    "version": "22.17.1",
+    "runtime": "/Users/necocen/.local/share/mise/installs/node/22.17.1/bin/node",
+    "commands": [
+      "npm run build",
+      "npm run build:external",
+      "npm test"
+    ],
+    "passed": true,
+    "serializationChecks": 2446592,
+    "equations": 71456,
+    "builtinTestsPassed": 25
+  },
+  "settingsChecks": [
+    "Basic motion enables both optional controls; structure and morph can each toggle without changing the other; disabling basic motion clears and disables both, with no automatic restoration; effective values persist",
+    "All eight legacy saved combinations and all eight API combinations normalize consistently; invalid option types still reject",
+    "Fractions, powers and plain time work across all four font families with persistent digits; normal render status remains hidden",
+    "Changing each setting during an active morph settles without temporary glyphs, preserves digit/equality nodes and leaves only the allowed symbols; disabling structure preserves the morph setting",
+    "Mobile disabled states are muted and fit; expression failure falls back to the SVG clock and recovers; CDN failure keeps the plain clock and failure message"
+  ],
+  "restoredCombinations": [
+    {
+      "saved": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      },
+      "effective": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": true
+      },
+      "effective": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": false,
+        "structureMotion": true,
+        "symbolMorph": false
+      },
+      "effective": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": false,
+        "structureMotion": true,
+        "symbolMorph": true
+      },
+      "effective": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": true,
+        "structureMotion": false,
+        "symbolMorph": false
+      },
+      "effective": {
+        "symbolMotion": true,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": true,
+        "structureMotion": false,
+        "symbolMorph": true
+      },
+      "effective": {
+        "symbolMotion": true,
+        "structureMotion": false,
+        "symbolMorph": true
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": true,
+        "structureMotion": true,
+        "symbolMorph": false
+      },
+      "effective": {
+        "symbolMotion": true,
+        "structureMotion": true,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": true,
+        "structureMotion": true,
+        "symbolMorph": true
+      },
+      "effective": {
+        "symbolMotion": true,
+        "structureMotion": true,
+        "symbolMorph": true
+      }
+    }
+  ],
+  "settingsBrowsers": [
+    {
+      "at": "2026-09-09T14:03:13.608946+00:00",
+      "command": [
+        "tests/motion-settings.browser.py",
+        "--browser",
+        "chromium",
+        "--output-dir",
+        "test-results/motion-prerequisites-chromium"
+      ],
+      "browser": "chromium",
+      "browserVersion": "151.0.7922.34",
+      "playwright": "1.62.0",
+      "mathjax": "4.1.3",
+      "pageErrors": []
+    },
+    {
+      "at": "2026-09-09T14:03:15.308991+00:00",
+      "command": [
+        "tests/motion-settings.browser.py",
+        "--browser",
+        "firefox",
+        "--output-dir",
+        "test-results/motion-prerequisites-firefox"
+      ],
+      "browser": "firefox",
+      "browserVersion": "153.0",
+      "playwright": "1.62.0",
+      "mathjax": "4.1.3",
+      "pageErrors": []
+    },
+    {
+      "at": "2026-09-09T14:03:15.308732+00:00",
+      "command": [
+        "tests/motion-settings.browser.py",
+        "--browser",
+        "webkit",
+        "--output-dir",
+        "test-results/motion-prerequisites-webkit"
+      ],
+      "browser": "webkit",
+      "browserVersion": "26.5",
+      "playwright": "1.62.0",
+      "mathjax": "4.1.3",
+      "pageErrors": []
+    }
+  ],
+  "settingsTypographyCases": [
+    {
+      "font": "stix2",
+      "numerals": "oldstyle"
+    },
+    {
+      "font": "termes",
+      "numerals": "lining"
+    },
+    {
+      "font": "fira",
+      "numerals": "oldstyle"
+    },
+    {
+      "font": "euler",
+      "numerals": "lining"
+    }
+  ],
+  "motion": {
+    "at": "2026-09-09T14:03:19.592149+00:00",
+    "command": [
+      "tests/symbol-morph.browser.py",
+      "--output-dir",
+      "test-results/motion-prerequisites-morph-chromium"
+    ],
+    "browser": "chromium",
+    "url": "http://127.0.0.1:8000/dist-external/",
+    "playwright": "1.62.0",
+    "fonts": [
+      "stix2",
+      "termes",
+      "fira",
+      "euler"
+    ],
+    "numerals": [
+      "lining",
+      "oldstyle"
+    ],
+    "checks": [
+      "Every settled glyph/rule matches the original layout across all five permitted motion combinations in all four fonts and both numeral styles/division styles",
+      "Same-gap +↔× retains its group, rotates 45° around glyph centers with complementary opacity, and reverses continuously; simultaneous changes retain their own gaps",
+      "All 12 directed +/−/×/÷ pairs in each font/numeral combination retain their gap, crossfade continuously, keep horizontal signs level, rotate × by 45°, and settle to exact original geometry",
+      "Third/fourth destinations preserve current opacity, angle and child nodes with at most four glyphs; fraction mode retires the obelus without morphing a rule",
+      "Rapid interruptions keep bounded glyph layers and clean up fully; reduced motion cancels rotation/fades; null clears signs; disabling morph retains basic signs; mobile setting and its prerequisites persist"
+    ],
+    "browserVersion": "151.0.7922.34",
+    "mathjax": "4.1.3",
+    "geometryComparisons": 480,
+    "maxGlyphBoundsDeltaPx": 6.103515625e-05,
+    "directedArithmeticPairs": 96,
+    "pageErrors": [],
+    "warnings": [
+      "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3"
+    ]
+  },
+  "visualReview": [
+    "Chromium desktop: both optional checkboxes enabled when basic motion is on, with no engine or experiment labels",
+    "Chromium 320x640: both optional controls are disabled and muted when basic motion is off; dialog scrolls inside the viewport"
+  ],
+  "scope": "Delivered MathJax 4.1.3 CDN path, with no local MathJax replacement. Three browsers cover settings, saved/API combinations, mobile layout, active-morph changes and error fallback. Chromium covers all five permitted combinations across four fonts, two numeral styles and two division styles, plus all 96 directed arithmetic transitions. The complete tests/browser.test.py and structure-motion matrix were not rerun against this final build.",
+  "notes": [
+    "The initial interruption probe started an animation before the reduced-motion media-change redraw finished; a wait for that redraw fixed the test timing, without a production change.",
+    "Earlier test-results/motion-settings-* runs exercised an intermediate dependency model and are not reported as final-build verification.",
+    "The Euler extension still emits its existing 4.0.0 component metadata warning with the 4.1.3 packages.",
+    "Audio settings were inspected, with no audio behavior changes: sound starts off and volume at 25%; neither is persisted."
+  ]
+}

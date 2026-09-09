@@ -47,8 +47,12 @@
   function savedDisplay() {
     try { return JSON.parse(localStorage.getItem('formula-clock-display-v2') || '{}') || {}; } catch { return {}; }
   }
+  function normalizeMotion(options) {
+    return {...options,structureMotion:options.symbolMotion && options.structureMotion,
+      symbolMorph:options.symbolMotion && options.symbolMorph};
+  }
   const saved = savedDisplay();
-  let displaySettings = {
+  let displaySettings = normalizeMotion({
     font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
     // Preserve the appearance of settings saved before numeral styles were independent.
     numerals: Object.hasOwn(FormulaTypesetter.NUMERALS,saved.numerals) ? saved.numerals : saved.font === 'euler' ? 'lining' : 'oldstyle',
@@ -56,7 +60,7 @@
     symbolMotion: saved.symbolMotion === true,
     structureMotion: saved.structureMotion === true,
     symbolMorph: saved.symbolMorph === true
-  };
+  });
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
   const timeCode = d => pad(d.getHours()) + pad(d.getMinutes());
@@ -118,13 +122,19 @@
   }
   let typesetter = engineFor(displaySettings.font,displaySettings.numerals);
   const segmentedChoices = [...settingsDialog.querySelectorAll('.segmented-control input')];
+  function syncMotionControls() {
+    $('#symbol-motion').checked = displaySettings.symbolMotion;
+    $('#structure-motion').checked = displaySettings.structureMotion;
+    $('#structure-motion').disabled = !displaySettings.symbolMotion;
+    $('#symbol-morph').checked = displaySettings.symbolMorph;
+    $('#symbol-morph').disabled = !displaySettings.symbolMotion;
+  }
   async function setDisplay(changes) {
-    const next = {...displaySettings,...changes};
+    let next = {...displaySettings,...changes};
     if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
+    next = normalizeMotion(next);
     displaySettings = {font:next.font,numerals:next.numerals,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
-    $('#symbol-motion').checked = next.symbolMotion;
-    $('#structure-motion').checked = next.structureMotion;
-    $('#symbol-morph').checked = next.symbolMorph;
+    syncMotionControls();
     $('#font-choice').value = next.font;
     segmentedChoices.forEach(input => { input.checked = input.value === next[input.name]; });
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
@@ -132,11 +142,9 @@
     refresh(true);
     await typesetter.boot;
   }
-  $('#symbol-motion').checked = displaySettings.symbolMotion;
+  syncMotionControls();
   $('#symbol-motion').addEventListener('change',e=>{setDisplay({symbolMotion:e.target.checked}).catch(()=>{});});
-  $('#structure-motion').checked = displaySettings.structureMotion;
   $('#structure-motion').addEventListener('change',e=>{setDisplay({structureMotion:e.target.checked}).catch(()=>{});});
-  $('#symbol-morph').checked = displaySettings.symbolMorph;
   $('#symbol-morph').addEventListener('change',e=>{setDisplay({symbolMorph:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
   segmentedChoices.forEach(input => { input.checked = input.value === displaySettings[input.name]; });
@@ -263,6 +271,10 @@
       animation.onfinish=()=>{if(record.animation===animation && record.exiting)remove();};
     }
   }
+  function renderStatus(message = '') {
+    const status = $('#render-status');
+    status.textContent = message; status.hidden = !message;
+  }
   function plainFallback(code, seconds, reason) {
     const full = `${code.slice(0,2)}:${code.slice(2)}:${pad(seconds)}`;
     [...plainTime.querySelectorAll('span')].forEach((el, i) => { el.textContent = full[i]; });
@@ -270,7 +282,7 @@
     sourceTime.hidden = true;
     stage.classList.add('resting');
     stage.setAttribute('aria-label', full);
-    $('#engine-status').textContent = reason;
+    renderStatus(reason);
   }
   function renderSourceTime(font, numerals, code, seconds, visible) {
     const face = clockFaces.get(typographyKey(font,numerals));
@@ -359,7 +371,7 @@
     stage.classList.toggle('loading', loading);
     plainTime.hidden = true; scene.style.visibility = 'visible';
     renderSourceTime(frame.font,frame.numerals,code,seconds,!!ast && !loading);
-    $('#engine-status').textContent = `MathJax · ${FormulaTypesetter.PROFILES[frame.font].label} · ${FormulaTypesetter.NUMERALS[frame.numerals]} / SVG`;
+    renderStatus();
     stage.setAttribute('aria-label', ast ? `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒。${FormulaExpression.plain(ast, code)} = ${seconds}` : `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒`);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
     firstFrame = false;
@@ -370,7 +382,7 @@
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;
-    if (!engine.ready) plainFallback(code,seconds,engine.error ? '組版を読み込めなかった。通常の時計を表示中。' : `MathJax · ${engine.profile.label} を読み込み中`);
+    if (!engine.ready) plainFallback(code,seconds,engine.error ? '組版を読み込めなかった。通常の時計を表示中。' : '時計を準備中。');
     if (engine.error) return;
     engine.frame(ast, code, seconds, view).then(frame => {
       if (serial !== requestSerial) return; // Discard any stale async result.
@@ -389,7 +401,7 @@
           const clockFrame = await engine.frame(null, code, seconds, view);
           if (serial !== requestSerial) return;
           applyFrame(clockFrame, null, code, seconds, false, instant, view);
-          $('#engine-status').textContent = 'この式を組版できなかった。通常の時計を表示中。';
+          renderStatus('この式を組版できなかった。通常の時計を表示中。');
           return;
         } catch { /* Ordinary text fallback below. */ }
       }

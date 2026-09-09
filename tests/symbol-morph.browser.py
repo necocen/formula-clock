@@ -48,16 +48,15 @@ with sync_playwright() as p:
             for time in ['12:34:08','12:34:30','12:34:31','12:34:59','16:39:19','00:00:08']:
                 display(font=font,numerals=numerals,division=division,symbolMotion=False,structureMotion=False,symbolMorph=False);preview(time)
                 baseline=page.evaluate('geometry()')
-                for basic in [False,True]:
-                    for structure in [False,True]:
-                        display(symbolMotion=basic,structureMotion=structure,symbolMorph=True)
-                        actual=page.evaluate('geometry()')
-                        assert [x['key'] for x in baseline]==[x['key'] for x in actual],(font,division,time,basic,structure,len(baseline),len(actual))
-                        delta=max(abs(a-b) for x,y in zip(baseline,actual) for a,b in zip(x['box'],y['box']))
-                        assert delta<.12,(font,division,time,basic,structure,delta)
-                        max_delta=max(max_delta,delta);comparisons+=1
+                for basic,structure,morph in [(False,False,False),(True,False,False),(True,True,False),(True,False,True),(True,True,True)]:
+                    display(symbolMotion=basic,structureMotion=structure,symbolMorph=morph)
+                    actual=page.evaluate('geometry()')
+                    assert [x['key'] for x in baseline]==[x['key'] for x in actual],(font,division,time,basic,structure,morph,len(baseline),len(actual))
+                    delta=max(abs(a-b) for x,y in zip(baseline,actual) for a,b in zip(x['box'],y['box']))
+                    assert delta<.12,(font,division,time,basic,structure,morph,delta)
+                    max_delta=max(max_delta,delta);comparisons+=1
     report['geometryComparisons']=comparisons;report['maxGlyphBoundsDeltaPx']=max_delta
-    report['checks'].append('Every settled glyph/rule matches the original layout with part 3 alone and combined with parts 1/2 in all four fonts and both numeral styles/division styles')
+    report['checks'].append('Every settled glyph/rule matches the original layout across all five permitted motion combinations in all four fonts and both numeral styles/division styles')
     page.evaluate('''()=>{
       const L=i=>({op:'lit',i,j:i+1}),B=(op,a,b)=>({op,a,b});
       const formulas={
@@ -75,7 +74,7 @@ with sync_playwright() as p:
     }''')
     page.emulate_media(reduced_motion='no-preference')
     for font,numerals in [(f,n) for f in ['stix2','termes','fira','euler'] for n in ['lining','oldstyle']]:
-        display(font=font,numerals=numerals,division='fraction',symbolMotion=False,structureMotion=False,symbolMorph=True)
+        display(font=font,numerals=numerals,division='fraction',symbolMotion=True,structureMotion=False,symbolMorph=True)
         preview('12:34:10',750)
         samples=page.evaluate('''async()=>{
           const el=document.querySelector('[data-site="add-b1-0"]');window.rotating=el;
@@ -128,7 +127,7 @@ with sync_playwright() as p:
         for kind,op,second in arithmetic:
             preview(f'12:36:{second:02}')
             baseline[kind]=page.evaluate('geometry()')
-        display(symbolMorph=True)
+        display(symbolMotion=True,structureMotion=True,symbolMorph=True)
         # Warm all frames so the samples measure animation, not typesetting latency.
         for kind,op,second in arithmetic:preview(f'12:36:{second:02}')
         page.emulate_media(reduced_motion='no-preference')
@@ -202,7 +201,8 @@ with sync_playwright() as p:
     assert page.locator('#operator-root').evaluate('(el)=>el.getAnimations({subtree:true}).length')==0
     preview('00:00:08');assert page.locator('#operator-root > g').count()==0
     preview('12:34:10');display(symbolMorph=False)
-    assert page.locator('#operator-root > g').count()==0
+    assert page.locator('#operator-root > g').count()==3
+    assert page.locator('[data-morph-glyph],[data-morphing]').count()==0
     page.set_viewport_size({'width':320,'height':640})
     page.click('#settings-open')
     if page.locator('#advanced-settings').get_attribute('open') is None:page.click('#advanced-settings summary')
@@ -211,9 +211,9 @@ with sync_playwright() as p:
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
     assert page.evaluate('FormulaClock.digits.every((el,i)=>el===originalDigits[i]) && document.querySelector("#equal-sign")===originalEqual')
     page.reload();page.wait_for_function('FormulaClock.state.engineReady && FormulaClock.state.layout')
-    assert page.evaluate('FormulaClock.state.display.symbolMorph && !FormulaClock.state.display.symbolMotion')
+    assert page.evaluate('FormulaClock.state.display.symbolMorph && FormulaClock.state.display.symbolMotion')
     assert not errors,errors
-    report['checks'].append('Rapid interruptions keep bounded glyph layers and clean up fully; reduced motion cancels rotation/fades; null/off clear signs; independent mobile setting persists')
+    report['checks'].append('Rapid interruptions keep bounded glyph layers and clean up fully; reduced motion cancels rotation/fades; null clears signs; disabling morph retains basic signs; mobile setting and its prerequisites persist')
     browser.close()
 report['pageErrors']=errors;report['warnings']=sorted(set(warnings))
 (args.output_dir/'results.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')

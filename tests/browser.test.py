@@ -20,6 +20,8 @@ ap.add_argument('--url',default=(ROOT/'index.html').as_uri())
 ap.add_argument('--browser',choices=['chromium','firefox','webkit'],default='chromium')
 ap.add_argument('--output-dir',type=Path)
 args=ap.parse_args()
+# Either optional motion feature includes the basic-symbol prerequisite.
+args.symbol_motion = args.symbol_motion or args.structure_motion or args.symbol_morph
 out=args.output_dir or ROOT/'test-results'/args.browser
 out.mkdir(parents=True,exist_ok=True)
 report={'build':'r6-minimal','compatibilityOnly':bool(args.local_mathjax),'url':args.url,'browser':args.browser,'playwright':version('playwright'),'python':platform.python_version(),'command':sys.argv,'at':datetime.now(timezone.utc).isoformat(),'cases':[], 'checks':[]}

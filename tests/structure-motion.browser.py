@@ -189,12 +189,12 @@ with sync_playwright() as p:
     preview('null',80);assert page.locator('#operator-root > g').count()==0
     display(symbolMotion=False,structureMotion=False);preview('root-wide')
     assert page.locator('#operator-root > g').count()==0
-    display(structureMotion=True)
+    display(symbolMotion=True,structureMotion=True)
     assert page.locator('#operator-root [data-kind="root-sign"]').count()==1
     assert page.evaluate('FormulaClock.digits.every((el,i)=>el===originalDigits[i]) && document.querySelector("#equal-sign")===originalEqual')
     page.reload();page.wait_for_function('FormulaClock.state.engineReady && FormulaClock.state.layout');page.wait_for_timeout(750)
-    assert page.evaluate('FormulaClock.state.display.structureMotion && !FormulaClock.state.display.symbolMotion')
-    report['checks'].append('No stale symbols after rapid previews/null; mobile fits; independent toggle persists; reduced motion snaps; persistent digits/equality remain intact')
+    assert page.evaluate('FormulaClock.state.display.structureMotion && FormulaClock.state.display.symbolMotion')
+    report['checks'].append('No stale symbols after rapid previews/null; mobile fits; structure motion and its prerequisite persist; reduced motion snaps; persistent digits/equality remain intact')
     assert not errors,errors
     browser.close()
 report['pageErrors']=errors;report['warnings']=sorted(set(warnings));report['cdnRequests']=sorted(set(cdn))

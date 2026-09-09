@@ -30,12 +30,13 @@ export interface DisplayOptions {
   division: 'fraction' | 'inline';
   /** Experimental reuse of +, −, ×, ÷ and ! glyphs. Defaults to false. */
   symbolMotion: boolean;
-  /** Experimental rule/√/parenthesis motion, retaining font size identity. Defaults to false. */
+  /** Experimental rule/√/parenthesis motion. Defaults to false; requires symbolMotion. */
   structureMotion: boolean;
-  /** Experimental +/−/×/÷ rotation and crossfade at the same HHMM gap. Defaults to false. */
+  /** Experimental +/−/×/÷ rotation and crossfade. Defaults to false; requires symbolMotion, independently of structureMotion. */
   symbolMorph: boolean;
 }
 export interface FormulaClockAPI {
+  /** Disabling a prerequisite also disables dependent motion options; enabling it does not restore them. */
   setDisplay(options: Partial<DisplayOptions>): Promise<void>;
   setDataProvider(provider: FormulaProvider): void;
   preview(time: string | Date, paused?: boolean): void;
