@@ -1,0 +1,271 @@
+{
+  "at": "2026-09-09T12:10:13.459092+00:00",
+  "change": "Small clock uses the selected MathJax font in six fixed-width persistent digit cells; fixed colon positions and 300ms visibility fades.",
+  "sourceSha256": {
+    "_head.html": "e404dc30c06aafe9692081d51246aef1afc8dc1400b1499dcd8e0dcbdd9237ac",
+    "typesetter.js": "a4e86c564dc7a6047ef4afecbc4f87746962f18a42a692cda219553a33a62c58",
+    "app.js": "10d8efed55aab08c872cfa4494084ad492d68fdb280e87e265974f57ecc53458",
+    "index.html": "d840c317289538f0e787a010ac5d9a6f54d788e2632f1e50998dc9905a89c1a8",
+    "tests/browser.test.py": "bb770752da717969ea1a26dce8711e8a461d9036adb42ce8f4462e64a6f9f829"
+  },
+  "node": {
+    "version": "22.23.2",
+    "commands": [
+      "npm run build",
+      "npm run build:external",
+      "npm test"
+    ],
+    "equations": 71456,
+    "serializations": 2446592,
+    "nodeTestCases": 25,
+    "result": "passed"
+  },
+  "browserRuns": [
+    {
+      "at": "2026-09-09T12:06:50.963428+00:00",
+      "command": [
+        "tests/browser.test.py",
+        "--url",
+        "http://127.0.0.1:8000/dist-external/",
+        "--symbol-motion",
+        "--structure-motion",
+        "--symbol-morph",
+        "--output-dir",
+        "test-results/source-clock-chromium"
+      ],
+      "url": "http://127.0.0.1:8000/dist-external/",
+      "browser": "chromium",
+      "browserVersion": "151.0.7922.34",
+      "playwright": "1.62.0",
+      "python": "3.14.6",
+      "mathjax": "4.1.3",
+      "compatibilityOnly": false,
+      "checks": [
+        "Minimal UI, two fonts, dialog dismissal/focus trapping, custom preview, stable stage position",
+        "32 formula/time layouts; 2 font profiles × 2 division modes; persistent HHMM elements; equal-sign axis",
+        "Small clock uses the selected math font with six persistent fixed-width digit cells, fixed colon centers, equal-size seconds and no clipped ascenders/descenders",
+        "Small-clock glyphs match the formula glyphs; unchanged digits and colon paths survive second changes",
+        "Oldstyle 3 descends below the baseline; 1 is shorter; native axis is preserved",
+        "Cached independent font engines; repeated font switching leaves expression and digit identity intact",
+        "320 / 390 / 768 px: no horizontal overflow; fractions, superscripts and plain time visible",
+        "HTTP provider crosses hour and midnight boundaries",
+        "Reduced-motion fractions and powers stay visible",
+        "Nested division produces visible denominator parentheses and remains a valid clock equation",
+        "Late old-provider response discarded; failed data delivery is distinct from null and displays ordinary time",
+        "Minute/table JSON import, malformed import leaves provider intact, restore initial data",
+        "Persistent equal-sign glyph moves continuously on the fixed axis; source time only appears above formulas with equal-size seconds",
+        "Fullscreen enters and exits without losing controls",
+        "Midnight audio: three countdown tones followed by the minute signal",
+        "Live hour prefetch is jittered once within :59:00–30; midnight, immediate current/preview/late-entry requests and skipped-minute/provider cleanup"
+      ],
+      "warnings": [
+        "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3",
+        "[Formula Clock] Formula data unavailable. Error: Test transport failure\n    at Object.getMinute (eval at evaluate (:311:30), <anonymous>:1:55)\n    at http://127.0.0.1:8000/dist-external/:1764:50",
+        "[Formula Clock] Formula data unavailable. Error: Test transport failure\n    at Object.getMinute (eval at evaluate (:311:30), <anonymous>:1:55)\n    at http://127.0.0.1:8000/dist-external/:1764:50",
+        "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset\n    at InlineProvider.getMinute (http://127.0.0.1:8000/dist-external/:1133:58)\n    at http://127.0.0.1:8000/dist-external/:1764:50",
+        "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset\n    at InlineProvider.getMinute (http://127.0.0.1:8000/dist-external/:1133:58)\n    at http://127.0.0.1:8000/dist-external/:1764:50"
+      ],
+      "pageErrors": [],
+      "cases": 32,
+      "fonts": [
+        "stix2",
+        "euler"
+      ],
+      "divisionModes": [
+        "fraction",
+        "inline"
+      ],
+      "experiments": [
+        "symbolMotion",
+        "structureMotion",
+        "symbolMorph"
+      ]
+    },
+    {
+      "at": "2026-09-09T12:07:12.839561+00:00",
+      "command": [
+        "tests/browser.test.py",
+        "--url",
+        "http://127.0.0.1:8000/dist-external/",
+        "--browser",
+        "firefox",
+        "--symbol-motion",
+        "--structure-motion",
+        "--symbol-morph",
+        "--output-dir",
+        "test-results/source-clock-firefox"
+      ],
+      "url": "http://127.0.0.1:8000/dist-external/",
+      "browser": "firefox",
+      "browserVersion": "153.0",
+      "playwright": "1.62.0",
+      "python": "3.14.6",
+      "mathjax": "4.1.3",
+      "compatibilityOnly": false,
+      "checks": [
+        "Minimal UI, two fonts, dialog dismissal/focus trapping, custom preview, stable stage position",
+        "32 formula/time layouts; 2 font profiles × 2 division modes; persistent HHMM elements; equal-sign axis",
+        "Small clock uses the selected math font with six persistent fixed-width digit cells, fixed colon centers, equal-size seconds and no clipped ascenders/descenders",
+        "Small-clock glyphs match the formula glyphs; unchanged digits and colon paths survive second changes",
+        "Oldstyle 3 descends below the baseline; 1 is shorter; native axis is preserved",
+        "Cached independent font engines; repeated font switching leaves expression and digit identity intact",
+        "320 / 390 / 768 px: no horizontal overflow; fractions, superscripts and plain time visible",
+        "HTTP provider crosses hour and midnight boundaries",
+        "Reduced-motion fractions and powers stay visible",
+        "Nested division produces visible denominator parentheses and remains a valid clock equation",
+        "Late old-provider response discarded; failed data delivery is distinct from null and displays ordinary time",
+        "Minute/table JSON import, malformed import leaves provider intact, restore initial data",
+        "Persistent equal-sign glyph moves continuously on the fixed axis; source time only appears above formulas with equal-size seconds",
+        "Fullscreen enters and exits without losing controls",
+        "Midnight audio: three countdown tones followed by the minute signal",
+        "Live hour prefetch is jittered once within :59:00–30; midnight, immediate current/preview/late-entry requests and skipped-minute/provider cleanup"
+      ],
+      "warnings": [
+        "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3",
+        "[Formula Clock] Formula data unavailable. Error",
+        "[Formula Clock] Formula data unavailable. Error",
+        "[Formula Clock] Formula data unavailable. Error",
+        "[Formula Clock] Formula data unavailable. Error"
+      ],
+      "pageErrors": [],
+      "cases": 32,
+      "fonts": [
+        "stix2",
+        "euler"
+      ],
+      "divisionModes": [
+        "fraction",
+        "inline"
+      ],
+      "experiments": [
+        "symbolMotion",
+        "structureMotion",
+        "symbolMorph"
+      ]
+    },
+    {
+      "at": "2026-09-09T12:07:16.895028+00:00",
+      "command": [
+        "tests/browser.test.py",
+        "--url",
+        "http://127.0.0.1:8000/dist-external/",
+        "--browser",
+        "webkit",
+        "--symbol-motion",
+        "--structure-motion",
+        "--symbol-morph",
+        "--output-dir",
+        "test-results/source-clock-webkit"
+      ],
+      "url": "http://127.0.0.1:8000/dist-external/",
+      "browser": "webkit",
+      "browserVersion": "26.5",
+      "playwright": "1.62.0",
+      "python": "3.14.6",
+      "mathjax": "4.1.3",
+      "compatibilityOnly": false,
+      "checks": [
+        "Minimal UI, two fonts, dialog dismissal/focus trapping, custom preview, stable stage position",
+        "32 formula/time layouts; 2 font profiles × 2 division modes; persistent HHMM elements; equal-sign axis",
+        "Small clock uses the selected math font with six persistent fixed-width digit cells, fixed colon centers, equal-size seconds and no clipped ascenders/descenders",
+        "Small-clock glyphs match the formula glyphs; unchanged digits and colon paths survive second changes",
+        "Oldstyle 3 descends below the baseline; 1 is shorter; native axis is preserved",
+        "Cached independent font engines; repeated font switching leaves expression and digit identity intact",
+        "320 / 390 / 768 px: no horizontal overflow; fractions, superscripts and plain time visible",
+        "HTTP provider crosses hour and midnight boundaries",
+        "Reduced-motion fractions and powers stay visible",
+        "Nested division produces visible denominator parentheses and remains a valid clock equation",
+        "Late old-provider response discarded; failed data delivery is distinct from null and displays ordinary time",
+        "Minute/table JSON import, malformed import leaves provider intact, restore initial data",
+        "Persistent equal-sign glyph moves continuously on the fixed axis; source time only appears above formulas with equal-size seconds",
+        "Fullscreen enters and exits without losing controls",
+        "Midnight audio: three countdown tones followed by the minute signal",
+        "Live hour prefetch is jittered once within :59:00–30; midnight, immediate current/preview/late-entry requests and skipped-minute/provider cleanup"
+      ],
+      "warnings": [
+        "Component [mathjax-euler-extension]/svg uses 4.0.0 of MathJax; version in use is 4.1.3",
+        "[Formula Clock] Formula data unavailable. Error: Test transport failure",
+        "[Formula Clock] Formula data unavailable. Error: Test transport failure",
+        "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset",
+        "[Formula Clock] Formula data unavailable. Error: Minute 1235 is absent from the dataset"
+      ],
+      "pageErrors": [],
+      "cases": 32,
+      "fonts": [
+        "stix2",
+        "euler"
+      ],
+      "divisionModes": [
+        "fraction",
+        "inline"
+      ],
+      "experiments": [
+        "symbolMotion",
+        "structureMotion",
+        "symbolMorph"
+      ]
+    }
+  ],
+  "fadeChecks": {
+    "at": "2026-09-09T12:08:09.212994+00:00",
+    "command": [
+      ".venv/bin/python",
+      "test-results/source-clock/fade-check.py"
+    ],
+    "runs": [
+      {
+        "browser": "chromium",
+        "browserVersion": "151.0.7922.34",
+        "mathjax": "4.1.3",
+        "font": "stix2",
+        "fadeOutSamples": 51,
+        "fadeInSamples": 51,
+        "reversal": {
+          "before": {
+            "opacity": 0.377123,
+            "visibility": "visible",
+            "y": 363.09375
+          },
+          "after": {
+            "opacity": 0.35054,
+            "visibility": "visible",
+            "y": 363.09375
+          },
+          "end": {
+            "opacity": 1,
+            "visibility": "visible",
+            "y": 363.09375
+          }
+        },
+        "reducedMotion": "passed"
+      },
+      {
+        "browser": "webkit",
+        "browserVersion": "26.5",
+        "mathjax": "4.1.3",
+        "font": "stix2",
+        "fadeOutSamples": 31,
+        "fadeInSamples": 31,
+        "reversal": {
+          "before": {
+            "opacity": 0.362514,
+            "visibility": "visible",
+            "y": 363.09375
+          },
+          "after": {
+            "opacity": 0.409054,
+            "visibility": "visible",
+            "y": 363.09375
+          },
+          "end": {
+            "opacity": 1,
+            "visibility": "visible",
+            "y": 363.09375
+          }
+        },
+        "reducedMotion": "passed"
+      }
+    ]
+  },
+  "visualReview": "Inspected STIX Two and Euler at desktop and 390px widths; inspected STIX Two in WebKit. Digit and colon positions are consistent and oldstyle descenders remain visible."
+}

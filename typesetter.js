@@ -186,7 +186,27 @@
       while (this.cache.size > 180) this.cache.delete(this.cache.keys().next().value);
       return task;
     }
-    async convert(tex, code, seconds) {
+    // The small clock uses a fixed set of glyphs from this same font engine.
+    // Prepare all ten digits and the colon once, rather than typesetting it every second.
+    clockFace() {
+      if (!this.clockFaceTask) {
+        const task = this.tail.then(() => this.boot).then(async () => {
+          const glyphs = {};
+          for (const [code,seconds] of [['0123',45],['1607',58],['0900',0]]) {
+            const tex = frameTex(null,code,seconds,this.profile);
+            const frame = await this.convert(tex,code,seconds,true);
+            for (const token of frame.tokens) glyphs[token.text] = token;
+            glyphs[':'] = frame.colons[0];
+          }
+          if (!glyphs[':'] || Object.keys(glyphs).length !== 11) throw new Error('Incomplete clock font');
+          return Object.freeze({font:this.profile.id,glyphs:Object.freeze(glyphs)});
+        });
+        this.clockFaceTask = task;
+        this.tail = task.catch(() => {});
+      }
+      return this.clockFaceTask;
+    }
+    async convert(tex, code, seconds, clockFace = false) {
       const node = await this.mathjax.tex2svgPromise(tex, { display: true, em: 16, ex: 8, containerWidth: 100000 });
       const svg = node.querySelector('svg');
       if (!svg || svg.querySelector('[data-mml-node="merror"]')) throw new Error('TeX typesetting failed');
@@ -259,7 +279,7 @@
             throw new Error(`Glyph outside SVG viewBox ${slot}`);
           }
           const center = new DOMPoint((minX+maxX)/2,(minY+maxY)/2).matrixTransform(new DOMMatrix(matrixArray(local)).inverse());
-          return { ...metadata, matrix: matrixArray(local), shape, inkCenter:[center.x,center.y] };
+          return { ...metadata, matrix: matrixArray(local), shape, inkCenter:[center.x,center.y], bounds:{x:minX,y:minY,w:maxX-minX,h:maxY-minY} };
         }
         const tokens = slots.map((slot, i) => {
           const symbol = symbolMarks.get(slot);
@@ -267,6 +287,8 @@
             slot, text:symbol ? symbol.kind : slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i-4], font:this.profile.id, ...symbol
           });
         });
+        const colons = clockFace ? [...svg.querySelectorAll('path[data-c="3A"]')].map((path,i) =>
+          glyphToken([path],{slot:`colon${i}`,text:':',font:this.profile.id})) : [];
         const structures = [];
         function ruleToken(rect, metadata) {
           const box = rect.getBBox(), ctm = rect.getScreenCTM();
@@ -327,7 +349,7 @@
         decorations.querySelectorAll('[data-fc-extract]').forEach(el => el.remove());
         // cssId is only a temporary typesetting marker, never an on-screen id.
         decorations.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-        return { tex, viewBox, tokens:tokens.slice(0,6), equality:equality ? tokens[6] : null, symbols:[...tokens.slice(symbolOffset),...structures], decorations, axisY, typography: this.typography, font: this.profile.id };
+        return { tex, viewBox, tokens:tokens.slice(0,6), colons, equality:equality ? tokens[6] : null, symbols:[...tokens.slice(symbolOffset),...structures], decorations, axisY, typography: this.typography, font: this.profile.id };
       } finally { node.remove(); }
     }
   }

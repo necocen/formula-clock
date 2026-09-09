@@ -47,6 +47,7 @@ with sync_playwright() as p:
     page.goto(args.url,wait_until='domcontentloaded')
     page.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout',timeout=35000)
     page.evaluate('window.originalDigits=FormulaClock.digits')
+    page.evaluate("window.originalSourceDigits=[...document.querySelectorAll('#source-time .source-digit')];window.originalSourceColons=[...document.querySelectorAll('#source-time .colon')]")
     report['mathjax']=page.evaluate('FormulaClock.diagnostics().mathjax')
     if not args.local_mathjax:assert report['mathjax']=='4.1.3'
     assert page.evaluate('FormulaClock.state.display.font')=='stix2'
@@ -127,6 +128,25 @@ with sync_playwright() as p:
         formula=page.evaluate("FormulaClock.state.layout.mode==='formula'")
         assert page.locator('#source-time').is_visible()==formula
         assert page.evaluate("getComputedStyle(document.querySelector('#source-second')).fontSize===getComputedStyle(document.querySelector('#source-time [data-digit]')).fontSize")
+        source=page.evaluate('''()=>{
+          const el=document.querySelector('#source-time'),svg=el.querySelector('svg'),inverse=svg.getScreenCTM().inverse();
+          const digits=[...el.querySelectorAll('.source-digit')],colons=[...el.querySelectorAll('.colon')];
+          function bounds(g){
+            const r=g.getBoundingClientRect(),p=new DOMPoint((r.left+r.right)/2,(r.top+r.bottom)/2).matrixTransform(inverse);
+            return {x:p.x,y:p.y,inside:r.left>=el.getBoundingClientRect().left && r.right<=el.getBoundingClientRect().right && r.top>=el.getBoundingClientRect().top && r.bottom<=el.getBoundingClientRect().bottom};
+          }
+          return {font:el.dataset.font,text:digits.map(g=>g.dataset.value).join(''),
+            persistent:digits.every((g,i)=>g===originalSourceDigits[i]) && colons.every((g,i)=>g===originalSourceColons[i]),
+            digits:digits.map(bounds),colons:colons.map(bounds),
+            glyphFonts:digits.map(g=>g.querySelector('path').getAttribute('data-glyph-key'))};
+        }''')
+        state=page.evaluate('FormulaClock.state.layout')
+        assert source['font']==state['display']['font'] and source['persistent'],source
+        assert source['text']==state['code']+f"{state['seconds']:02d}",source
+        assert all(g['inside'] for g in source['digits']+source['colons']),source
+        assert all(abs(g['x']-x)<1 for g,x in zip(source['digits'],[525,1275,2625,3375,4725,5475])),source
+        assert all(abs(g['x']-x)<1 and abs(g['y']-550)<1 for g,x in zip(source['colons'],[1950,4050])),source
+        if not args.local_mathjax:assert all(key.startswith(source['font']+'@4.1.3:') for key in source['glyphFonts']),source
         assert page.locator('#notation-root path[data-c="3D"]').count()==0
         return {'time':diag['time'],'display':diag['display'],'axisErrorPx':delta,'fontAxis':diag['typography']['axisEm']}
 
@@ -140,6 +160,19 @@ with sync_playwright() as p:
             if font!='euler':assert diag['typography']['axisEm']==diag['typography']['originalAxisEm']
             else:assert diag['typography']['axisEm']==diag['typography']['numericAxisEm']
     report['checks'].append('32 formula/time layouts; 2 font profiles × 2 division modes; persistent HHMM elements; equal-sign axis')
+    report['checks'].append('Small clock uses the selected math font with six persistent fixed-width digit cells, fixed colon centers, equal-size seconds and no clipped ascenders/descenders')
+
+    # Reusing unchanged small-clock digits must preserve their glyph children too.
+    settings('stix2','fraction');preview('12:34:30')
+    page.evaluate("window.sourceChildren=originalSourceDigits.map(g=>g.firstChild);window.colonChildren=originalSourceColons.map(g=>g.firstChild)")
+    preview('12:34:31')
+    assert page.evaluate('originalSourceDigits.slice(0,5).every((g,i)=>g.firstChild===sourceChildren[i]) && originalSourceColons.every((g,i)=>g.firstChild===colonChildren[i])')
+    assert page.evaluate('originalSourceDigits[5].firstChild!==sourceChildren[5]')
+    assert page.evaluate('''()=>originalSourceDigits.every((g,i)=>{
+      const lower=i<4?FormulaClock.digits[i]:document.querySelector('.answer-digit[data-second="'+(i-4)+'"]');
+      return JSON.stringify([...g.querySelectorAll('path')].map(p=>p.getAttribute('d')))===JSON.stringify([...lower.querySelectorAll('path')].map(p=>p.getAttribute('d')));
+    })''')
+    report['checks'].append('Small-clock glyphs match the formula glyphs; unchanged digits and colon paths survive second changes')
 
     settings('stix2','inline');preview('12:34:08')
     glyphs=page.evaluate('FormulaClock.diagnostics().glyphs')

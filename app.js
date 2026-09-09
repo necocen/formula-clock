@@ -3,7 +3,8 @@
   'use strict';
   const $ = s => document.querySelector(s);
   const stage = $('#stage'), digitsEls = [...stage.querySelectorAll('.digit')];
-  const sourceEls = [...$('#source-time').querySelectorAll('[data-digit]')];
+  const sourceTime = $('#source-time'), sourceEls = [...sourceTime.querySelectorAll('.source-digit')];
+  const sourceColons = [...sourceTime.querySelectorAll('.colon')];
   const cache = new Map(), pending = new Map();
   const settingsDialog = $('#settings'), settingsButton = $('#settings-open');
   const licenseDialog = $('#licenses');
@@ -94,11 +95,15 @@
 
   // MathJax computes the layout; persistent digits and equality display it.
   // The four HHMM objects are never recreated, including ordinary clock mode.
-  const engines = new Map();
+  const engines = new Map(), clockFaces = new Map();
   function engineFor(font) {
     if (!engines.has(font)) {
       const engine = new FormulaTypesetter.Typesetter(font);
       engines.set(font,engine);
+      engine.clockFace().then(face => {
+        clockFaces.set(font,face);
+        if (displaySettings.font === font) { lastVisual=''; refresh(true); }
+      }).catch(error => console.warn('[Formula Clock] Small clock font unavailable.',error));
       engine.boot.then(() => {
         if (displaySettings.font === font) { lastVisual=''; refresh(true); }
       }).catch(error => {
@@ -253,10 +258,35 @@
     const full = `${code.slice(0,2)}:${code.slice(2)}:${pad(seconds)}`;
     [...plainTime.querySelectorAll('span')].forEach((el, i) => { el.textContent = full[i]; });
     plainTime.hidden = false; scene.style.visibility = 'hidden';
-    $('#source-time').hidden = true;
+    sourceTime.hidden = true;
     stage.classList.add('resting');
     stage.setAttribute('aria-label', full);
     $('#engine-status').textContent = reason;
+  }
+  function renderSourceTime(font, code, seconds, visible) {
+    const face = clockFaces.get(font);
+    if (face) {
+      const colon = face.glyphs[':'];
+      // Six equal 750-unit cells keep every digit stationary, even with oldstyle
+      // or proportional glyphs. Two fixed 600-unit separators complete the row.
+      const centers = [525,1275,2625,3375,4725,5475];
+      const baseline = 550 - (colon.bounds.y + colon.bounds.h / 2);
+      function place(el, text, center) {
+        const token = face.glyphs[text];
+        if (el.dataset.font === font && el.dataset.value === text) return;
+        const matrix = token.matrix.slice();
+        matrix[4] += center - (token.bounds.x + token.bounds.w / 2);
+        matrix[5] += baseline;
+        el.replaceChildren(token.shape.cloneNode(true));
+        el.setAttribute('transform',matrixString(matrix));
+        el.dataset.font = font; el.dataset.value = text;
+      }
+      const text = code + pad(seconds);
+      sourceEls.forEach((el,i) => place(el,text[i],centers[i]));
+      sourceColons.forEach((el,i) => place(el,':',1950 + i * 2100));
+      sourceTime.dataset.font = font;
+    }
+    sourceTime.hidden = !visible || !face;
   }
   function applyFrame(frame, ast, code, seconds, loading, instant, view) {
     const W = stage.clientWidth, H = stage.clientHeight, b = frame.viewBox;
@@ -318,7 +348,7 @@
     stage.classList.toggle('resting', !ast);
     stage.classList.toggle('loading', loading);
     plainTime.hidden = true; scene.style.visibility = 'visible';
-    $('#source-time').hidden = !ast || loading;
+    renderSourceTime(frame.font,code,seconds,!!ast && !loading);
     $('#engine-status').textContent = `MathJax · ${FormulaTypesetter.PROFILES[frame.font].label} / SVG`;
     stage.setAttribute('aria-label', ast ? `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒。${FormulaExpression.plain(ast, code)} = ${seconds}` : `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒`);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
@@ -412,9 +442,7 @@
       requestSolutions(nextPrefetch.code);
       nextPrefetch = null;
     }
-    sourceEls.forEach((el, i) => { el.textContent = code[i]; });
-    $('#source-second').textContent = pad(seconds);
-    $('#source-time').setAttribute('aria-label', `${pad(now.getHours())}時${pad(now.getMinutes())}分${pad(seconds)}秒`);
+    sourceTime.setAttribute('aria-label', `${pad(now.getHours())}時${pad(now.getMinutes())}分${pad(seconds)}秒`);
     $('#playback').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(seconds)}`;
     const ast = result?.solutions[seconds] || null;
     renderExpression(ast, code, seconds, !result);
