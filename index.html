@@ -2168,7 +2168,7 @@ Important Recommendations
 
   // Audio is scheduled independently of layout. There is no replay of missed signals.
   class TimeSignal {
-    constructor() { this.ctx = null; this.master = null; this.enabled = false; this.volume = .25; this.scheduled = new Set(); this.voices = new Set(); }
+    constructor() { this.ctx = null; this.master = null; this.enabled = false; this.volume = .25; this.scheduled = new Map(); this.voices = new Set(); }
     async toggle() {
       if (this.enabled) { this.enabled = false; this.cancel(); this.paint(); return; }
       try {
@@ -2177,7 +2177,7 @@ Important Recommendations
         if (!this.ctx) { this.ctx = new Audio(); this.master = this.ctx.createGain(); this.master.gain.value = this.volume * .32; this.master.connect(this.ctx.destination); }
         await this.ctx.resume();
         if (this.ctx.state !== 'running') throw new Error('Audio could not be enabled');
-        this.enabled = true; this.paint(); this.tone(880, this.ctx.currentTime + .02, .15, .28);
+        this.enabled = true; this.paint(); this.tone(1000, this.ctx.currentTime + .02, .15, .28);
       } catch (error) { console.error(error); this.enabled = false; this.paint(); $('#sound').setAttribute('aria-label','音を有効化できない'); $('#sound').title = '音を有効化できない'; }
     }
     paint() {
@@ -2191,17 +2191,27 @@ Important Recommendations
       if (!this.ctx || !this.enabled) return;
       const oscillator = this.ctx.createOscillator(), gain = this.ctx.createGain();
       oscillator.type = 'sine'; oscillator.frequency.value = frequency;
+      // Short ticks need a nearly rectangular pulse; the longer signal has a
+      // brief steady onset followed by a ringing decay. Both end at duration.
+      const attack = Math.min(.004,duration * .1);
       gain.gain.setValueAtTime(0, when);
-      gain.gain.linearRampToValueAtTime(strength, when + .008);
-      gain.gain.exponentialRampToValueAtTime(.001, when + duration);
-      gain.gain.linearRampToValueAtTime(0, when + duration + .025);
+      gain.gain.linearRampToValueAtTime(strength, when + attack);
+      if (duration > .1) {
+        gain.gain.setValueAtTime(strength, when + .08);
+        gain.gain.exponentialRampToValueAtTime(strength * .001, when + duration - .004);
+      } else gain.gain.setValueAtTime(strength, when + duration - attack);
+      gain.gain.linearRampToValueAtTime(0, when + duration);
       oscillator.connect(gain); gain.connect(this.master);
       this.voices.add(oscillator);
       oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); this.voices.delete(oscillator); };
-      oscillator.start(when); oscillator.stop(when + duration + .04);
+      oscillator.start(when); oscillator.stop(when + duration);
     }
     cancel() {
-      this.scheduled.clear();
+      // A briefly hidden/muted page must not repeat a tone that already began.
+      // Cancelled future tones may be scheduled again; transport changes use a
+      // new generation, so seeking or restarting a preview still works.
+      const now = this.ctx?.currentTime || 0;
+      for (const [key,when] of this.scheduled) if (when > now) this.scheduled.delete(key);
       for (const oscillator of this.voices) { try { oscillator.stop(); } catch {} }
       this.voices.clear();
     }
@@ -2212,14 +2222,18 @@ Important Recommendations
         const delay = (boundary - now) / (1000 * speed);
         if (delay < -.16 || delay > .16) continue;
         const date = new Date(boundary), sec = date.getSeconds();
-        const countdown = date.getHours() === 23 && date.getMinutes() === 59 && sec >= 57;
-        if (sec !== 0 && !countdown) continue;
+        const countdown = sec % 30 >= 27, marker = sec % 10 === 0;
+        // 117-style timing; lengths follow the published reproduction example,
+        // not an NTT specification. These three categories never overlap.
+        const frequency = marker ? 1000 : countdown ? 500 : 2000;
+        const duration = marker ? .9 : countdown ? .05 : .007;
         const key = `${generation}:${boundary}`;
         if (this.scheduled.has(key)) continue;
-        this.scheduled.add(key);
-        while (this.scheduled.size > 20) this.scheduled.delete(this.scheduled.values().next().value);
-        this.tone(countdown ? 440 : 880, this.ctx.currentTime + Math.max(0, delay), countdown ? .13 : 1.5, countdown ? .72 : 1);
-        eventHistory.push({ type: countdown ? 'countdown' : 'minute', time: boundary, frequency: countdown ? 440 : 880 });
+        const when = this.ctx.currentTime + Math.max(0, delay);
+        this.scheduled.set(key,when);
+        while (this.scheduled.size > 20) this.scheduled.delete(this.scheduled.keys().next().value);
+        this.tone(frequency, when, duration, marker ? 1 : countdown ? .72 : .5);
+        eventHistory.push({ type: sec === 0 ? 'minute' : marker ? 'ten-second' : countdown ? 'countdown' : 'second', time: boundary, frequency, duration });
         if (eventHistory.length > 30) eventHistory.shift();
       }
     }

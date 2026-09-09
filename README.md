@@ -36,6 +36,7 @@ python tests/browser.test.py --url http://127.0.0.1:8000/dist-external/ --symbol
 python tests/symbol-motion.browser.py --url http://127.0.0.1:8000/dist-external/
 python tests/structure-motion.browser.py --url http://127.0.0.1:8000/dist-external/
 python tests/symbol-morph.browser.py --url http://127.0.0.1:8000/dist-external/
+python tests/audio.browser.py --url http://127.0.0.1:8000/dist-external/
 ```
 
 以下はr5時点の引き継ぎ資料です。現行UIは右上の設定に集約され、書体はSTIX Two / Eulerの2種類、
@@ -49,6 +50,15 @@ python tests/symbol-morph.browser.py --url http://127.0.0.1:8000/dist-external/
 この下はSTIX Two版の既存README。今回の引き継ぎで時計本体の動作は変更していない。
 
 HHMMの4桁からSSを表す数式を表示する時計。r4の事前生成データ・数式ツリー・数字の同一性を維持するアニメーションを引き継ぎ、STIX Twoのオールドスタイル数字を追加した。
+
+## 時報
+
+音をオンにすると、117風の秒音・予告音・時報音を鳴らします（音声アナウンスはありません）。
+通常の秒は2000 Hz / 7 ms、27・28・29秒と57・58・59秒は500 Hz / 50 ms、
+00・10・20・30・40・50秒は1000 Hz / 900 msです。短音は素早く切り、時報音には減衰する余韻を付けています。
+周波数は[AGCの解説](https://www.asahiglassplaza.net/gp-pro/knowledge/vol5_sub.html)、
+長さは[再現キットの仕様・3ページ](https://akizukidenshi.com/goodsaffix/manu006.pdf)を参考にしています。NTT公式規格の完全再現ではありません。
+音量・オン／オフ・プレビューの再生／停止に連動し、0.5倍速でも音程と音の長さは変えません。
 
 ## 表示
 

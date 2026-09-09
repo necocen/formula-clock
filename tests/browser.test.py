@@ -316,8 +316,9 @@ with sync_playwright() as p:
 
     page.click('#sound');page.evaluate("FormulaClock.preview('2026-09-08T23:59:56.700+09:00',false)");page.wait_for_timeout(4750)
     audio=page.evaluate('FormulaClock.state.audio')
-    assert [x['frequency'] for x in audio[-4:]]==[440,440,440,880],audio
-    report['checks'].append('Midnight audio: three countdown tones followed by the minute signal')
+    midnight=[x for x in audio if x['type'] in ['countdown','minute']]
+    assert [x['frequency'] for x in midnight[-4:]]==[500,500,500,1000],audio
+    report['checks'].append('117-style midnight audio: three 500 Hz countdown pulses followed by the 1000 Hz minute signal')
 
     # Fix wall time while leaving rendering timers running. Observe the public
     # provider contract so the same scheduling checks apply to either delivery mode.
