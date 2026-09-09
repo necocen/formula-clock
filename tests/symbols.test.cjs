@@ -50,3 +50,19 @@ test('radical sign and rule are replaced together on size change; fraction rules
   const f=glyph('fraction-rule','frac-b2-0',{glyphKey:'rule'});
   assert.deepEqual(match([f],[f,{...f,site:'frac-b3-0'}]),[0,-1]);
 });
+test('part 3 rotates plus and multiplication only at the same gap and within the same font',()=>{
+  const plus=site=>glyph('+',`add-${site}`,{font:'stix2'}),times=site=>glyph('×',`mul-${site}`,{font:'stix2'});
+  assert.deepEqual(match([plus('b1-0')],[times('b1-0')]),[-1]);
+  assert.deepEqual(match([plus('b1-0')],[times('b1-0')],{morph:true}),[0]);
+  assert.deepEqual(match([times('b1-0')],[plus('b1-0')],{morph:true}),[0]);
+  assert.deepEqual(match([plus('b1-0')],[times('b2-0')],{morph:true}),[-1]);
+  assert.deepEqual(match([plus('b1-0')],[{...times('b1-0'),font:'euler'}],{morph:true}),[-1]);
+  assert.deepEqual(match([{...plus('b1-0'),exiting:true}],[times('b1-0')],{morph:true}),[-1]);
+  assert.deepEqual(match([plus('b1-0')],[glyph('−','sub-b1-0',{font:'stix2'})],{morph:true}),[-1]);
+});
+test('rotation matches never steal an exact identity or exchange gaps',()=>{
+  const old=[glyph('+','add-b1-0',{font:'euler'}),glyph('×','mul-b2-0',{font:'euler'})];
+  const next=[glyph('×','mul-b1-0',{font:'euler'}),glyph('+','add-b2-0',{font:'euler'})];
+  assert.deepEqual(match(old,next,{morph:true}),[0,1]);
+  assert.deepEqual(match(old,[old[0],next[0]],{morph:true}),[0,-1]);
+});

@@ -10,9 +10,15 @@
 √のサイズが変わるときは、開き部分と上線を一緒にフェードさせます。
 複数の部品から組み立てる極端に大きな√・括弧は、従来どおりフェード表示します。
 
+パート3は「＋と×を回す（実験的3）」。同じ桁の境界で `＋ ↔ ×` が入れ替わるとき、
+字形の中心を揃えて45度回転させながらクロスフェードします。最後はフォント本来の字形になります。
+初期値はオフで、パート1・2とは独立して使えます。別の持ち場・別の書体・ほかの記号との交換には適用しません。
+途中で反転しても現在の角度と濃さから再開し、reduced-motionでは回転しません。
+
 ```js
 await FormulaClock.setDisplay({symbolMotion: true});
 await FormulaClock.setDisplay({structureMotion: true});
+await FormulaClock.setDisplay({symbolMorph: true});
 ```
 
 記号は同じ持ち場に残る場合だけ引き継ぎます。二項演算子はHHMMの同じ桁の境界、
@@ -25,9 +31,10 @@ await FormulaClock.setDisplay({structureMotion: true});
 npm test
 npm run build
 npm run build:external
-python tests/browser.test.py --url http://127.0.0.1:8000/dist-external/ --symbol-motion --structure-motion
+python tests/browser.test.py --url http://127.0.0.1:8000/dist-external/ --symbol-motion --structure-motion --symbol-morph
 python tests/symbol-motion.browser.py --url http://127.0.0.1:8000/dist-external/
 python tests/structure-motion.browser.py --url http://127.0.0.1:8000/dist-external/
+python tests/symbol-morph.browser.py --url http://127.0.0.1:8000/dist-external/
 ```
 
 以下はr5時点の引き継ぎ資料です。現行UIは右上の設定に集約され、書体はSTIX Two / Eulerの2種類、

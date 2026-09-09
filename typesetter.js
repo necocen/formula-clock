@@ -258,12 +258,13 @@
               maxY < v.y - slack || minY > v.y + v.height + slack) {
             throw new Error(`Glyph outside SVG viewBox ${slot}`);
           }
-          return { ...metadata, matrix: matrixArray(local), shape };
+          const center = new DOMPoint((minX+maxX)/2,(minY+maxY)/2).matrixTransform(new DOMMatrix(matrixArray(local)).inverse());
+          return { ...metadata, matrix: matrixArray(local), shape, inkCenter:[center.x,center.y] };
         }
         const tokens = slots.map((slot, i) => {
           const symbol = symbolMarks.get(slot);
           return glyphToken([...svg.querySelectorAll(`#fc-${slot} path`)], {
-            slot, text:symbol ? symbol.kind : slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i-4], ...symbol
+            slot, text:symbol ? symbol.kind : slot === 'eq' ? '=' : i < 4 ? code[i] : secondsText[i-4], font:this.profile.id, ...symbol
           });
         });
         const structures = [];

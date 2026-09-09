@@ -52,7 +52,8 @@
     font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
     division: ['fraction','inline'].includes(saved.division) ? saved.division : 'fraction',
     symbolMotion: saved.symbolMotion === true,
-    structureMotion: saved.structureMotion === true
+    structureMotion: saved.structureMotion === true,
+    symbolMorph: saved.symbolMorph === true
   };
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
@@ -109,10 +110,11 @@
   let typesetter = engineFor(displaySettings.font);
   async function setDisplay(changes) {
     const next = {...displaySettings,...changes};
-    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division) || typeof next.symbolMotion !== 'boolean' || typeof next.structureMotion !== 'boolean') throw new TypeError('Invalid display options');
-    displaySettings = {font:next.font,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion};
+    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
+    displaySettings = {font:next.font,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
     $('#symbol-motion').checked = next.symbolMotion;
     $('#structure-motion').checked = next.structureMotion;
+    $('#symbol-morph').checked = next.symbolMorph;
     $('#font-choice').value = next.font; $('#division-choice').value = next.division;
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
     typesetter = engineFor(next.font); engineError=null; lastVisual='';
@@ -123,6 +125,8 @@
   $('#symbol-motion').addEventListener('change',e=>{setDisplay({symbolMotion:e.target.checked}).catch(()=>{});});
   $('#structure-motion').checked = displaySettings.structureMotion;
   $('#structure-motion').addEventListener('change',e=>{setDisplay({structureMotion:e.target.checked}).catch(()=>{});});
+  $('#symbol-morph').checked = displaySettings.symbolMorph;
+  $('#symbol-morph').addEventListener('change',e=>{setDisplay({symbolMorph:e.target.checked}).catch(()=>{});});
   $('#font-choice').value = displaySettings.font;
   $('#division-choice').value = displaySettings.division;
   $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
@@ -133,6 +137,7 @@
   const movingEls = [...digitsEls, ...secondsEls];
   const plainTime = $('#plain-time');
   const movement = new Map();
+  const morphs = new Map();
   let notation = null, lastVisual = '', firstFrame = true, latestLayout = null;
   let requestSerial = 0, animationId = 0, engineError = null;
   const reportedRenderErrors = new Set();
@@ -152,6 +157,11 @@
       el.setAttribute('transform', matrixString(matrix));
       if (now - record.started < DURATION) active = true;
     }
+    for (const [el, record] of morphs) {
+      paintMorph(record,now);
+      if (now - record.started < DURATION) active = true;
+      else finishMorph(el);
+    }
     animationId = active ? requestAnimationFrame(animatePositions) : 0;
   }
   function setPosition(el, target, animated, now) {
@@ -165,10 +175,51 @@
     if (reducedMotion.matches) return;
     el.animate(delayed ? [{ opacity: 0 }, { opacity: 0, offset: .18 }, { opacity: 1 }] : [{ opacity: .15 }, { opacity: 1 }], { duration, easing: 'ease-out' });
   }
-  function updateSymbols(tokens,animated,placeToken) {
+  function morphStateAt(record,now) {
+    const p = Math.min(1,Math.max(0,(now-record.started)/DURATION));
+    const k = p*p*(3-2*p), mix = (a,b)=>a+(b-a)*k;
+    return {angle:mix(record.from.angle,record.to.angle),blend:mix(record.from.blend,record.to.blend),
+      center:record.from.center.map((v,i)=>mix(v,record.to.center[i]))};
+  }
+  function paintMorph(record,now) {
+    const state=morphStateAt(record,now);
+    for (const [kind,part] of Object.entries(record.parts)) {
+      const angle=state.angle-(kind==='×'?45:0);
+      part.group.setAttribute('transform',`translate(${state.center.join(' ')}) rotate(${angle}) translate(${-part.center[0]} ${-part.center[1]})`);
+      part.group.setAttribute('opacity',kind==='+' ? 1-state.blend : state.blend);
+    }
+    return state;
+  }
+  function finishMorph(el) {
+    const record=morphs.get(el);
+    if (!record) return;
+    el.replaceChildren(record.parts[record.target].shape);
+    el.removeAttribute('data-morphing');morphs.delete(el);
+  }
+  function startMorph(el,oldToken,token,now) {
+    const existing=morphs.get(el);
+    const from=existing ? paintMorph(existing,now) : {
+      angle:oldToken.kind==='+'?0:45,blend:oldToken.kind==='+'?0:1,center:oldToken.inkCenter
+    };
+    el.getAnimations({subtree:true}).forEach(animation=>animation.cancel());
+    const parts=existing?.parts || {};
+    for (const glyph of [oldToken,token]) {
+      if (parts[glyph.kind]) continue;
+      const group=document.createElementNS(mathNS,'g'),shape=glyph.shape.cloneNode(true);
+      group.dataset.morphGlyph=glyph.kind;group.append(shape);
+      parts[glyph.kind]={group,shape,center:glyph.inkCenter};
+    }
+    // Reversal reuses these same two glyphs and their current angle/opacity,
+    // so repeated interruptions never accumulate nested snapshots or layers.
+    const record={parts,from,to:{angle:token.kind==='+'?0:45,blend:token.kind==='+'?0:1,center:token.inkCenter},started:now,target:token.kind};
+    el.replaceChildren(parts['+'].group,parts['×'].group);
+    el.dataset.morphing='true';el.dataset.value=token.text;el._shapeKey=token.shape.innerHTML;
+    morphs.set(el,record);paintMorph(record,now);
+  }
+  function updateSymbols(tokens,animated,placeToken,morphEnabled) {
     const previous=[...symbolRecords];
     const old=previous.map(record=>({...record.token,exiting:record.exiting}));
-    const matches=FormulaSymbols.match(old,tokens),used=new Set();
+    const matches=FormulaSymbols.match(old,tokens,{morph:animated && morphEnabled}),used=new Set();
     tokens.forEach((token,i)=>{
       let record=previous[matches[i]];
       if(!record) {
@@ -180,14 +231,15 @@
         record.animation.cancel();record.animation=null;
         if(animated)record.el.animate([{opacity},{opacity:1}],{duration:180});
       }
+      const oldToken=record.token;
       used.add(record);record.exiting=false;record.token=token;
       record.el.dataset.kind=token.kind;
       record.el.dataset.site=token.site;
       record.el.dataset.glyphKey=token.glyphKey || '';
-      placeToken(token,record.el);
+      placeToken(token,record.el,oldToken && FormulaSymbols.morphPair(oldToken,token) ? oldToken : null);
     });
     for(const record of previous) if(!used.has(record)) {
-      const remove=()=>{record.el.remove();movement.delete(record.el);symbolRecords.delete(record);};
+      const remove=()=>{record.el.remove();movement.delete(record.el);morphs.delete(record.el);symbolRecords.delete(record);};
       if(!animated){record.animation?.cancel();remove();continue;}
       if(record.exiting)continue;
       record.exiting=true;
@@ -222,7 +274,9 @@
     // if DOM work between their updates takes a few milliseconds.
     const positionTime = performance.now();
     const items = [];
-    function placeToken(token, el) {
+    function placeToken(token, el, morphFrom = null) {
+      if (morphFrom && animated && view.symbolMorph) startMorph(el,morphFrom,token,positionTime);
+      else if (!animated || !view.symbolMorph || el._shapeKey !== token.shape.innerHTML || el.dataset.value !== token.text) finishMorph(el);
       // A preference change may interrupt an existing fade on a reused glyph.
       if (!animated) el.getAnimations({subtree:true}).forEach(animation => animation.cancel());
       // Preserve the glyph's child nodes too until this clock position changes digit.
@@ -242,7 +296,7 @@
     // Equality keeps its glyph and interpolates with the digits; other signs fade.
     if (frame.equality) placeToken(frame.equality,equalSign);
     equalSign.style.opacity = frame.equality ? '1' : '0';
-    updateSymbols(frame.symbols,animated,placeToken);
+    updateSymbols(frame.symbols,animated,placeToken,view.symbolMorph);
     const layer = document.createElementNS(mathNS, 'g');
     layer.classList.add('notation-layer');
     const content = frame.decorations.cloneNode(true);
@@ -271,7 +325,7 @@
   }
   function renderExpression(ast, code, seconds, loading, instant = false) {
     const engine = typesetter, view = {...displaySettings};
-    const key = `${view.font}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
+    const key = `${view.font}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;

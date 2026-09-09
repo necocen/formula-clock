@@ -30,6 +30,8 @@ export interface DisplayOptions {
   symbolMotion: boolean;
   /** Experimental rule/√/parenthesis motion, retaining font size identity. Defaults to false. */
   structureMotion: boolean;
+  /** Experimental +/× rotation and crossfade at the same HHMM gap. Defaults to false. */
+  symbolMorph: boolean;
 }
 export interface FormulaClockAPI {
   setDisplay(options: Partial<DisplayOptions>): Promise<void>;

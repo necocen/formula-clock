@@ -39,7 +39,7 @@
   function options(value = {}) {
     const division = value.division ?? 'fraction';
     if (!['fraction','inline'].includes(division)) throw new TypeError('Unknown division style');
-    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true, structureMotion: value.structureMotion === true };
+    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true, structureMotion: value.structureMotion === true, symbolMorph: value.symbolMorph === true };
   }
   function mark(slot, digit, opt) {
     const glyph = opt.oldstyle ? `{\\oldstyle ${digit}}` : digit;
@@ -77,7 +77,7 @@
     }
     const enclose = (a,tex) => structure('paren',a,parens(tex));
     function symbol(a, glyph, texClass) {
-      if (!opt.symbolMotion) {
+      if (!opt.symbolMotion && !(opt.symbolMorph && ['add','mul'].includes(a.op))) {
         if (a.op === 'neg') return negative(opt);
         return a.op === 'fact' ? glyph : binary(glyph,opt);
       }

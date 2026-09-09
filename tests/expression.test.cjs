@@ -53,8 +53,8 @@ const profiles=[{oldstyle:false,centerOperators:true},{oldstyle:true,centerOpera
 let equations=0,serializations=0,rest=0;
 const start=Date.now();
 function roundtrip(ast,code){
- for(const profile of profiles)for(const division of ['fraction','inline'])for(const symbolMotion of [false,true])for(const structureMotion of [false,true]){
-  const opt={...profile,division,symbolMotion,structureMotion},tex=E.expressionTex(ast,code,opt), parsed=parse(tex);
+ for(const profile of profiles)for(const division of ['fraction','inline'])for(const symbolMotion of [false,true])for(const structureMotion of [false,true])for(const symbolMorph of [false,true]){
+  const opt={...profile,division,symbolMotion,structureMotion,symbolMorph},tex=E.expressionTex(ast,code,opt), parsed=parse(tex);
   assert.deepEqual(canonical(parsed),canonical(ast),`${code}: ${tex}`);
   assert.ok(!tex.includes('!!'));
   assert.deepEqual([...tex.matchAll(/\{fc-d(\d)\}/g)].map(m=>+m[1]),[0,1,2,3]);
