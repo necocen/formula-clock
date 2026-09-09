@@ -1,0 +1,452 @@
+{
+  "at": "2026-09-09T14:26:24.931870+00:00",
+  "change": "Persist audio enabled/volume preferences; retain checked structure/morph preferences while basic symbol motion is disabled, masking only render settings",
+  "sourceSHA256": {
+    "app.js": "9fa36e6fbbca99c24c8cf7ed4200e24b4b695331ff839530329ede05828a8919",
+    "index.html": "7353268ab17b95947d452341a480b63acf2d1479443effa63dda88999fe1e6a4",
+    "dist-external/index.html": "2a1edf3d1372591808f30fb3088cf0afa67350ca05c914a8a51f0a6b9107bd9e",
+    "tests/audio-settings.browser.py": "c5af5e735e8d78ea62f2fcdb24033322404c1aa0a2d4f7be0534e9b00f744018",
+    "tests/audio.browser.py": "8673dae76fca38ed572a10398245d1d4b044f23874d3360c696d07c7b5ed807d",
+    "tests/motion-settings.browser.py": "b09c54d4a6a470a14279b8fbdfdfdf9a0e571cd4adaca48fff4d51a88915d4cf"
+  },
+  "node": {
+    "version": "22.17.1",
+    "runtime": "/Users/necocen/.local/share/mise/installs/node/22.17.1/bin/node",
+    "commands": [
+      "npm run build",
+      "npm run build:external",
+      "npm test"
+    ],
+    "passed": true,
+    "serializationChecks": 2446592,
+    "equations": 71456,
+    "builtinTestsPassed": 25
+  },
+  "checks": {
+    "audioSettings": [
+      "Fresh defaults remain off/25%; changing volume while off persists; reload preserves off/40%; enabling persists on and applies the restored volume to the native master gain",
+      "A pending restored resume keeps the on preference and button state; the first click resumes native audio at the saved gain, without an enable-feedback tone",
+      "Zero volume is preserved; muting a pending restore does not resume it or lose the saved off state when the old request finishes; keyboard M persists both states",
+      "Rapid on/off/on while resume is pending keeps the latest choice; Space on the sound button mutes without resuming; another key resumes even with the sound button focused, and only the latest enable attempt produces feedback",
+      "Malformed JSON, invalid types and out-of-range levels recover safely; valid 0%/100% survive; unavailable storage does not break volume, toggling or the clock",
+      "A rejected autoplay resume retains on/volume, retries on a trusted key event and starts without restore feedback",
+      "The native browser policy also restores the saved on/35% state, starts immediately when allowed or resumes on a click, and adds no restore feedback"
+    ],
+    "audioSignals": [
+      "All 60 seconds produce exactly one native sine oscillator: 48 ticks, 6 countdowns and 6 ten-second markers, with 7/50/1350 ms durations",
+      "OfflineAudioContext replay of the actual oscillator/gain commands confirms frequencies, audible durations, silent boundaries, short pulse sustain and decaying marker",
+      "Missed seconds are skipped; visibility/off cancels audio; volume updates the master gain; paused previews are silent; half speed doubles spacing while preserving pitch and pulse length"
+    ],
+    "motionSettings": [
+      "Structure and morph remain independent; disabling basic motion retains checked values while disabling controls and rendering; reload preserves them and re-enabling basic motion restores the chosen combination",
+      "All eight saved/API preference combinations retain their values; layout settings mask inactive motions; invalid option types still reject",
+      "Fractions, powers and plain time work across all four font families with persistent digits; normal render status remains hidden",
+      "Changing each setting during an active morph settles without temporary glyphs and preserves digit/equality nodes; disabling basic motion removes moving symbols without erasing the optional preferences",
+      "Checked-and-disabled mobile controls retain their values; re-enabling the parent restores actual arithmetic morphing",
+      "Mobile disabled states are muted and fit; expression failure falls back to the SVG clock and recovers; CDN failure keeps the plain clock and failure message"
+    ]
+  },
+  "runs": {
+    "audioSettings": [
+      {
+        "at": "2026-09-09T14:24:40.541833+00:00",
+        "command": [
+          "tests/audio-settings.browser.py",
+          "--browser",
+          "chromium",
+          "--output-dir",
+          "test-results/saved-preferences-audio-chromium"
+        ],
+        "browser": "chromium",
+        "playwright": "1.62.0",
+        "url": "http://127.0.0.1:8000/dist-external/",
+        "browserVersion": "151.0.7922.34",
+        "mathjax": "4.1.3",
+        "nativeReadyBeforeInteraction": false,
+        "pageErrors": []
+      },
+      {
+        "at": "2026-09-09T14:24:41.953208+00:00",
+        "command": [
+          "tests/audio-settings.browser.py",
+          "--browser",
+          "firefox",
+          "--output-dir",
+          "test-results/saved-preferences-audio-firefox"
+        ],
+        "browser": "firefox",
+        "playwright": "1.62.0",
+        "url": "http://127.0.0.1:8000/dist-external/",
+        "browserVersion": "153.0",
+        "mathjax": "4.1.3",
+        "nativeReadyBeforeInteraction": false,
+        "pageErrors": []
+      },
+      {
+        "at": "2026-09-09T14:24:42.957788+00:00",
+        "command": [
+          "tests/audio-settings.browser.py",
+          "--browser",
+          "webkit",
+          "--output-dir",
+          "test-results/saved-preferences-audio-webkit"
+        ],
+        "browser": "webkit",
+        "playwright": "1.62.0",
+        "url": "http://127.0.0.1:8000/dist-external/",
+        "browserVersion": "26.5",
+        "mathjax": "4.1.3",
+        "nativeReadyBeforeInteraction": false,
+        "pageErrors": []
+      }
+    ],
+    "audioSignals": [
+      {
+        "at": "2026-09-09T14:24:05.237704+00:00",
+        "command": [
+          "tests/audio.browser.py",
+          "--browser",
+          "chromium",
+          "--output-dir",
+          "test-results/saved-preferences-signals-chromium"
+        ],
+        "browser": "chromium",
+        "url": "http://127.0.0.1:8000/dist-external/",
+        "playwright": "1.62.0",
+        "browserVersion": "151.0.7922.34",
+        "mathjax": "4.1.3",
+        "pageErrors": []
+      },
+      {
+        "at": "2026-09-09T14:24:08.475170+00:00",
+        "command": [
+          "tests/audio.browser.py",
+          "--browser",
+          "firefox",
+          "--output-dir",
+          "test-results/saved-preferences-signals-firefox"
+        ],
+        "browser": "firefox",
+        "url": "http://127.0.0.1:8000/dist-external/",
+        "playwright": "1.62.0",
+        "browserVersion": "153.0",
+        "mathjax": "4.1.3",
+        "pageErrors": []
+      },
+      {
+        "at": "2026-09-09T14:24:04.566824+00:00",
+        "command": [
+          "tests/audio.browser.py",
+          "--browser",
+          "webkit",
+          "--output-dir",
+          "test-results/saved-preferences-signals-webkit"
+        ],
+        "browser": "webkit",
+        "url": "http://127.0.0.1:8000/dist-external/",
+        "playwright": "1.62.0",
+        "browserVersion": "26.5",
+        "mathjax": "4.1.3",
+        "pageErrors": []
+      }
+    ],
+    "motionSettings": [
+      {
+        "at": "2026-09-09T14:23:12.116677+00:00",
+        "command": [
+          "tests/motion-settings.browser.py",
+          "--browser",
+          "chromium",
+          "--output-dir",
+          "test-results/saved-preferences-motion-chromium"
+        ],
+        "browser": "chromium",
+        "playwright": "1.62.0",
+        "url": "http://127.0.0.1:8000/dist-external/",
+        "browserVersion": "151.0.7922.34",
+        "mathjax": "4.1.3",
+        "pageErrors": []
+      },
+      {
+        "at": "2026-09-09T14:23:11.701828+00:00",
+        "command": [
+          "tests/motion-settings.browser.py",
+          "--browser",
+          "firefox",
+          "--output-dir",
+          "test-results/saved-preferences-motion-firefox"
+        ],
+        "browser": "firefox",
+        "playwright": "1.62.0",
+        "url": "http://127.0.0.1:8000/dist-external/",
+        "browserVersion": "153.0",
+        "mathjax": "4.1.3",
+        "pageErrors": []
+      },
+      {
+        "at": "2026-09-09T14:23:10.183836+00:00",
+        "command": [
+          "tests/motion-settings.browser.py",
+          "--browser",
+          "webkit",
+          "--output-dir",
+          "test-results/saved-preferences-motion-webkit"
+        ],
+        "browser": "webkit",
+        "playwright": "1.62.0",
+        "url": "http://127.0.0.1:8000/dist-external/",
+        "browserVersion": "26.5",
+        "mathjax": "4.1.3",
+        "pageErrors": []
+      }
+    ]
+  },
+  "motionSavedAndActiveCombinations": [
+    {
+      "saved": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      },
+      "effective": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": true
+      },
+      "effective": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": false,
+        "structureMotion": true,
+        "symbolMorph": false
+      },
+      "effective": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": false,
+        "structureMotion": true,
+        "symbolMorph": true
+      },
+      "effective": {
+        "symbolMotion": false,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": true,
+        "structureMotion": false,
+        "symbolMorph": false
+      },
+      "effective": {
+        "symbolMotion": true,
+        "structureMotion": false,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": true,
+        "structureMotion": false,
+        "symbolMorph": true
+      },
+      "effective": {
+        "symbolMotion": true,
+        "structureMotion": false,
+        "symbolMorph": true
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": true,
+        "structureMotion": true,
+        "symbolMorph": false
+      },
+      "effective": {
+        "symbolMotion": true,
+        "structureMotion": true,
+        "symbolMorph": false
+      }
+    },
+    {
+      "saved": {
+        "symbolMotion": true,
+        "structureMotion": true,
+        "symbolMorph": true
+      },
+      "effective": {
+        "symbolMotion": true,
+        "structureMotion": true,
+        "symbolMorph": true
+      }
+    }
+  ],
+  "motionTypographyCases": [
+    {
+      "font": "stix2",
+      "numerals": "oldstyle"
+    },
+    {
+      "font": "termes",
+      "numerals": "lining"
+    },
+    {
+      "font": "fira",
+      "numerals": "oldstyle"
+    },
+    {
+      "font": "euler",
+      "numerals": "lining"
+    }
+  ],
+  "audioSignals": {
+    "secondsCheckedPerBrowser": 60,
+    "expectedDurationsMs": {
+      "tick": 7,
+      "countdown": 50,
+      "marker": 1350
+    },
+    "expectedFrequenciesHz": {
+      "tick": 2000,
+      "countdown": 500,
+      "marker": 1000
+    },
+    "rendered": [
+      {
+        "browser": "chromium",
+        "waveforms": {
+          "tick": {
+            "duration": 0.007000000000000006,
+            "frequency": 2000.0000385866651,
+            "peak": 0.5,
+            "audibleDuration": 0.0069791666666666665,
+            "quietBefore": true,
+            "quietAfter": true,
+            "earlyRms": 0.35355329963826626,
+            "lateRms": 0.3347716815343987
+          },
+          "countdown": {
+            "duration": 0.04999999999999982,
+            "frequency": 500.00001796639225,
+            "peak": 0.7200000286102295,
+            "audibleDuration": 0.049979166666666665,
+            "quietBefore": true,
+            "quietAfter": true,
+            "earlyRms": 0.510526887418623,
+            "lateRms": 0.49122038639639803
+          },
+          "marker": {
+            "duration": 1.3500000000000005,
+            "frequency": 1000.0000292784379,
+            "peak": 1,
+            "audibleDuration": 1.3499791666666667,
+            "quietBefore": true,
+            "quietAfter": true,
+            "earlyRms": 0.23004193891599584,
+            "lateRms": 0.0019161221931455023
+          }
+        }
+      },
+      {
+        "browser": "firefox",
+        "waveforms": {
+          "tick": {
+            "duration": 0.007000000000000006,
+            "frequency": 1999.9996778466152,
+            "peak": 0.5,
+            "audibleDuration": 0.0069791666666666665,
+            "quietBefore": true,
+            "quietAfter": true,
+            "earlyRms": 0.3535533663419628,
+            "lateRms": 0.3337808723004808
+          },
+          "countdown": {
+            "duration": 0.04999999999999982,
+            "frequency": 499.9998463865142,
+            "peak": 0.7200000286102295,
+            "audibleDuration": 0.049979166666666665,
+            "quietBefore": true,
+            "quietAfter": true,
+            "earlyRms": 0.5105272848573582,
+            "lateRms": 0.49121991140676147
+          },
+          "marker": {
+            "duration": 1.3499999999999996,
+            "frequency": 1000.000447474725,
+            "peak": 1,
+            "audibleDuration": 1.3499791666666667,
+            "quietBefore": true,
+            "quietAfter": true,
+            "earlyRms": 0.23004194947908982,
+            "lateRms": 0.0019161262399770534
+          }
+        }
+      },
+      {
+        "browser": "webkit",
+        "waveforms": {
+          "tick": {
+            "duration": 0.007000000000000006,
+            "frequency": 2000.0000574601368,
+            "peak": 0.5,
+            "audibleDuration": 0.0069791666666666665,
+            "quietBefore": true,
+            "quietAfter": true,
+            "earlyRms": 0.35355332972166553,
+            "lateRms": 0.3347716849596397
+          },
+          "countdown": {
+            "duration": 0.04999999999999982,
+            "frequency": 500.00001474459674,
+            "peak": 0.7200000286102295,
+            "audibleDuration": 0.049979166666666665,
+            "quietBefore": true,
+            "quietAfter": true,
+            "earlyRms": 0.5105269154677071,
+            "lateRms": 0.49122040340134004
+          },
+          "marker": {
+            "duration": 1.35,
+            "frequency": 1000.0000292774735,
+            "peak": 1,
+            "audibleDuration": 1.3499791666666667,
+            "quietBefore": true,
+            "quietAfter": true,
+            "earlyRms": 0.23003012894956404,
+            "lateRms": 0.0019161223993178662
+          }
+        }
+      }
+    ]
+  },
+  "visualReview": "Chromium desktop and 320x640 settings: the two checked optional controls remain visibly checked and muted while disabled; enabling basic motion restores them.",
+  "scope": "Nine final-build browser runs use the delivered MathJax 4.1.3 CDN configuration, with no local MathJax replacement. Motion checks cover all eight preference combinations and representative fractions, powers, ordinary clock and four font families. Full font geometry/structure/morph matrices were not rerun for this preference change. Audio tests use real browser oscillators and replay their commands through OfflineAudioContext; physical speaker listening was not repeated.",
+  "autoplay": "Tests cover native autoplay policy and explicit pending/rejected resume fixtures. In these fresh browser contexts all three native startup attempts waited for interaction; each resumed on the first click with the saved gain and no restoration feedback.",
+  "references": [
+    "https://developer.chrome.com/blog/web-audio-autoplay",
+    "https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/resume"
+  ],
+  "notes": [
+    "Initial probing found that a non-activation key on the focused sound button was incorrectly excluded from resumption; the handler now excludes only button activation events, and ignores untrusted events.",
+    "The focused-button Space test was corrected to explicitly focus the button because WebKit on macOS does not focus it on click. No production change was required for that test correction.",
+    "Earlier test-results/retained-motion-*, persisted-audio-signals-* and audio-preferences-* runs are preliminary; only saved-preferences-* runs are reported here."
+  ]
+}

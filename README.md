@@ -16,8 +16,9 @@
 別の持ち場・別の書体・単項マイナス・分数線などとの交換には適用しません。
 途中で反転したり第三の記号へ変わっても現在の角度と濃さから再開し、reduced-motionでは変形しません。
 
-パート2と3は互いに独立して選べます。パート1をオフにすると、2と3もオフになり、操作できなくなります。
-パート1を再びオンにしても2と3は自動でオンに戻りません。保存設定の復元とAPIにも同じ依存関係を適用します。
+パート2と3は互いに独立して選べます。パート1をオフにすると、2と3は選択値を保ったまま操作不可になります。
+描画時だけ2と3を無効にし、パート1を再びオンにすると選択どおりの動作へ戻ります。リロードしても選択を保持します。
+`state.display`と`setDisplay`は選択値、`state.layout.display`は前提条件を適用した描画時の値です。
 
 ```js
 await FormulaClock.setDisplay({symbolMotion: true});
@@ -41,6 +42,7 @@ python tests/structure-motion.browser.py --url http://127.0.0.1:8000/dist-extern
 python tests/symbol-morph.browser.py --url http://127.0.0.1:8000/dist-external/
 python tests/motion-settings.browser.py --url http://127.0.0.1:8000/dist-external/
 python tests/audio.browser.py --url http://127.0.0.1:8000/dist-external/
+python tests/audio-settings.browser.py --url http://127.0.0.1:8000/dist-external/
 ```
 
 以下はr5時点の引き継ぎ資料です。現行UIは右上の設定に集約され、書体はSTIX Two / Termes / Fira / Eulerの4種類とLining / Oldstyleの独立設定、
@@ -63,6 +65,9 @@ HHMMの4桁からSSを表す数式を表示する時計。r4の事前生成デ�
 周波数は[AGCの解説](https://www.asahiglassplaza.net/gp-pro/knowledge/vol5_sub.html)、
 長さは[再現キットの仕様・3ページ](https://akizukidenshi.com/goodsaffix/manu006.pdf)を参考に、時報音を聴感に合わせて1.5倍に延ばしています。NTT公式規格の完全再現ではありません。
 音量・オン／オフ・プレビューの再生／停止に連動し、0.5倍速でも音程と音の長さは変えません。
+
+オン／オフと音量は `formula-clock-audio-v1` に保存します。再訪時に自動再生が制限されている場合は、
+オンの選択を保持して、最初のクリック・キー操作で再開します。復元時は確認音を鳴らしません。
 
 ## 表示
 

@@ -28,8 +28,8 @@ with sync_playwright() as p:
         page.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout', timeout=35000)
 
     def check(bits, saved=False):
-        opts = dict(zip(keys, bits))
-        page.wait_for_function('(opts)=>Object.entries(opts).every(([k,v])=>FormulaClock.state.layout.display[k]===v)', arg=opts)
+        active = [bits[0], bits[0] and bits[1], bits[0] and bits[2]]
+        page.wait_for_function('(opts)=>Object.entries(opts).every(([k,v])=>FormulaClock.state.layout.display[k]===v)', arg=dict(zip(keys, active)))
         assert page.evaluate('(keys)=>keys.map(k=>FormulaClock.state.display[k])', keys) == list(bits)
         for selector, checked, disabled in zip(selectors, bits, [False, not bits[0], not bits[0]]):
             assert page.locator(selector).is_checked() == checked
@@ -63,26 +63,29 @@ with sync_playwright() as p:
     page.check(selectors[1]); check([True, True, True], saved=True)
     page.uncheck(selectors[2]); check([True, True, False], saved=True)
     page.check(selectors[2]); check([True, True, True], saved=True)
-    page.uncheck(selectors[0]); check([False, False, False], saved=True)
-    page.check(selectors[0]); check([True, False, False], saved=True)
-    page.screenshot(path=str(args.output_dir/'desktop-basic.png'))
+    page.uncheck(selectors[0]); check([False, True, True], saved=True)
+    page.screenshot(path=str(args.output_dir/'desktop-suspended.png'))
+    page.check(selectors[0]); check([True, True, True], saved=True)
+    page.uncheck(selectors[1]); check([True, False, True], saved=True)
+    page.uncheck(selectors[0]); check([False, False, True], saved=True)
     page.keyboard.press('Escape')
-    page.reload(); ready(); check([True, False, False])
-    report['checks'].append('Basic motion enables both optional controls; structure and morph can each toggle without changing the other; disabling basic motion clears and disables both, with no automatic restoration; effective values persist')
+    page.reload(); ready(); check([False, False, True])
+    display(symbolMotion=True); check([True, False, True], saved=True)
+    report['checks'].append('Structure and morph remain independent; disabling basic motion retains checked values while disabling controls and rendering; reload preserves them and re-enabling basic motion restores the chosen combination')
 
-    # Old releases allowed all eight combinations. Restoring any of them must
-    # normalize only dependents, without silently enabling their prerequisites.
+    # All eight stored combinations are valid preferences. Only the render
+    # settings mask the optional motions when their prerequisite is disabled.
     migrations = []
     for basic, structure, morph in product([False, True], repeat=3):
         raw = dict(zip(keys, [basic, structure, morph]))
         page.evaluate('(raw)=>localStorage.setItem("formula-clock-display-v2",JSON.stringify(raw))', raw)
         page.reload(); ready()
-        expected = [basic, basic and structure, basic and morph]
+        expected = [basic, structure, morph]
         check(expected)
         display(**raw); check(expected, saved=True)
-        migrations.append({'saved': raw, 'effective': dict(zip(keys, expected))})
+        migrations.append({'saved': raw, 'effective': dict(zip(keys, [basic, basic and structure, basic and morph]))})
     report['restoredCombinations'] = migrations
-    report['checks'].append('All eight legacy saved combinations and all eight API combinations normalize consistently; invalid option types still reject')
+    report['checks'].append('All eight saved/API preference combinations retain their values; layout settings mask inactive motions; invalid option types still reject')
     before = page.evaluate('FormulaClock.state.display')
     assert page.evaluate('''async()=>{
       try {await FormulaClock.setDisplay({symbolMotion:false,structureMotion:'invalid',symbolMorph:true});return false;}
@@ -111,7 +114,7 @@ with sync_playwright() as p:
         seconds:Array.from({length:60},(_,s)=>hhmm==='1234'?formulas[s]||null:null)};}});
     }''')
     display(font='stix2', numerals='oldstyle')
-    for disabled_key, expected, count in [('symbolMorph', [True, True, False], 3), ('structureMotion', [True, False, True], 3), ('symbolMotion', [False, False,False], 0)]:
+    for disabled_key, expected, count in [('symbolMorph', [True, True, False], 3), ('structureMotion', [True, False, True], 3), ('symbolMotion', [False, True, True], 0)]:
         page.emulate_media(reduced_motion='reduce')
         display(symbolMotion=True, structureMotion=True, symbolMorph=True)
         preview('12:34:10')
@@ -126,7 +129,7 @@ with sync_playwright() as p:
         assert page.locator('[data-morphing],[data-morph-glyph]').count() == 0
         assert page.locator('#operator-root > g').count() == count
         assert page.evaluate('FormulaClock.digits.every((el,i)=>el===originalDigits[i]) && document.querySelector("#equal-sign")===originalEqual')
-    report['checks'].append('Changing each setting during an active morph settles without temporary glyphs, preserves digit/equality nodes and leaves only the allowed symbols; disabling structure preserves the morph setting')
+    report['checks'].append('Changing each setting during an active morph settles without temporary glyphs and preserves digit/equality nodes; disabling basic motion removes moving symbols without erasing the optional preferences')
 
     page.set_viewport_size({'width': 320, 'height': 640})
     page.click('#settings-open'); page.click('#advanced-settings summary')
@@ -135,7 +138,12 @@ with sync_playwright() as p:
     assert page.locator('#structure-motion').is_disabled() and page.locator('#symbol-morph').is_disabled()
     assert float(page.locator('#structure-motion').evaluate('(el)=>getComputedStyle(el.closest("label")).opacity')) < .6
     page.screenshot(path=str(args.output_dir/'mobile-disabled.png'))
+    page.check('#symbol-motion'); check([True, True, True], saved=True)
     page.keyboard.press('Escape')
+    preview('12:34:10'); page.wait_for_timeout(750); preview('12:34:09')
+    page.wait_for_function('document.querySelector("[data-morphing]")')
+    page.wait_for_timeout(750)
+    report['checks'].append('Checked-and-disabled mobile controls retain their values; re-enabling the parent restores actual arithmetic morphing')
 
     # Keep actionable fallback diagnostics after removing the engine banner.
     page.evaluate('''()=>{

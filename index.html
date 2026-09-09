@@ -1968,12 +1968,12 @@ Important Recommendations
   function savedDisplay() {
     try { return JSON.parse(localStorage.getItem('formula-clock-display-v2') || '{}') || {}; } catch { return {}; }
   }
-  function normalizeMotion(options) {
+  function activeDisplay(options = displaySettings) {
     return {...options,structureMotion:options.symbolMotion && options.structureMotion,
       symbolMorph:options.symbolMotion && options.symbolMorph};
   }
   const saved = savedDisplay();
-  let displaySettings = normalizeMotion({
+  let displaySettings = {
     font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
     // Preserve the appearance of settings saved before numeral styles were independent.
     numerals: Object.hasOwn(FormulaTypesetter.NUMERALS,saved.numerals) ? saved.numerals : saved.font === 'euler' ? 'lining' : 'oldstyle',
@@ -1981,7 +1981,7 @@ Important Recommendations
     symbolMotion: saved.symbolMotion === true,
     structureMotion: saved.structureMotion === true,
     symbolMorph: saved.symbolMorph === true
-  });
+  };
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
   const timeCode = d => pad(d.getHours()) + pad(d.getMinutes());
@@ -2051,9 +2051,8 @@ Important Recommendations
     $('#symbol-morph').disabled = !displaySettings.symbolMotion;
   }
   async function setDisplay(changes) {
-    let next = {...displaySettings,...changes};
+    const next = {...displaySettings,...changes};
     if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
-    next = normalizeMotion(next);
     displaySettings = {font:next.font,numerals:next.numerals,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
     syncMotionControls();
     $('#font-choice').value = next.font;
@@ -2298,7 +2297,7 @@ Important Recommendations
     firstFrame = false;
   }
   function renderExpression(ast, code, seconds, loading, instant = false) {
-    const engine = typesetter, view = {...displaySettings};
+    const engine = typesetter, view = activeDisplay();
     const key = `${view.font}:${view.numerals}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
@@ -2335,7 +2334,7 @@ Important Recommendations
     if (!typesetter.ready || preview?.paused || document.hidden) return;
     for (const offset of [1, 2]) {
       const next = new Date(+now + offset * 1000), code = timeCode(next), result = cache.get(code);
-      if (result) typesetter.frame(result.solutions[next.getSeconds()] || null, code, next.getSeconds(), displaySettings).catch(() => {});
+      if (result) typesetter.frame(result.solutions[next.getSeconds()] || null, code, next.getSeconds(), activeDisplay()).catch(() => {});
     }
   }
   // Transport time is anchored to the wall clock (live) or a monotonic clock (preview).
@@ -2418,25 +2417,56 @@ Important Recommendations
 
   // Audio is scheduled independently of layout. There is no replay of missed signals.
   class TimeSignal {
-    constructor() { this.ctx = null; this.master = null; this.enabled = false; this.volume = .25; this.scheduled = new Map(); this.voices = new Set(); }
+    constructor() {
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem('formula-clock-audio-v1') || '{}') || {}; } catch {}
+      this.ctx = null; this.master = null; this.enabled = saved.enabled === true;
+      this.volume = Number.isFinite(saved.volume) && saved.volume >= 0 && saved.volume <= 1 ? saved.volume : .25;
+      this.revision = 0; this.error = null; this.scheduled = new Map(); this.voices = new Set();
+    }
+    get ready() { return this.enabled && this.ctx?.state === 'running'; }
+    save() {
+      try { localStorage.setItem('formula-clock-audio-v1',JSON.stringify({enabled:this.enabled,volume:this.volume})); } catch {}
+    }
     async toggle() {
-      if (this.enabled) { this.enabled = false; this.cancel(); this.paint(); return; }
+      this.enabled = !this.enabled; this.revision++; this.error = null;
+      this.save(); this.paint();
+      if (!this.enabled) { this.cancel(); return; }
+      await this.resume(true);
+    }
+    async resume(feedback = false) {
+      if (!this.enabled) return;
+      const revision = this.revision;
       try {
         const Audio = window.AudioContext || window.webkitAudioContext;
         if (!Audio) throw new Error('Web Audio API is unavailable');
-        if (!this.ctx) { this.ctx = new Audio(); this.master = this.ctx.createGain(); this.master.gain.value = this.volume * .32; this.master.connect(this.ctx.destination); }
+        if (!this.ctx) {
+          this.ctx = new Audio(); this.master = this.ctx.createGain(); this.master.gain.value = this.volume * .32; this.master.connect(this.ctx.destination);
+          this.ctx.addEventListener('statechange', () => {
+            if (this.ctx.state !== 'running') this.cancel();
+            this.paint();
+          });
+        }
+        // A blocked resume may remain pending until a later user gesture.
+        // Keep the saved preference, and allow that gesture to call resume again.
         await this.ctx.resume();
-        if (this.ctx.state !== 'running') throw new Error('Audio could not be enabled');
-        this.enabled = true; this.paint(); this.tone(1000, this.ctx.currentTime + .02, .15, .28);
-      } catch (error) { console.error(error); this.enabled = false; this.paint(); $('#sound').setAttribute('aria-label','音を有効化できない'); $('#sound').title = '音を有効化できない'; }
+        if (!this.enabled || revision !== this.revision) return;
+        this.error = null; this.paint();
+        if (feedback && this.ready) this.tone(1000, this.ctx.currentTime + .02, .15, .28);
+      } catch (error) {
+        if (!this.enabled || revision !== this.revision) return;
+        this.error = String(error); this.paint();
+      }
     }
     paint() {
+      const label = !this.enabled ? '時報 オフ' : this.ready ? '時報 オン' :
+        this.error ? '時報 オン（再生できません）' : '時報 オン（画面を操作すると再開）';
       $('#sound').setAttribute('aria-pressed', String(this.enabled));
-      $('#sound').setAttribute('aria-label', this.enabled ? '時報 オン' : '時報 オフ');
-      $('#sound').title = `${this.enabled ? '時報 オン' : '時報 オフ'}（M）`;
+      $('#sound').setAttribute('aria-label', label);
+      $('#sound').title = `${label}（M）`;
       $('#sound-waves').setAttribute('d', this.enabled ? 'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14' : 'm16 9 6 6m0-6-6 6');
     }
-    setVolume(v) { this.volume = Math.max(0, Math.min(1, v)); if (this.master) this.master.gain.setTargetAtTime(this.volume * .32, this.ctx.currentTime, .035); }
+    setVolume(v) { this.volume = Math.max(0, Math.min(1, v)); this.save(); if (this.master) this.master.gain.setTargetAtTime(this.volume * .32, this.ctx.currentTime, .035); }
     tone(frequency, when, duration, strength = 1) {
       if (!this.ctx || !this.enabled) return;
       const oscillator = this.ctx.createOscillator(), gain = this.ctx.createGain();
@@ -2489,6 +2519,9 @@ Important Recommendations
     }
   }
   const sound = new TimeSignal();
+  $('#volume').value = String(sound.volume * 100);
+  sound.paint();
+  if (sound.enabled) sound.resume();
   $('#sound').addEventListener('click', () => sound.toggle());
   $('#volume').addEventListener('input', e => sound.setVolume(Number(e.target.value) / 100));
   $('#go-live').addEventListener('click', goLive);
@@ -2516,6 +2549,13 @@ Important Recommendations
     if (e.key.toLowerCase() === 'f') toggleFullscreen();
     if (e.code === 'Space' && preview) { e.preventDefault(); togglePlay(); }
   });
+  function resumeSavedSound(event) {
+    if (!event.isTrusted || !sound.enabled || sound.ready) return;
+    const togglesSound = event.target.closest?.('#sound') && (event.type === 'click' || event.key === ' ' || event.key === 'Enter');
+    if (!togglesSound) sound.resume();
+  }
+  document.addEventListener('click', resumeSavedSound);
+  document.addEventListener('keydown', resumeSavedSound);
   function renderResize() {
     const d = getNow(), code = timeCode(d), result = cache.get(code);
     renderExpression(result?.solutions[d.getSeconds()] || null, code, d.getSeconds(), !result, true);
@@ -2533,7 +2573,7 @@ Important Recommendations
   window.FormulaClock = Object.freeze({
     preview: (time, paused = true) => { const d = time instanceof Date ? time : new Date(time); setPreview(d, paused); },
     live: goLive, pause: togglePlay, setDisplay, setDataProvider,
-    get state() { return { display:{...displaySettings}, dataRevision, dataError:cache.get(timeCode(getNow()))?.error || null, now: getNow().toISOString(), preview: !!preview, paused: preview?.paused || false, layout: latestLayout, coverage: cache.get(timeCode(getNow()))?.count, audio: eventHistory.slice(), soundEnabled: sound.enabled, engineReady: typesetter.ready, engineError, typesetCacheSize: typesetter.cache.size }; },
+    get state() { return { display:{...displaySettings}, dataRevision, dataError:cache.get(timeCode(getNow()))?.error || null, now: getNow().toISOString(), preview: !!preview, paused: preview?.paused || false, layout: latestLayout, coverage: cache.get(timeCode(getNow()))?.count, audio: eventHistory.slice(), soundEnabled: sound.enabled, soundReady: sound.ready, soundVolume: sound.volume, engineReady: typesetter.ready, engineError, typesetCacheSize: typesetter.cache.size }; },
     get digits() { return [...digitsEls]; },
     diagnostics() {
       const host = stage.getBoundingClientRect();
