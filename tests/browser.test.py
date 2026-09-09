@@ -144,8 +144,8 @@ with sync_playwright() as p:
         assert source['font']==state['display']['font'] and source['persistent'],source
         assert source['text']==state['code']+f"{state['seconds']:02d}",source
         assert all(g['inside'] for g in source['digits']+source['colons']),source
-        assert all(abs(g['x']-x)<1 for g,x in zip(source['digits'],[525,1275,2625,3375,4725,5475])),source
-        assert all(abs(g['x']-x)<1 and abs(g['y']-550)<1 for g,x in zip(source['colons'],[1950,4050])),source
+        assert all(abs(g['x']-x)<1 for g,x in zip(source['digits'],[400,900,1850,2350,3300,3800])),source
+        assert all(abs(g['x']-x)<1 and abs(g['y']-550)<1 for g,x in zip(source['colons'],[1375,2825])),source
         if not args.local_mathjax:assert all(key.startswith(source['font']+'@4.1.3:') for key in source['glyphFonts']),source
         assert page.locator('#notation-root path[data-c="3D"]').count()==0
         return {'time':diag['time'],'display':diag['display'],'axisErrorPx':delta,'fontAxis':diag['typography']['axisEm']}

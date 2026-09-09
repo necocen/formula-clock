@@ -267,9 +267,9 @@
     const face = clockFaces.get(font);
     if (face) {
       const colon = face.glyphs[':'];
-      // Six equal 750-unit cells keep every digit stationary, even with oldstyle
-      // or proportional glyphs. Two fixed 600-unit separators complete the row.
-      const centers = [525,1275,2625,3375,4725,5475];
+      // Six equal 500-unit cells keep every digit stationary, even with oldstyle
+      // or proportional glyphs. Fixed 450-unit separators match ordinary clock spacing.
+      const centers = [400,900,1850,2350,3300,3800];
       const baseline = 550 - (colon.bounds.y + colon.bounds.h / 2);
       function place(el, text, center) {
         const token = face.glyphs[text];
@@ -283,7 +283,7 @@
       }
       const text = code + pad(seconds);
       sourceEls.forEach((el,i) => place(el,text[i],centers[i]));
-      sourceColons.forEach((el,i) => place(el,':',1950 + i * 2100));
+      sourceColons.forEach((el,i) => place(el,':',1375 + i * 1450));
       sourceTime.dataset.font = font;
     }
     sourceTime.hidden = !visible || !face;
