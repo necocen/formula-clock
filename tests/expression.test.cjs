@@ -74,6 +74,14 @@ function parseText(text,code){
  const ast=sum();assert.equal(i,s.length,`Unparsed suffix: ${s.slice(i)}`);assert.equal(slot,4);return ast;
 }
 const profiles=[{oldstyle:false,centerOperators:true},{oldstyle:true,centerOperators:false}];
+// A radical power needs no visible parentheses; the bar groups its base.
+const rootPower=table.minutes['0220'][33];
+for(const structureMotion of [false,true]) {
+ const tex=E.expressionTex(rootPower,'0220',{structureMotion});
+ assert.doesNotMatch(tex,/\\left\(|fc-struct-paren/);
+ assert.deepEqual(parse(tex),rootPower);
+}
+assert.equal(E.compact(rootPower,'0220'),'0!+(√(√2))^20');
 let equations=0,serializations=0,textSerializations=0,rest=0;
 const start=Date.now();
 function roundtrip(ast,code){

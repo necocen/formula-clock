@@ -38,7 +38,7 @@ test('all four fonts and independent styles render complete, bounded OG images',
       const {svg,...metrics}=result;
       cases.push({name,state,...metrics,bytes:png.byteLength});
     }
-  assert.equal(cases.length,192);
+  assert.equal(cases.length,216);
   assertPng(renderDefaultOg());
   await fs.writeFile(path.join(output,'default.png'),renderDefaultOg());
   await fs.writeFile(path.join(output,'render-results.json'),JSON.stringify({node:process.version,mathjax:'4.1.3',resvg:'2.6.2',at:new Date().toISOString(),cases},null,2));

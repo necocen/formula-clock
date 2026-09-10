@@ -111,7 +111,8 @@ function expressionTex(ast: Expr, code: string, settings: Partial<TexOptions> = 
     }
     if (a.op === 'pow') {
       let x = write(a.a);
-      if (precedence(a.a,opt) <= 40 || ['div','sqrt'].includes(a.a.op)) x = enclose(a.a,x);
+      // A radical's bar already groups the base; its exponent sits outside it.
+      if (precedence(a.a,opt) <= 40 || a.a.op === 'div') x = enclose(a.a,x);
       return `{${x}}^{${write(a.b)}}`;
     }
     if (a.op === 'div' && opt.division === 'fraction') return structure('frac',a,`\\frac{${write(a.a)}}{${write(a.b)}}`);
