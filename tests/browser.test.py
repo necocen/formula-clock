@@ -170,7 +170,7 @@ with sync_playwright() as p:
         for numerals in ['lining','oldstyle']:
             for division in ['fraction','inline','slash']:
                 settings(font,division,numerals)
-                for time in ['12:34:08','12:34:16','12:34:17','12:34:30','12:34:31','12:34:59','08:59:05','00:00:08']:
+                for time in ['12:34:08','12:34:16','12:34:17','12:34:30','12:34:31','12:34:59','23:59:10','08:59:05','00:00:08']:
                     preview(time)
                     report['cases'].append(check_geometry())
                     if time=='12:34:08':
@@ -187,7 +187,7 @@ with sync_playwright() as p:
                 preview('16:39:19');page.screenshot(path=str(out/f'{font}-{numerals}.png'),full_page=True)
         if not args.local_mathjax:assert numeral_shapes[font,'lining']!=numeral_shapes[font,'oldstyle'],font
     if not args.local_mathjax:assert len(set(numeral_shapes.values()))==8
-    report['checks'].append('128 formula/time layouts; 4 fonts × 2 numeral styles × 2 division modes; distinct native glyphs; persistent HHMM elements; lining numeric axis and oldstyle native axis')
+    report['checks'].append('216 formula/time layouts; 4 fonts × 2 numeral styles × 3 division modes; distinct native glyphs; persistent HHMM elements; lining numeric axis and oldstyle native axis')
     report['checks'].append('Small clock uses the selected math font with six persistent fixed-width digit cells, fixed colon centers, equal-size seconds and no clipped ascenders/descenders')
 
     # The two controls are independent; same-family style changes replace glyph
@@ -251,7 +251,7 @@ with sync_playwright() as p:
         page.set_viewport_size({'width':width,'height':840})
         for division in ['fraction','inline','slash']:
             settings('stix2',division)
-            for time in ['12:34:08','12:34:59','00:00:08']:
+            for time in ['23:59:10','12:34:59','00:00:08']:
                 preview(time);check_geometry()
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
         page.click('#settings-open')
@@ -277,7 +277,7 @@ with sync_playwright() as p:
         preview(time);check_geometry()
     report['checks'].append('HTTP provider crosses hour and midnight boundaries')
     page.emulate_media(reduced_motion='reduce')
-    preview('12:34:08');check_geometry()
+    preview('23:59:10');check_geometry()
     preview('12:34:59');check_geometry()
     page.emulate_media(reduced_motion='no-preference')
     report['checks'].append('Reduced-motion fractions and powers stay visible')

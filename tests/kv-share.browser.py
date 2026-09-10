@@ -14,8 +14,10 @@ args = parser.parse_args()
 args.output_dir.mkdir(parents=True, exist_ok=True)
 report = {'command':sys.argv, 'at':datetime.now(timezone.utc).isoformat(), 'browser':args.browser,
           'playwright':version('playwright'), 'checks':[], 'errors':[]}
-ast = {'op':'mul','a':{'op':'add','a':{'op':'lit','i':0,'j':1},'b':{'op':'lit','i':1,'j':2}},
-       'b':{'op':'add','a':{'op':'lit','i':2,'j':3},'b':{'op':'lit','i':3,'j':4}}}
+# Deliberately different from the selected dataset's (1+2)×(3+4)=21.
+ast = {'op':'add','a':{'op':'lit','i':0,'j':1},
+       'b':{'op':'mul','a':{'op':'add','a':{'op':'lit','i':1,'j':2},'b':{'op':'lit','i':2,'j':3}},
+            'b':{'op':'lit','i':3,'j':4}}}
 snapshot = {'v':1,'t':'123421','font':'stix2','numerals':'oldstyle','division':'fraction','ast':ast}
 saved = {'font':'fira','numerals':'lining','division':'inline','symbolMotion':False,'structureMotion':False,'symbolMorph':False}
 
@@ -59,9 +61,9 @@ with sync_playwright() as p:
     page.goto(url,wait_until='domcontentloaded')
     ready(page,'123421')
     assert page.evaluate('FormulaClock.state.layout.ast') == ast
-    assert page.title() == '(1 + 2) × (3 + 4) = 21'
+    assert page.title() == '1 + (2 + 3) × 4 = 21'
     assert page.locator('meta[property="og:title"]').get_attribute('content') == 'Formula Clock - 12:34:21'
-    assert page.locator('meta[property="og:description"]').get_attribute('content') == '(1+2)×(3+4)=21'
+    assert page.locator('meta[property="og:description"]').get_attribute('content') == '1+(2+3)×4=21'
     assert page.evaluate('FormulaClock.state.preview && FormulaClock.state.paused')
     assert page.evaluate('JSON.parse(localStorage.getItem("formula-clock-display-v2"))') == saved
     assert page.url == url

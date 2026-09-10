@@ -83,9 +83,18 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 `tsconfig.json`の`strict`でソースを型チェックし、esbuildでブラウザ用JavaScriptをHTMLへ埋め込みます。Nodeのツールと既存のJavaScriptテストはtsxでTypeScriptソースを読み込みます。ブラウザにTypeScriptの実行環境やnpmライブラリを追加する必要はありません。
 
 `index.html`は生成物です。原本を編集して`npm run build`で更新してください。
-`npm run generate`は全日の式を再探索する処理で、通常の表示変更やビルドには不要です。
+`npm run generate`は全日の式を再探索し、現在の採用データを上書きする処理です。通常の表示変更やビルドには不要です。外部で生成したデータは`npm run import:data -- DIRECTORY`で取り込みます。出典と手順は[data/README.md](data/README.md)を参照してください。
 
 ## 検証
+
+値の厳密検証にはPythonとSymPyを使います。開発用の依存を初回に準備してください（ビルド・配布アプリには不要です）。
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-test.txt
+```
+
+`npm test`は`.venv`のPythonを優先し、なければ`python3`を使います。`FORMULA_CLOCK_PYTHON`で指定することもできます。
 
 ```sh
 npm run typecheck

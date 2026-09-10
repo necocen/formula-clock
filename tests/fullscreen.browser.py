@@ -64,7 +64,7 @@ with sync_playwright() as p:
         if scenario == 'native':
             page.wait_for_function('FormulaClock.state.layout && !document.querySelector("#share").disabled', timeout=45000)
             report['mathjax'] = page.evaluate('FormulaClock.diagnostics().mathjax')
-            for t, font, mode in [('235902', 'stix2', 'formula'), ('123459', 'fira', 'formula'), ('004159', 'euler', 'time')]:
+            for t, font, mode in [('235910', 'stix2', 'formula'), ('123459', 'fira', 'formula'), ('004159', 'euler', 'time')]:
                 page.evaluate('([t,font])=>{FormulaClock.setDisplay({font});FormulaClock.preview(FormulaShare.localDate(t),true)}', [t,font])
                 page.wait_for_function('([t,font])=>{const l=FormulaClock.state.layout;return l?.code===t.slice(0,4)&&l.seconds===Number(t.slice(4))&&l.display.font===font}', arg=[t,font], timeout=45000)
                 assert page.evaluate('FormulaClock.state.layout.mode') == mode

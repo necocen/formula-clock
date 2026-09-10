@@ -10,7 +10,7 @@
 - `browser.ts` が公開グローバルを準備した後にプロバイダー設定、`app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
 - `index.html` は生成物。直接編集せず、原本を変更して `npm run build` を実行する。
 - Node.js 22系。ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`npm test` / `npm run build` / `npm run build:external` が基本の確認コマンド（いずれも型チェックを含む）。`npm run typecheck`でも単独で確認できる。共有画像の変更時は `npm run test:og` も実行する。
-- `npm run generate` は全日データの再探索。起動・表示変更だけなら実行しない。
+- `npm run generate` は全日データの再探索。起動・表示変更だけなら実行しない。外部の検証済みデータは`npm run import:data -- DIRECTORY`で24時間分を取り込み、`data/README.md`の出典も更新する。`npm test`の厳密検証には`requirements-test.txt`のSymPyを使う。
 - 既にユーザーが評価しているUIを、依頼なしに全面改装しない。
 
 ## 維持する動作

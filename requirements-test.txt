@@ -1,4 +1,4 @@
-# Python dependencies imported by the existing browser/compatibility tests.
-# No version lock is asserted by this handoff.
+# Development-only browser, font and exact-expression verification.
 playwright
 fonttools
+sympy==1.14.0

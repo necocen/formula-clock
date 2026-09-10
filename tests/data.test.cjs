@@ -6,7 +6,7 @@ const table=require('../data/expressions.json');
  const checks=[];
  const inline=new InlineProvider(table);const minute=await inline.getMinute('1234');
  assert.equal(minute.seconds.length,60);assert.ok(Object.isFrozen(minute.seconds));
- assert.equal(minute.seconds[8].op,'add');
+ assert.deepEqual(minute.seconds[8],table.minutes['1234'][8]);
  const missing=new InlineProvider({schema:SCHEMA,minutes:{'1234':Array(60).fill(null)}});
  await assert.rejects(missing.getMinute('0000'),/absent/);
  assert.equal((await missing.getMinute('1234')).seconds[0],null);

@@ -24,6 +24,8 @@ with sync_playwright() as p:
     page.on('request', lambda request: requests.append(request.url))
     page.goto(args.url+'?t=123430', wait_until='domcontentloaded')
     page.wait_for_function('window.FormulaClock?.state.layout && !document.querySelector("#share").disabled', timeout=45000)
+    # The static renderer omits motion markers; compare the same TeX settings.
+    page.evaluate('FormulaClock.setDisplay({symbolMotion:false,structureMotion:false,symbolMorph:false})')
     profile = None
     for sample in server['cases']:
         state = sample['state']

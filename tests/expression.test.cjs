@@ -3,6 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),zlib=require('n
 const E=require('../expression.ts'),D=require('../data.ts');
 const {createSolver}=require('../tools/solver.ts');
 const table=require('../data/expressions.json'), solver=createSolver();
+const verifyExact=require('./verify-exact.cjs'), extended=[];
 
 // Independent parser for the emitted TeX subset. It knows no serializer rules.
 // Digit markers become slot tokens rather than their values (two zeroes differ).
@@ -92,10 +93,14 @@ for(const [code,seconds] of Object.entries(table.minutes)){
  D.normalizeMinute({schema:D.SCHEMA,hhmm:code,seconds},code);
  seconds.forEach((ast,sec)=>{
   if(!ast){rest++;return;}
-  assert.ok(solver.verify(ast,[...code].map(Number),sec),`${code}:${sec}`);
+  if(!solver.verify(ast,[...code].map(Number),sec))extended.push({code,second:sec,ast});
   roundtrip(ast,code);equations++;
  });
 }
+// The generator's limits are search budgets, not the external AST's value domain.
+// Check unsupported values symbolically without approximate equality or skipped cases.
+const exact=verifyExact(extended);
+exact.results.forEach((result,i)=>assert.ok(result.valid,`${extended[i].code}:${extended[i].second}: ${result.reason}`));
 // Random shapes include operators that the cost-limited generator may not choose.
 let seed=20260908;const random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
 const choose=xs=>xs[Math.floor(random()*xs.length)];
@@ -120,6 +125,6 @@ const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),
 assert.ok(!html.includes('function createSolver'));
 const b64=html.match(/data-encoding="gzip-base64">([^<]+)/)[1];
 assert.deepEqual(JSON.parse(zlib.gunzipSync(Buffer.from(b64,'base64'))),table);
-const report={build:'r6-minimal',minutes:Object.keys(table.minutes).length,equations,rest,fuzzTrees:fuzz,checkedSerializations:serializations,textSerializations,profiles:2,divisionModes:3,elapsedMs:Date.now()-start};
+const report={build:'r6-minimal',minutes:Object.keys(table.minutes).length,equations,rest,fuzzTrees:fuzz,checkedSerializations:serializations,textSerializations,profiles:2,divisionModes:3,boundedVerified:equations-extended.length,symbolicallyVerified:extended.length,sympy:exact.sympy,elapsedMs:Date.now()-start};
 require('./report.cjs')('expression-results.json',report);console.log(report);
 module.exports={parse,canonical};

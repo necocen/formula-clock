@@ -79,7 +79,7 @@ with sync_playwright() as p:
         page.click('#play-pause')
         assert page.locator('#play-pause').inner_text() == 'Pause'
         page.click('#play-pause')
-        for time, font, mode in [('235902','stix2','formula'),('123459','fira','formula'),('004159','euler','time')]:
+        for time, font, mode in [('235910','stix2','formula'),('123459','fira','formula'),('004159','euler','time')]:
             page.evaluate('([time,font])=>{FormulaClock.setDisplay({font});FormulaClock.preview(FormulaShare.localDate(time),true)}',[time,font])
             # A cache miss may first render this time as a loading clock.
             # Sharing is enabled only once data and the final frame are ready.
