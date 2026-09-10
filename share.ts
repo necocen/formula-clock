@@ -60,6 +60,48 @@ function localDate(time: string) {
   // A fixed calendar day avoids a spring-forward gap on the day the URL opens.
   return new Date(2000,0,15,Number(time.slice(0,2)),Number(time.slice(2,4)),Number(time.slice(4)),0);
 }
-const api = {parse,params,url,snapshot,id,shortUrl,view,timeLabel,title,card,localDate};
-export {parse,params,url,snapshot,id,shortUrl,view,timeLabel,title,card,localDate};
+interface PreparedLink {id: string | null; promise: Promise<string>; controller: AbortController | null;}
+/** Small per-page cache: speculative and explicit saves share the same request. */
+class LinkCache {
+  private entries = new Map<string,PreparedLink>();
+  constructor(initial: SharedView | null = null, private request: typeof fetch = globalThis.fetch.bind(globalThis), private timeoutMs = 15000) {
+    if (initial) {
+      const saved = view(initial);
+      this.entries.set(JSON.stringify(saved.snapshot),{id:saved.id,promise:Promise.resolve(saved.id),controller:null});
+    }
+  }
+  peek(state: SharedSnapshot): string | null { return this.entries.get(JSON.stringify(snapshot(state)))?.id || null; }
+  prepare(state: SharedSnapshot): Promise<string> {
+    const key = JSON.stringify(snapshot(state)), existing = this.entries.get(key);
+    if (existing) { this.entries.delete(key); this.entries.set(key,existing); return existing.promise; }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(),this.timeoutMs);
+    const entry: PreparedLink = {id:null,controller,promise:Promise.resolve().then(async () => {
+      controller.signal.throwIfAborted();
+      const response = await this.request('/api/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:key,signal:controller.signal});
+      if (!response.ok) throw new Error(`Share storage returned ${response.status}`);
+      const result: unknown = await response.json();
+      controller.signal.throwIfAborted();
+      if (!isRecord(result) || !validId(result.id)) throw new Error('Invalid share response');
+      entry.id = result.id; entry.controller = null;
+      return result.id;
+    }).catch(error => {
+      if (this.entries.get(key) === entry) this.entries.delete(key);
+      throw error;
+    }).finally(() => clearTimeout(timeout))};
+    this.entries.set(key,entry);
+    while (this.entries.size > 12) {
+      const oldest = this.entries.keys().next().value!;
+      this.entries.get(oldest)?.controller?.abort(); this.entries.delete(oldest);
+    }
+    return entry.promise;
+  }
+  cancelPending() {
+    for (const [key,entry] of this.entries) if (entry.controller) {
+      entry.controller.abort(); this.entries.delete(key);
+    }
+  }
+}
+const api = {parse,params,url,snapshot,id,shortUrl,view,timeLabel,title,card,localDate,LinkCache};
+export {parse,params,url,snapshot,id,shortUrl,view,timeLabel,title,card,localDate,LinkCache};
 export default Object.freeze(api);

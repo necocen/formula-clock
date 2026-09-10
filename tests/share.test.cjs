@@ -74,3 +74,51 @@ test('shared readings do not shift with recipient timezone or DST',()=>{
   for(const TZ of ['Asia/Tokyo','America/Los_Angeles','Europe/London','Pacific/Apia'])
     execFileSync(process.execPath,['--import','tsx','-e',source],{cwd:require('node:path').resolve(__dirname,'..'),env:{...process.env,TZ}});
 });
+test('speculative and clicked saves share one request; only saved, exact snapshots hit the cache',async()=>{
+  let release, calls=[];
+  const cache=new Share.LinkCache(null,async(input,init)=>{
+    calls.push({input,init});await new Promise(resolve=>{release=resolve;});
+    return Response.json({id:'Abc0123X9z'});
+  });
+  const first=cache.prepare(snapshot),second=cache.prepare({...snapshot});
+  assert.equal(first,second);assert.equal(cache.peek(snapshot),null);
+  await Promise.resolve();assert.equal(calls.length,1);assert.equal(calls[0].input,'/api/shares');
+  assert.deepEqual(JSON.parse(calls[0].init.body),snapshot);
+  release();assert.equal(await first,'Abc0123X9z');assert.equal(cache.peek(snapshot),'Abc0123X9z');
+  for(const changes of [{t:'123422'},{font:'termes'},{numerals:'lining'},{division:'inline'},{ast:null}])
+    assert.equal(cache.peek({...snapshot,...changes}),null);
+  assert.equal(await cache.prepare(snapshot),'Abc0123X9z');assert.equal(calls.length,1);
+  const seeded=new Share.LinkCache({id:'Abc0123X9z',snapshot},()=>{throw Error('Unexpected save');});
+  assert.equal(seeded.peek(snapshot),'Abc0123X9z');
+  assert.equal(await seeded.prepare(snapshot),'Abc0123X9z');
+});
+test('cancelled or failed speculative saves cannot publish stale ids and remain retryable',async()=>{
+  let release,signal,attempts=0;
+  const cache=new Share.LinkCache(null,async(input,init)=>{
+    attempts++;signal=init.signal;
+    if(attempts===1)await new Promise(resolve=>{release=resolve;});
+    return Response.json({id:'Abc0123X9z'});
+  });
+  const pending=cache.prepare(snapshot),rejection=assert.rejects(pending,{name:'AbortError'});
+  await Promise.resolve();cache.cancelPending();assert.ok(signal.aborted);
+  release();await rejection;assert.equal(cache.peek(snapshot),null);
+  assert.equal(await cache.prepare(snapshot),'Abc0123X9z');assert.equal(attempts,2);
+  for(const response of [Response.json({id:'invalid'}),Response.json({}, {status:503})]){
+    let calls=0;
+    const failed=new Share.LinkCache(null,async()=>++calls===1?response:Response.json({id:'Abc0123X9z'}));
+    await assert.rejects(failed.prepare(snapshot));assert.equal(failed.peek(snapshot),null);
+    assert.equal(await failed.prepare(snapshot),'Abc0123X9z');
+  }
+});
+test('the speculative cache bounds retained entries and aborts timed-out saves',async()=>{
+  let calls=0;
+  const cache=new Share.LinkCache(null,async()=>Response.json({id:String(++calls).padStart(10,'0')}));
+  for(let seconds=0;seconds<13;seconds++)await cache.prepare({...snapshot,t:'1234'+String(seconds).padStart(2,'0')});
+  assert.equal(cache.peek({...snapshot,t:'123400'}),null);
+  assert.equal(cache.peek({...snapshot,t:'123412'}),'0000000013');
+  const hanging=new Share.LinkCache(null,async(input,{signal})=>new Promise((resolve,reject)=>{
+    signal.addEventListener('abort',()=>reject(signal.reason),{once:true});
+  }),5);
+  await assert.rejects(hanging.prepare(snapshot),{name:'AbortError'});
+  assert.equal(hanging.peek(snapshot),null);
+});

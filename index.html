@@ -1948,7 +1948,60 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     if (!validTime(time)) throw new TypeError("Invalid shared time");
     return new Date(2e3, 0, 15, Number(time.slice(0, 2)), Number(time.slice(2, 4)), Number(time.slice(4)), 0);
   }
-  var api4 = { parse, params, url, snapshot, id, shortUrl, view, timeLabel, title, card, localDate };
+  var LinkCache = class {
+    constructor(initial = null, request = globalThis.fetch.bind(globalThis), timeoutMs = 15e3) {
+      this.request = request;
+      this.timeoutMs = timeoutMs;
+      if (initial) {
+        const saved = view(initial);
+        this.entries.set(JSON.stringify(saved.snapshot), { id: saved.id, promise: Promise.resolve(saved.id), controller: null });
+      }
+    }
+    request;
+    timeoutMs;
+    entries = /* @__PURE__ */ new Map();
+    peek(state) {
+      return this.entries.get(JSON.stringify(snapshot(state)))?.id || null;
+    }
+    prepare(state) {
+      const key = JSON.stringify(snapshot(state)), existing = this.entries.get(key);
+      if (existing) {
+        this.entries.delete(key);
+        this.entries.set(key, existing);
+        return existing.promise;
+      }
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+      const entry = { id: null, controller, promise: Promise.resolve().then(async () => {
+        controller.signal.throwIfAborted();
+        const response = await this.request("/api/shares", { method: "POST", headers: { "Content-Type": "application/json" }, body: key, signal: controller.signal });
+        if (!response.ok) throw new Error(`Share storage returned ${response.status}`);
+        const result = await response.json();
+        controller.signal.throwIfAborted();
+        if (!isRecord(result) || !validId(result.id)) throw new Error("Invalid share response");
+        entry.id = result.id;
+        entry.controller = null;
+        return result.id;
+      }).catch((error) => {
+        if (this.entries.get(key) === entry) this.entries.delete(key);
+        throw error;
+      }).finally(() => clearTimeout(timeout)) };
+      this.entries.set(key, entry);
+      while (this.entries.size > 12) {
+        const oldest = this.entries.keys().next().value;
+        this.entries.get(oldest)?.controller?.abort();
+        this.entries.delete(oldest);
+      }
+      return entry.promise;
+    }
+    cancelPending() {
+      for (const [key, entry] of this.entries) if (entry.controller) {
+        entry.controller.abort();
+        this.entries.delete(key);
+      }
+    }
+  };
+  var api4 = { parse, params, url, snapshot, id, shortUrl, view, timeLabel, title, card, localDate, LinkCache };
   var share_default = Object.freeze(api4);
 
   // data.ts
@@ -2609,16 +2662,18 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     const sharedState = sharedView?.snapshot || FormulaShare.parse(new URL(location.href));
     let activeSnapshot = sharedView?.snapshot || null;
     let sharedAddress = !!sharedState;
-    let preparedShare = sharedView ? { key: JSON.stringify(sharedView.snapshot), id: sharedView.id } : null;
-    let shareSerial = 0, shareBusy = false, shareRequest = null;
+    const shareLinks = new FormulaShare.LinkCache(sharedView);
+    let shareSerial = 0, shareBusy = false;
+    let shareWarmTimer, shareWarmKey = "";
     function snapshotAt(code, seconds) {
       return activeSnapshot?.t === code + pad(seconds) ? activeSnapshot : null;
     }
     function leaveSharedView(keepFormula = false) {
       if (!keepFormula) activeSnapshot = null;
       ++shareSerial;
-      shareRequest?.abort();
-      shareRequest = null;
+      shareLinks.cancelPending();
+      clearTimeout(shareWarmTimer);
+      shareWarmKey = "";
       shareBusy = false;
       lastVisual = "";
       shareButton.removeAttribute("aria-busy");
@@ -3096,6 +3151,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       displayedFrame = { frame, ast, code, seconds, view };
       if (sharedAddress && !loading && !engineError) document.title = FormulaShare.title({ v: 1, t: code + pad(seconds), ...view, ast });
       shareButton.disabled = shareBusy || loading || !!engineError || !snapshotAt(code, seconds) && (!cache.has(code) || !!cache.get(code)?.error);
+      preparePausedShare();
       firstFrame = false;
     }
     function renderExpression(ast, code, seconds, loading, instant = false) {
@@ -3234,6 +3290,49 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         failed(error);
       }
     }
+    function displayedSnapshot() {
+      if (!displayedFrame || shareButton.disabled || shareButton.hidden || document.hidden) return null;
+      const { code, seconds, view, ast } = displayedFrame;
+      return FormulaShare.snapshot({ v: 1, t: code + pad(seconds), font: view.font, numerals: view.numerals, division: view.division, ast });
+    }
+    function preparePausedShare() {
+      const state = preview?.paused ? displayedSnapshot() : null;
+      if (!state) {
+        clearTimeout(shareWarmTimer);
+        return;
+      }
+      const key = JSON.stringify(state);
+      if (key === shareWarmKey) return;
+      clearTimeout(shareWarmTimer);
+      shareWarmKey = key;
+      const serial = shareSerial;
+      shareWarmTimer = setTimeout(() => {
+        if (serial === shareSerial && JSON.stringify(displayedSnapshot()) === key) void shareLinks.prepare(state).catch(() => {
+        });
+      }, 250);
+    }
+    function prepareShareOnIntent() {
+      const state = displayedSnapshot();
+      if (!state) return;
+      void shareLinks.prepare(state).catch(() => {
+      });
+      if (preview?.paused) return;
+      const now = FormulaShare.localDate(state.t);
+      for (const offset of [1, 2]) {
+        const next = new Date(+now + offset * 1e3), code = timeCode(next), result = cache.get(code);
+        if (!result || result.error) continue;
+        void shareLinks.prepare({ ...state, t: code + pad(next.getSeconds()), ast: result.solutions[next.getSeconds()] || null }).catch(() => {
+        });
+      }
+    }
+    for (const event of ["pointerenter", "focus", "pointerdown"]) shareButton.addEventListener(event, prepareShareOnIntent);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        clearTimeout(shareWarmTimer);
+        shareWarmKey = "";
+        if (!shareBusy) shareLinks.cancelPending();
+      } else preparePausedShare();
+    });
     $("#share-copy").addEventListener("click", () => {
       void copyShare($("#share-url").value);
     });
@@ -3252,35 +3351,27 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       scene.getAnimations({ subtree: true }).forEach((animation) => animation.finish());
       applyFrame(snapshot.frame, snapshot.ast, code, seconds, false, true, view);
       showNotice("");
-      const key = JSON.stringify(state), serial = ++shareSerial;
-      if (preparedShare?.key === key) {
-        deliverShare(FormulaShare.shortUrl(location.origin, preparedShare.id).href, state, serial);
+      clearTimeout(shareWarmTimer);
+      shareWarmKey = JSON.stringify(state);
+      const serial = ++shareSerial, preparedId = shareLinks.peek(state);
+      if (preparedId) {
+        deliverShare(FormulaShare.shortUrl(location.origin, preparedId).href, state, serial);
         return;
       }
-      const controller = new AbortController();
-      shareRequest = controller;
       shareBusy = true;
       shareButton.disabled = true;
       shareButton.setAttribute("aria-busy", "true");
       showNotice(t("shareCreating"));
-      const timeout = setTimeout(() => controller.abort(), 15e3);
       try {
-        const response = await fetch("/api/shares", { method: "POST", headers: { "Content-Type": "application/json" }, body: key, signal: controller.signal });
-        if (!response.ok) throw new Error(`Share storage returned ${response.status}`);
-        const result = await response.json();
-        if (!isRecord(result) || typeof result.id !== "string") throw new Error("Invalid share response");
-        const url = FormulaShare.shortUrl(location.origin, result.id).href;
+        const id = await shareLinks.prepare(state), url = FormulaShare.shortUrl(location.origin, id).href;
         if (serial !== shareSerial) return;
-        preparedShare = { key, id: result.id };
         showNotice("");
         deliverShare(url, state, serial);
       } catch {
         if (serial === shareSerial) showNotice(t("shareFailed"));
       } finally {
-        clearTimeout(timeout);
         if (serial === shareSerial) {
           shareBusy = false;
-          shareRequest = null;
           shareButton.removeAttribute("aria-busy");
           lastVisual = "";
           refresh(true);

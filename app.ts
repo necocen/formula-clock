@@ -39,12 +39,13 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   const sharedState = sharedView?.snapshot || FormulaShare.parse(new URL(location.href));
   let activeSnapshot: SharedSnapshot | null = sharedView?.snapshot || null;
   let sharedAddress = !!sharedState;
-  let preparedShare = sharedView ? {key:JSON.stringify(sharedView.snapshot),id:sharedView.id} : null;
-  let shareSerial = 0, shareBusy = false, shareRequest: AbortController | null = null;
+  const shareLinks = new FormulaShare.LinkCache(sharedView);
+  let shareSerial = 0, shareBusy = false;
+  let shareWarmTimer: ReturnType<typeof setTimeout> | undefined, shareWarmKey = '';
   function snapshotAt(code: string,seconds: number) { return activeSnapshot?.t === code+pad(seconds) ? activeSnapshot : null; }
   function leaveSharedView(keepFormula = false) {
     if (!keepFormula) activeSnapshot = null;
-    ++shareSerial; shareRequest?.abort(); shareRequest = null; shareBusy = false; lastVisual = '';
+    ++shareSerial; shareLinks.cancelPending(); clearTimeout(shareWarmTimer); shareWarmKey = ''; shareBusy = false; lastVisual = '';
     shareButton.removeAttribute('aria-busy'); showNotice('');
     if (shareDialog.open) shareDialog.close();
     if (sharedAddress) {
@@ -432,6 +433,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     displayedFrame = {frame,ast,code,seconds,view};
     if (sharedAddress && !loading && !engineError) document.title = FormulaShare.title({v:1,t:code+pad(seconds),...view,ast});
     shareButton.disabled = shareBusy || loading || !!engineError || (!snapshotAt(code,seconds) && (!cache.has(code) || !!cache.get(code)?.error));
+    preparePausedShare();
     firstFrame = false;
   }
   function renderExpression(ast: Expr | null, code: string, seconds: number, loading: boolean, instant = false) {
@@ -540,6 +542,42 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     };
     try { void navigator.share({title:FormulaShare.title(state),url}).catch(failed); } catch (error) { failed(error); }
   }
+  function displayedSnapshot(): SharedSnapshot | null {
+    if (!displayedFrame || shareButton.disabled || shareButton.hidden || document.hidden) return null;
+    const {code,seconds,view,ast} = displayedFrame;
+    return FormulaShare.snapshot({v:1,t:code+pad(seconds),font:view.font,numerals:view.numerals,division:view.division,ast});
+  }
+  function preparePausedShare() {
+    const state = preview?.paused ? displayedSnapshot() : null;
+    if (!state) { clearTimeout(shareWarmTimer); return; }
+    const key = JSON.stringify(state);
+    if (key === shareWarmKey) return;
+    clearTimeout(shareWarmTimer); shareWarmKey = key;
+    const serial = shareSerial;
+    // Coalesce quick ruler/settings changes; failures stay quiet until a real share.
+    shareWarmTimer = setTimeout(() => {
+      if (serial === shareSerial && JSON.stringify(displayedSnapshot()) === key) void shareLinks.prepare(state).catch(() => {});
+    },250);
+  }
+  function prepareShareOnIntent() {
+    const state = displayedSnapshot();
+    if (!state) return;
+    void shareLinks.prepare(state).catch(() => {});
+    if (preview?.paused) return;
+    // Only this gesture warms the next two seconds; the running clock never
+    // continuously writes to KV. Exact AST/settings keys guard second boundaries.
+    const now = FormulaShare.localDate(state.t);
+    for (const offset of [1,2]) {
+      const next = new Date(+now + offset*1000), code = timeCode(next), result = cache.get(code);
+      if (!result || result.error) continue;
+      void shareLinks.prepare({...state,t:code+pad(next.getSeconds()),ast:result.solutions[next.getSeconds()] || null}).catch(() => {});
+    }
+  }
+  for (const event of ['pointerenter','focus','pointerdown']) shareButton.addEventListener(event,prepareShareOnIntent);
+  document.addEventListener('visibilitychange',() => {
+    if (document.hidden) { clearTimeout(shareWarmTimer); shareWarmKey = ''; if (!shareBusy) shareLinks.cancelPending(); }
+    else preparePausedShare();
+  });
   $('#share-copy').addEventListener('click',() => { void copyShare($<HTMLInputElement>('#share-url').value); });
   $('#share-native').addEventListener('click',() => {
     if (activeSnapshot) deliverShare($<HTMLInputElement>('#share-url').value,activeSnapshot,shareSerial);
@@ -558,26 +596,20 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     scene.getAnimations({subtree:true}).forEach(animation => animation.finish());
     applyFrame(snapshot.frame,snapshot.ast,code,seconds,false,true,view);
     showNotice('');
-    const key = JSON.stringify(state), serial = ++shareSerial;
-    if (preparedShare?.key === key) { deliverShare(FormulaShare.shortUrl(location.origin,preparedShare.id).href,state,serial); return; }
-    const controller = new AbortController(); shareRequest = controller;
+    clearTimeout(shareWarmTimer); shareWarmKey = JSON.stringify(state);
+    const serial = ++shareSerial, preparedId = shareLinks.peek(state);
+    if (preparedId) { deliverShare(FormulaShare.shortUrl(location.origin,preparedId).href,state,serial); return; }
     shareBusy = true; shareButton.disabled = true; shareButton.setAttribute('aria-busy','true');
     showNotice(t('shareCreating'));
-    const timeout = setTimeout(() => controller.abort(),15000);
     try {
-      const response = await fetch('/api/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:key,signal:controller.signal});
-      if (!response.ok) throw new Error(`Share storage returned ${response.status}`);
-      const result: unknown = await response.json();
-      if (!isRecord(result) || typeof result.id !== 'string') throw new Error('Invalid share response');
-      const url = FormulaShare.shortUrl(location.origin,result.id).href;
+      const id = await shareLinks.prepare(state), url = FormulaShare.shortUrl(location.origin,id).href;
       if (serial !== shareSerial) return;
-      preparedShare = {key,id:result.id}; showNotice('');
+      showNotice('');
       deliverShare(url,state,serial);
     } catch {
       if (serial === shareSerial) showNotice(t('shareFailed'));
     } finally {
-      clearTimeout(timeout);
-      if (serial === shareSerial) { shareBusy = false; shareRequest = null; shareButton.removeAttribute('aria-busy'); lastVisual = ''; refresh(true); }
+      if (serial === shareSerial) { shareBusy = false; shareButton.removeAttribute('aria-busy'); lastVisual = ''; refresh(true); }
     }
   });
   function refresh(force = false) {
