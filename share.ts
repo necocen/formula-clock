@@ -79,7 +79,7 @@ class LinkCache {
     const entry: PreparedLink = {id:null,controller,promise:Promise.resolve().then(async () => {
       controller.signal.throwIfAborted();
       const response = await this.request('/api/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:key,signal:controller.signal});
-      if (!response.ok) throw new Error(`Share storage returned ${response.status}`);
+      if (!response.ok) throw new Error(`Share creation returned ${response.status}`);
       const result: unknown = await response.json();
       controller.signal.throwIfAborted();
       if (!isRecord(result) || !validId(result.id)) throw new Error('Invalid share response');

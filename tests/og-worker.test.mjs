@@ -46,8 +46,15 @@ test('workerd serves state-specific metadata, real PNGs, R2 cache, and static as
     assert.match(defaults,/<title>Formula Clock<\/title>/);assert.ok(!defaults.includes('font=%22'));
     const snapshot={v:1,t:'123421',font:'euler',numerals:'lining',division:'inline',ast:{op:'mul',a:{op:'add',a:{op:'lit',i:0,j:1},b:{op:'lit',i:1,j:2}},b:{op:'add',a:{op:'lit',i:2,j:3},b:{op:'lit',i:3,j:4}}}};
     const created=await mf.dispatchFetch('https://clock.example/api/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(snapshot)});
-    assert.equal(created.status,201);const {id}=await created.json();assert.match(id,/^[A-Za-z0-9]{10}$/);
-    const namespace=await mf.getKVNamespace('SHARES');assert.deepEqual(await namespace.get('share/'+id,'json'),snapshot);
+    assert.equal(created.status,202);const {id}=await created.json();assert.match(id,/^[A-Za-z0-9]{10}$/);
+    const namespace=await mf.getKVNamespace('SHARES');
+    let saved=null;
+    for(let attempt=0;attempt<50;attempt++) {
+      saved=await namespace.get('share/'+id,'json');
+      if(saved!==null) break;
+      await new Promise(resolve=>setTimeout(resolve,20));
+    }
+    assert.deepEqual(saved,snapshot,'The accepted snapshot is persisted in the background');
     const stored=await mf.dispatchFetch(`https://clock.example/s/${id}?t=000000`),storedHtml=await stored.text();
     assert.equal(stored.status,200);assert.ok(storedHtml.includes('<title>(1 + 2) × (3 + 4) = 21</title>'));
     assert.ok(storedHtml.includes('name="twitter:title" content="Formula Clock - 12:34:21"'));

@@ -74,11 +74,11 @@ test('shared readings do not shift with recipient timezone or DST',()=>{
   for(const TZ of ['Asia/Tokyo','America/Los_Angeles','Europe/London','Pacific/Apia'])
     execFileSync(process.execPath,['--import','tsx','-e',source],{cwd:require('node:path').resolve(__dirname,'..'),env:{...process.env,TZ}});
 });
-test('speculative and clicked saves share one request; only saved, exact snapshots hit the cache',async()=>{
+test('speculative and clicked saves share one request; accepted exact snapshots hit the cache',async()=>{
   let release, calls=[];
   const cache=new Share.LinkCache(null,async(input,init)=>{
     calls.push({input,init});await new Promise(resolve=>{release=resolve;});
-    return Response.json({id:'Abc0123X9z'});
+    return Response.json({id:'Abc0123X9z'},{status:202});
   });
   const first=cache.prepare(snapshot),second=cache.prepare({...snapshot});
   assert.equal(first,second);assert.equal(cache.peek(snapshot),null);

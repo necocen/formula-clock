@@ -3,7 +3,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 from datetime import datetime, timezone
 from importlib.metadata import version
-import argparse, json, re, sys
+import argparse, json, re, sys, time
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
@@ -23,6 +23,9 @@ def ready(page, time):
     page.wait_for_function('time=>{const l=window.FormulaClock?.state.layout;return l && l.code+String(l.seconds).padStart(2,"0")===time && !document.querySelector("#share").disabled}', arg=time, timeout=45000)
 
 def read_snapshot(ctx, url):
+    # Acceptance precedes persistence. Allow the asynchronous write to finish
+    # before testing restoration (the gated Worker test covers early acceptance).
+    time.sleep(2)
     html = ctx.request.get(url).text()
     return json.loads(re.search(r'<script id="shared-clock" type="application/json">(.*?)</script>',html).group(1))['snapshot']
 
@@ -48,8 +51,9 @@ with sync_playwright() as p:
       Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async url=>{copies.push(url);}}});
     ''')
     created = ctx.request.post(args.url+'api/shares',data=snapshot)
-    assert created.status == 201, created.text()
+    assert created.status == 202, created.text()
     url = args.url+'s/'+created.json()['id']
+    assert read_snapshot(ctx,url) == snapshot
     page = ctx.new_page()
     page.on('pageerror',lambda error:report['errors'].append(str(error)))
     page.goto(url,wait_until='domcontentloaded')
@@ -96,6 +100,7 @@ with sync_playwright() as p:
     # Null must remain a saved ordinary clock even where the dataset has a formula.
     null_snapshot = {**snapshot,'t':'123430','ast':None}
     null_id = ctx.request.post(args.url+'api/shares',data=null_snapshot).json()['id']
+    assert read_snapshot(ctx,args.url+'s/'+null_id) == null_snapshot
     page.goto(args.url+'s/'+null_id,wait_until='domcontentloaded')
     ready(page,'123430')
     assert page.evaluate('FormulaClock.state.layout.mode') == 'time'
@@ -139,11 +144,11 @@ with sync_playwright() as p:
     assert re.search(r'/s/[A-Za-z0-9]{10}$',delayed_url)
     assert read_snapshot(ctx,delayed_url) == page.evaluate('postBodies.at(-1)')
     page.keyboard.press('Escape')
-    report['checks'].append('A slow KV write preserves the displayed AST and offers native sharing with fresh user activation at 320/390/768 px')
+    report['checks'].append('A slow ID request preserves the displayed AST and offers native sharing with fresh user activation at 320/390/768 px')
 
     page.evaluate('window.shareMode="fail";FormulaClock.preview(FormulaShare.localDate("123432"),true)')
     ready(page,'123432'); page.click('#share')
-    page.wait_for_function('document.querySelector("#share-status").textContent.includes("保存できません") && !document.querySelector("#share").disabled')
+    page.wait_for_function('document.querySelector("#share-status").textContent.includes("作成できません") && !document.querySelector("#share").disabled')
     assert page.evaluate('FormulaClock.state.paused && !document.querySelector("#share-dialog").open')
     for width in [320,390]:
         page.set_viewport_size({'width':width,'height':844})
@@ -158,11 +163,12 @@ with sync_playwright() as p:
     assert page.locator('#share-dialog').is_hidden()
     assert page.evaluate('copies.length') == 1
     assert page.locator('#share-status').inner_text() == ''
-    report['checks'].append('Storage errors enable retry; leaving the view cancels pending shares without stale copies or dialogs')
+    report['checks'].append('ID request errors enable retry; leaving the view cancels pending shares without stale copies or dialogs')
     title_ast = {'op':'add','a':{'op':'lit','i':0,'j':1},'b':{'op':'div',
                  'a':{'op':'pow','a':{'op':'lit','i':1,'j':2},'b':{'op':'lit','i':2,'j':3}},
                  'b':{'op':'sqrt','a':{'op':'lit','i':3,'j':4}}}}
     title_id = ctx.request.post(args.url+'api/shares',data={**snapshot,'t':'123405','ast':title_ast}).json()['id']
+    assert read_snapshot(ctx,args.url+'s/'+title_id)['ast'] == title_ast
     page.goto(args.url+'s/'+title_id,wait_until='domcontentloaded');ready(page,'123405')
     assert page.title() == '1 + 2^3 / √4 = 5'
     for selector in ['meta[property="og:title"]','meta[name="twitter:title"]']:

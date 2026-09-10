@@ -129,7 +129,7 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
       if (request.method !== 'POST') return json({error:'method-not-allowed'},405,{Allow:'POST'});
       const started = Date.now();
       let response: Response;
-      try { response = await deadline(() => createShare(request,env),timeoutMs,'Share creation'); }
+      try { response = await deadline(() => createShare(request,env,ctx,fields => log({event:'share-store',revision,...fields})),timeoutMs,'Share creation'); }
       catch (error) { response = json({error:error instanceof ShareError ? error.message : 'share-storage-unavailable'},error instanceof ShareError ? error.status : 503); }
       response.headers.append('Server-Timing',`share;dur=${Date.now()-started}`);
       return response;

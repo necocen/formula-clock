@@ -1,6 +1,6 @@
 import Share from '../share.ts';
 import type {SharedView} from '../types.ts';
-import type {Env} from './types.ts';
+import type {Env,Context} from './types.ts';
 
 export class ShareError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
@@ -10,7 +10,7 @@ export const shareKey = (id: string) => `share/${id}`;
 export const json = (value: unknown,status = 200,headers: Record<string,string> = {}) =>
   new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store',...headers}});
 
-export async function createShare(request: Request,env: Env): Promise<Response> {
+export async function createShare(request: Request,env: Env,ctx: Context,log: (fields: Record<string,unknown>) => void): Promise<Response> {
   if (!env.SHARES) throw new ShareError(503,'share-storage-unavailable');
   const origin = request.headers.get('Origin');
   if ((origin && origin !== new URL(request.url).origin) || request.headers.get('Sec-Fetch-Site') === 'cross-site') throw new ShareError(403,'cross-origin-request');
@@ -44,9 +44,24 @@ export async function createShare(request: Request,env: Env): Promise<Response> 
       if (id.length === 10) break;
     }
   }
-  const started = Date.now();
-  await env.SHARES.put(shareKey(id),JSON.stringify(snapshot)); // Deliberately no expiration.
-  return json({id},201,{Location:`/s/${id}`,'Server-Timing':`kv;dur=${Date.now()-started}`});
+  const storage = env.SHARES, payload = JSON.stringify(snapshot), started = Date.now();
+  // Keep the write alive after returning the ID, including when the share sheet
+  // backgrounds the browser. Retries always use the same ID and immutable data.
+  ctx.waitUntil((async () => {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await storage.put(shareKey(id),payload); // Deliberately no expiration.
+      } catch (error) {
+        log({id,status:attempt === 3 ? 'error' : 'retry',attempt,elapsedMs:Date.now()-started,
+          reason:String(error instanceof Error ? error.message : error)});
+        if (attempt < 3) await new Promise(resolve => setTimeout(resolve,attempt*1000));
+        continue;
+      }
+      log({id,status:'ok',attempt,elapsedMs:Date.now()-started});
+      return;
+    }
+  })());
+  return json({id},202,{Location:`/s/${id}`});
 }
 
 export async function readShare(id: string,env: Env): Promise<SharedView> {

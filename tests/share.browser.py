@@ -75,6 +75,8 @@ with sync_playwright() as p:
     assert actual['call']['paused'] and actual['state']['paused']
     assert actual['call']['activation'] is not False
     assert re.search(r'/s/[A-Za-z0-9]{10}$', actual['call']['url'])
+    # The sheet opens on ID acceptance, before the background KV write finishes.
+    page.wait_for_timeout(2000)
     shared_html = ctx.request.get(actual['call']['url']).text()
     restored = json.loads(re.search(r'<script id="shared-clock" type="application/json">(.*?)</script>', shared_html).group(1))['snapshot']
     assert restored == {'v':1,'t':actual['before'],'font':'stix2','numerals':'oldstyle','division':'fraction','ast':actual['state']['layout']['ast']}
