@@ -38,6 +38,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
 @media(max-width:480px){.topbar{gap:8px}.tools{gap:4px}.tool.icon-only{width:36px;min-width:36px;padding:8px}}
 .advanced .state-label{height:auto;min-height:26px;text-align:center}
 @media(max-width:360px){.segmented-control{width:144px}}
+.share-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.share-status{width:max-content;max-width:calc(100vw - 32px);white-space:normal;text-align:center}
 </style>
 </head>
 <body>
@@ -89,6 +90,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
   <div class="settings-header"><h2 id="share-title"><span data-i18n="shareTitle">Share</span></h2><button class="settings-close" id="share-close" data-i18n-aria-label="close" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
   <p><span data-i18n="shareHelp">このURLをコピーして共有できます。</span></p>
   <input id="share-url" data-i18n-aria-label="shareUrl" class="share-url" type="url" readonly aria-label="共有URL">
+  <div class="share-actions"><button id="share-native" class="small-button" data-i18n="shareNative" hidden>共有する</button><button id="share-copy" class="small-button" data-i18n="shareCopy">リンクをコピー</button></div>
 </dialog>
 <dialog class="settings-dialog" id="settings" aria-labelledby="settings-title">
   <div class="settings-header"><h2 id="settings-title"><span data-i18n="settings">設定</span></h2><button class="settings-close" id="settings-close" data-i18n-aria-label="closeSettings" aria-label="設定を閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
@@ -1594,6 +1596,14 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     shareHelp: { ja: "\u3053\u306EURL\u3092\u30B3\u30D4\u30FC\u3057\u3066\u5171\u6709\u3067\u304D\u307E\u3059\u3002", en: "Copy this link to share the current view." },
     shareUrl: { ja: "\u5171\u6709URL", en: "Share link" },
     shareCopied: { ja: "\u5171\u6709URL\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F", en: "Share link copied" },
+    shareCreating: { ja: "\u5171\u6709\u30EA\u30F3\u30AF\u3092\u4F5C\u6210\u4E2D\u2026", en: "Creating a share link\u2026" },
+    shareFailed: { ja: "\u5171\u6709\u30EA\u30F3\u30AF\u3092\u4FDD\u5B58\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002", en: "Could not save the share link. Please try again." },
+    shareNative: { ja: "\u5171\u6709\u3059\u308B", en: "Share" },
+    shareCopy: { ja: "\u30EA\u30F3\u30AF\u3092\u30B3\u30D4\u30FC", en: "Copy link" },
+    shareUnavailable: { ja: "\u5171\u6709\u30EA\u30F3\u30AF\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", en: "Could not open this share link" },
+    shareNotFound: { ja: "\u30EA\u30F3\u30AF\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002\u4F5C\u6210\u76F4\u5F8C\u306E\u5834\u5408\u306F\u3001\u5C11\u3057\u5F85\u3063\u3066\u304B\u3089\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002", en: "This link was not found. If it was just created, wait a moment and reload." },
+    shareLoadFailed: { ja: "\u5171\u6709\u30C7\u30FC\u30BF\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u5C11\u3057\u5F85\u3063\u3066\u304B\u3089\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002", en: "Could not load the saved view. Wait a moment and reload." },
+    reload: { ja: "\u518D\u8AAD\u307F\u8FBC\u307F", en: "Reload" },
     // Sound/fullscreen icon labels and hover titles; failure is a visible notice.
     soundOff: { ja: "\u6642\u5831 OFF", en: "Time signals off" },
     soundOn: { ja: "\u6642\u5831 ON", en: "Time signals on" },
@@ -1690,43 +1700,10 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   var api2 = { PROFILES, NUMERALS, DEFAULTS, typography, fitFrame };
   var display_default = Object.freeze(api2);
 
-  // share.ts
-  var validTime = (value) => typeof value === "string" && /^(?:[01][0-9]|2[0-3])[0-5][0-9][0-5][0-9]$/.test(value);
-  function parse(url2) {
-    const p = (url2 instanceof URL ? url2 : new URL(url2)).searchParams;
-    const time = p.get("t"), font = p.get("font"), numerals = p.get("numerals"), division = p.get("division");
-    if (!validTime(time) || p.has("v") && p.get("v") !== "1") return null;
-    return Object.freeze({
-      v: 1,
-      t: time,
-      font: font && Object.hasOwn(PROFILES, font) ? font : DEFAULTS.font,
-      numerals: numerals && Object.hasOwn(NUMERALS, numerals) ? numerals : DEFAULTS.numerals,
-      division: division === "fraction" || division === "inline" ? division : DEFAULTS.division
-    });
+  // types.ts
+  function isRecord(value) {
+    return !!value && typeof value === "object" && !Array.isArray(value);
   }
-  function params(state) {
-    if (!state || !validTime(state.t) || state.v !== 1 || !Object.hasOwn(PROFILES, state.font) || !Object.hasOwn(NUMERALS, state.numerals) || !["fraction", "inline"].includes(state.division)) {
-      throw new TypeError("Invalid shared clock state");
-    }
-    return new URLSearchParams({ v: "1", t: state.t, font: state.font, numerals: state.numerals, division: state.division });
-  }
-  function url(origin, state) {
-    const result = new URL("/", origin);
-    result.search = params(state).toString();
-    return result;
-  }
-  function timeLabel(state) {
-    return state.t.match(/../g).join(":");
-  }
-  function title(state) {
-    return state ? `Formula Clock \u2014 ${timeLabel(state)}` : "Formula Clock";
-  }
-  function localDate(time) {
-    if (!validTime(time)) throw new TypeError("Invalid shared time");
-    return new Date(2e3, 0, 15, Number(time.slice(0, 2)), Number(time.slice(2, 4)), Number(time.slice(4)), 0);
-  }
-  var api3 = { parse, params, url, timeLabel, title, localDate };
-  var share_default = Object.freeze(api3);
 
   // expression.ts
   var expression_exports = {};
@@ -1741,13 +1718,6 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     relation: () => relation,
     validateAst: () => validateAst
   });
-
-  // types.ts
-  function isRecord(value) {
-    return !!value && typeof value === "object" && !Array.isArray(value);
-  }
-
-  // expression.ts
   var UNARY = /* @__PURE__ */ new Set(["neg", "sqrt", "fact"]);
   var BINARY = /* @__PURE__ */ new Set(["add", "sub", "mul", "div", "pow"]);
   var validCode = (code) => typeof code === "string" && /^(?:[01]\d|2[0-3])[0-5]\d$/.test(code);
@@ -1830,9 +1800,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       const site = `${a.op}-${attachment}`;
       const ordinal = siteCounts.get(site) || 0;
       siteCounts.set(site, ordinal + 1);
-      const id = `fc-op-${symbolId++}-${site}-${ordinal}`;
-      if (a.op === "fact") return `\\cssId{${id}}{${glyph}}`;
-      return `\\${texClass}{\\cssId{${id}}{${center(glyph, opt)}}}`;
+      const id2 = `fc-op-${symbolId++}-${site}-${ordinal}`;
+      if (a.op === "fact") return `\\cssId{${id2}}{${glyph}}`;
+      return `\\${texClass}{\\cssId{${id2}}{${center(glyph, opt)}}}`;
     }
     function write(a) {
       if (a.op === "lit") {
@@ -1886,8 +1856,72 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     if (ast.op === "fact") return `(${a})!`;
     return `(${a} ${{ add: "+", sub: "\u2212", mul: "\xD7", div: "\xF7", pow: "^" }[ast.op]} ${plain(ast.b, code)})`;
   }
-  var api4 = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain };
-  var expression_default = Object.freeze(api4);
+  var api3 = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain };
+  var expression_default = Object.freeze(api3);
+
+  // share.ts
+  var validTime = (value) => typeof value === "string" && /^(?:[01][0-9]|2[0-3])[0-5][0-9][0-5][0-9]$/.test(value);
+  function parse(url2) {
+    const p = (url2 instanceof URL ? url2 : new URL(url2)).searchParams;
+    const time = p.get("t"), font = p.get("font"), numerals = p.get("numerals"), division = p.get("division");
+    if (!validTime(time) || p.has("v") && p.get("v") !== "1") return null;
+    return Object.freeze({
+      v: 1,
+      t: time,
+      font: font && Object.hasOwn(PROFILES, font) ? font : DEFAULTS.font,
+      numerals: numerals && Object.hasOwn(NUMERALS, numerals) ? numerals : DEFAULTS.numerals,
+      division: division === "fraction" || division === "inline" ? division : DEFAULTS.division
+    });
+  }
+  function params(state) {
+    if (!state || !validTime(state.t) || state.v !== 1 || !Object.hasOwn(PROFILES, state.font) || !Object.hasOwn(NUMERALS, state.numerals) || !["fraction", "inline"].includes(state.division)) {
+      throw new TypeError("Invalid shared clock state");
+    }
+    return new URLSearchParams({ v: "1", t: state.t, font: state.font, numerals: state.numerals, division: state.division });
+  }
+  function url(origin, state) {
+    const result = new URL("/", origin);
+    result.search = params(state).toString();
+    return result;
+  }
+  function snapshot(value) {
+    if (!isRecord(value) || value.v !== 1 || !validTime(value.t) || typeof value.font !== "string" || !Object.hasOwn(PROFILES, value.font) || typeof value.numerals !== "string" || !Object.hasOwn(NUMERALS, value.numerals) || value.division !== "fraction" && value.division !== "inline" || !Object.hasOwn(value, "ast") || Object.keys(value).some((key) => !["v", "t", "font", "numerals", "division", "ast"].includes(key))) {
+      throw new TypeError("Invalid shared snapshot");
+    }
+    return Object.freeze({
+      v: 1,
+      t: value.t,
+      font: value.font,
+      numerals: value.numerals,
+      division: value.division,
+      ast: validateAst(value.ast, value.t.slice(0, 4))
+    });
+  }
+  var validId = (value) => typeof value === "string" && /^[A-Za-z0-9]{10}$/.test(value);
+  function id(path) {
+    const value = /^\/s\/([^/]+)$/.exec(path)?.[1];
+    return validId(value) ? value : null;
+  }
+  function shortUrl(origin, id2) {
+    if (!validId(id2)) throw new TypeError("Invalid share ID");
+    return new URL(`/s/${id2}`, origin);
+  }
+  function view(value) {
+    if (!isRecord(value) || !validId(value.id)) throw new TypeError("Invalid shared view");
+    return Object.freeze({ id: value.id, snapshot: snapshot(value.snapshot) });
+  }
+  function timeLabel(state) {
+    return state.t.match(/../g).join(":");
+  }
+  function title(state) {
+    return state ? `Formula Clock \u2014 ${timeLabel(state)}` : "Formula Clock";
+  }
+  function localDate(time) {
+    if (!validTime(time)) throw new TypeError("Invalid shared time");
+    return new Date(2e3, 0, 15, Number(time.slice(0, 2)), Number(time.slice(2, 4)), Number(time.slice(4)), 0);
+  }
+  var api4 = { parse, params, url, snapshot, id, shortUrl, view, timeLabel, title, localDate };
+  var share_default = Object.freeze(api4);
 
   // data.ts
   var SCHEMA = "formula-clock/1";
@@ -2534,7 +2568,44 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     const settingsDialog = $("#settings"), settingsButton = $("#settings-open");
     const licenseDialog = $("#licenses");
     const shareButton = $("#share"), shareDialog = $("#share-dialog");
-    const sharedState = FormulaShare.parse(new URL(location.href));
+    let sharedView = null;
+    try {
+      const embedded = document.querySelector("#shared-clock");
+      if (embedded) {
+        const candidate = FormulaShare.view(JSON.parse(embedded.textContent || ""));
+        if (candidate.id === FormulaShare.id(location.pathname)) sharedView = candidate;
+      }
+    } catch (error) {
+      console.warn("[Formula Clock] Invalid shared snapshot.", error);
+    }
+    const sharedState = sharedView?.snapshot || FormulaShare.parse(new URL(location.href));
+    let activeSnapshot = sharedView?.snapshot || null;
+    let sharedAddress = !!sharedState;
+    let preparedShare = sharedView ? { key: JSON.stringify(sharedView.snapshot), id: sharedView.id } : null;
+    let shareSerial = 0, shareBusy = false, shareRequest = null;
+    function snapshotAt(code, seconds) {
+      return activeSnapshot?.t === code + pad(seconds) ? activeSnapshot : null;
+    }
+    function leaveSharedView(keepFormula = false) {
+      if (!keepFormula) activeSnapshot = null;
+      ++shareSerial;
+      shareRequest?.abort();
+      shareRequest = null;
+      shareBusy = false;
+      lastVisual = "";
+      shareButton.removeAttribute("aria-busy");
+      showNotice("");
+      if (shareDialog.open) shareDialog.close();
+      if (sharedAddress) {
+        const target = new URL(location.href);
+        target.search = "";
+        target.hash = "";
+        if (["http:", "https:"].includes(target.protocol)) target.pathname = "/";
+        history.replaceState(history.state, "", target);
+        document.title = FormulaShare.title(null);
+        sharedAddress = false;
+      }
+    }
     function setupDialog(dialog, opener, closeButton, openOnClick = true) {
       if (openOnClick) opener.addEventListener("click", () => {
         dialog.showModal();
@@ -2647,6 +2718,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     }
     function setDataProvider(next) {
       if (!next || typeof next.getMinute !== "function") throw new TypeError("Provider needs getMinute(hhmm, {signal})");
+      leaveSharedView();
       dataRevision++;
       pending.forEach((controller) => controller.abort());
       pending.clear();
@@ -2699,6 +2771,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     async function setDisplay(changes) {
       const next = { ...displaySettings, ...changes };
       if (!Object.hasOwn(FormulaTypesetter.PROFILES, next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS, next.numerals) || !["fraction", "inline"].includes(next.division) || ["symbolMotion", "structureMotion", "symbolMorph"].some((key) => typeof next[key] !== "boolean")) throw new TypeError("Invalid display options");
+      leaveSharedView(true);
       displaySettings = { font: next.font, numerals: next.numerals, division: next.division, symbolMotion: next.symbolMotion, structureMotion: next.structureMotion, symbolMorph: next.symbolMorph };
       shareButton.disabled = true;
       syncMotionControls();
@@ -2993,10 +3066,15 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       stage.setAttribute("aria-label", ast ? t("clockEquation", { time, expression: FormulaExpression.plain(ast, code), seconds }) : time);
       latestLayout = { display: { ...view }, ast, code, seconds, mode: ast ? "formula" : "time", tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1e3, axisY: axis, localAxisY: frame.axisY, fit: [scale, 0, 0, scale, x, y], typography: frame.typography };
       displayedFrame = { frame, ast, code, seconds, view };
-      shareButton.disabled = loading || !!engineError || !cache.has(code) || !!cache.get(code)?.error;
+      shareButton.disabled = shareBusy || loading || !!engineError || !snapshotAt(code, seconds) && (!cache.has(code) || !!cache.get(code)?.error);
       firstFrame = false;
     }
     function renderExpression(ast, code, seconds, loading, instant = false) {
+      const snapshot = snapshotAt(code, seconds);
+      if (snapshot) {
+        ast = snapshot.ast;
+        loading = false;
+      }
       if (loading) shareButton.disabled = true;
       const engine = typesetter, view = activeDisplay();
       const key = `${view.font}:${view.numerals}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
@@ -3047,6 +3125,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     }
     function setPreview(date, paused = false) {
       if (!(date instanceof Date) || !Number.isFinite(+date)) return;
+      leaveSharedView();
       preview = { epoch: +date, started: performance.now(), speed: 1, paused };
       resetTransport();
     }
@@ -3062,16 +3141,19 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       scheduleTick();
     }
     function goLive() {
+      leaveSharedView();
       preview = null;
       resetTransport();
     }
     function togglePlay() {
       if (!preview) return;
+      leaveSharedView();
       preview = { ...preview, epoch: +getNow(), started: performance.now(), paused: !preview.paused };
       resetTransport();
     }
     function toggleSlow() {
       if (!preview) return;
+      leaveSharedView();
       preview = { ...preview, epoch: +getNow(), started: performance.now(), speed: preview.speed === 1 ? 0.5 : 1 };
       resetTransport();
     }
@@ -3086,40 +3168,94 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     function manualShare(url) {
       const input = $("#share-url");
       input.value = url;
-      shareDialog.showModal();
+      $("#share-native").hidden = typeof navigator.share !== "function";
+      if (!shareDialog.open) shareDialog.showModal();
       input.focus();
       input.select();
     }
-    async function copyShare(url) {
+    async function copyShare(url, serial = shareSerial) {
       try {
         if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
         await navigator.clipboard.writeText(url);
-        showNotice(t("shareCopied"));
+        if (serial === shareSerial) {
+          if (shareDialog.open) shareDialog.close();
+          showNotice(t("shareCopied"));
+        }
       } catch {
-        manualShare(url);
+        if (serial === shareSerial) manualShare(url);
       }
     }
-    shareButton.addEventListener("click", () => {
+    function deliverShare(url, state, serial) {
+      if (serial !== shareSerial) return;
+      if (typeof navigator.share !== "function") {
+        void copyShare(url, serial);
+        return;
+      }
+      if (navigator.userActivation && !navigator.userActivation.isActive) {
+        manualShare(url);
+        return;
+      }
+      const failed = (error) => {
+        if (serial !== shareSerial || (isRecord(error) || error instanceof Error) && error.name === "AbortError") return;
+        manualShare(url);
+      };
+      try {
+        void navigator.share({ title: FormulaShare.title(state), url }).catch(failed);
+      } catch (error) {
+        failed(error);
+      }
+    }
+    $("#share-copy").addEventListener("click", () => {
+      void copyShare($("#share-url").value);
+    });
+    $("#share-native").addEventListener("click", () => {
+      if (activeSnapshot) deliverShare($("#share-url").value, activeSnapshot, shareSerial);
+    });
+    shareButton.addEventListener("click", async () => {
       if (shareButton.disabled || !displayedFrame) return;
       const snapshot = displayedFrame, { code, seconds, view } = snapshot;
-      const state = { v: 1, t: code + pad(seconds), font: view.font, numerals: view.numerals, division: view.division };
-      const url = FormulaShare.url(location.origin, state).href;
+      const state = FormulaShare.snapshot({ v: 1, t: code + pad(seconds), font: view.font, numerals: view.numerals, division: view.division, ast: snapshot.ast });
       Object.assign(displaySettings, { font: state.font, numerals: state.numerals, division: state.division });
-      setPreview(FormulaShare.localDate(state.t), true);
+      activeSnapshot = state;
+      preview = { epoch: +FormulaShare.localDate(state.t), started: performance.now(), speed: 1, paused: true };
+      resetTransport();
       ++requestSerial;
       scene.getAnimations({ subtree: true }).forEach((animation) => animation.finish());
       applyFrame(snapshot.frame, snapshot.ast, code, seconds, false, true, view);
       showNotice("");
-      if (typeof navigator.share !== "function") {
-        void copyShare(url);
+      const key = JSON.stringify(state), serial = ++shareSerial;
+      if (preparedShare?.key === key) {
+        deliverShare(FormulaShare.shortUrl(location.origin, preparedShare.id).href, state, serial);
         return;
       }
+      const controller = new AbortController();
+      shareRequest = controller;
+      shareBusy = true;
+      shareButton.disabled = true;
+      shareButton.setAttribute("aria-busy", "true");
+      showNotice(t("shareCreating"));
+      const timeout = setTimeout(() => controller.abort(), 15e3);
       try {
-        navigator.share({ title: FormulaShare.title(state), url }).catch((error) => {
-          if (!(isRecord(error) || error instanceof Error) || error.name !== "AbortError") void copyShare(url);
-        });
-      } catch (error) {
-        if (!(isRecord(error) || error instanceof Error) || error.name !== "AbortError") void copyShare(url);
+        const response = await fetch("/api/shares", { method: "POST", headers: { "Content-Type": "application/json" }, body: key, signal: controller.signal });
+        if (!response.ok) throw new Error(`Share storage returned ${response.status}`);
+        const result = await response.json();
+        if (!isRecord(result) || typeof result.id !== "string") throw new Error("Invalid share response");
+        const url = FormulaShare.shortUrl(location.origin, result.id).href;
+        if (serial !== shareSerial) return;
+        preparedShare = { key, id: result.id };
+        showNotice("");
+        deliverShare(url, state, serial);
+      } catch {
+        if (serial === shareSerial) showNotice(t("shareFailed"));
+      } finally {
+        clearTimeout(timeout);
+        if (serial === shareSerial) {
+          shareBusy = false;
+          shareRequest = null;
+          shareButton.removeAttribute("aria-busy");
+          lastVisual = "";
+          refresh(true);
+        }
       }
     });
     function refresh(force = false) {
@@ -3143,16 +3279,17 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       }
       sourceTime.setAttribute("aria-label", t("clockTime", { hours: pad(now.getHours()), minutes: pad(now.getMinutes()), seconds: pad(seconds) }));
       $("#playback").textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(seconds)}`;
-      const ast = result?.solutions[seconds] || null;
+      const snapshot = snapshotAt(code, seconds), ast = snapshot ? snapshot.ast : result?.solutions[seconds] || null;
       renderExpression(ast, code, seconds, !result);
       prepareNext(now);
       ticks.forEach((el, i) => {
-        el.classList.toggle("solved", !!result?.solutions[i]);
+        const saved2 = snapshotAt(code, i), entry = saved2 ? saved2.ast : result?.solutions[i];
+        el.classList.toggle("solved", !!entry);
         el.classList.toggle("current", i === seconds);
         el.classList.toggle("past", i < seconds);
         if (i === seconds) el.setAttribute("aria-current", "time");
         else el.removeAttribute("aria-current");
-        const status = t(result ? result.error ? "dataFailed" : result.solutions[i] ? "formulaAvailable" : "noFormula" : "loading");
+        const status = t(saved2 ? saved2.ast ? "formulaAvailable" : "noFormula" : result ? result.error ? "dataFailed" : entry ? "formulaAvailable" : "noFormula" : "loading");
         el.title = t("secondStatus", { seconds: pad(i), status });
       });
       const label = $("#state-label");
@@ -3163,7 +3300,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       } else if (now.getHours() === 0 && now.getMinutes() === 0 && seconds === 0) {
         label.textContent = t("newDay");
         label.classList.add("counting");
-      } else if (!result) label.textContent = t("loadingData");
+      } else if (snapshot) label.textContent = "";
+      else if (!result) label.textContent = t("loadingData");
       else if (result.error) label.textContent = t("dataClockFallback");
       else if (!ast) {
         label.textContent = "";

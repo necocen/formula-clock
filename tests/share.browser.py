@@ -1,7 +1,7 @@
 """Shared-link startup and user-activation-sensitive controls, using MathJax 4 CDN."""
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-import argparse, json, sys, platform
+import argparse, json, sys, platform, re
 from datetime import datetime, timezone
 from importlib.metadata import version
 
@@ -67,11 +67,18 @@ with sync_playwright() as p:
     page.evaluate("FormulaClock.preview('2000-01-15T12:34:31',false)")
     page.wait_for_function('FormulaClock.state.layout.seconds===31')
     page.click('#share')
+    page.wait_for_function('shared.length || document.querySelector("#share-dialog").open')
+    if page.locator('#share-dialog').is_visible():
+        page.click('#share-native')
+        page.keyboard.press('Escape')
     actual = page.evaluate('({call:shared.at(-1),before:beforeShare,state:FormulaClock.state})')
     assert actual['call']['paused'] and actual['state']['paused']
     assert actual['call']['activation'] is not False
-    assert f"t={actual['before']}" in actual['call']['url']
-    assert actual['call']['url'].endswith('&font=stix2&numerals=oldstyle&division=fraction')
+    assert re.search(r'/s/[A-Za-z0-9]{10}$', actual['call']['url'])
+    shared_html = ctx.request.get(actual['call']['url']).text()
+    restored = json.loads(re.search(r'<script id="shared-clock" type="application/json">(.*?)</script>', shared_html).group(1))['snapshot']
+    assert restored == {'v':1,'t':actual['before'],'font':'stix2','numerals':'oldstyle','division':'fraction','ast':actual['state']['layout']['ast']}
+    assert page.evaluate('location.pathname+location.search') == '/'
     audio_count = len(actual['state']['audio'])
     page.wait_for_timeout(850)
     assert page.evaluate('FormulaClock.state.audio.length') == audio_count
@@ -88,8 +95,11 @@ with sync_playwright() as p:
       Object.defineProperty(navigator,'share',{configurable:true,value:()=>Promise.reject(new Error('unavailable'))});
     }''')
     page.click('#share')
+    page.wait_for_function('document.querySelector("#share-dialog").open')
+    page.click('#share-copy')
     page.wait_for_function('window.copied')
     assert page.locator('#share-status').inner_text() == '共有URLをコピーしました'
+    page.keyboard.press('Escape')
     page.evaluate("Object.defineProperty(navigator,'share',{configurable:true,value:undefined});window.copied=null")
     page.click('#share')
     page.wait_for_function('window.copied')
@@ -100,7 +110,7 @@ with sync_playwright() as p:
     assert page.locator('#share-url').evaluate('(input)=>input.selectionEnd-input.selectionStart===input.value.length')
     page.keyboard.press('Escape')
     assert page.locator('#share-dialog').is_hidden() and page.evaluate('document.activeElement.id') == 'share'
-    checks.append('Native cancellation stays quiet; unavailable/failed native sharing copies; clipboard failure opens a selected URL with focus restored on close')
+    checks.append('Native cancellation stays quiet; failed native sharing offers share/copy controls; unavailable native sharing copies; clipboard failure opens a selected URL with focus restored on close')
     page.click('#go-live')
     assert not page.evaluate('FormulaClock.state.preview')
     assert page.locator('#transport').is_hidden()
@@ -109,7 +119,13 @@ with sync_playwright() as p:
     assert page.evaluate('FormulaClock.state.layout.mode') == 'time'
     page.evaluate("Object.defineProperty(navigator,'share',{configurable:true,value:data=>{window.nullShared=data;return Promise.resolve();}})")
     page.click('#share')
-    assert 't=004159' in page.evaluate('nullShared.url')
+    page.wait_for_function('window.nullShared || document.querySelector("#share-dialog").open')
+    if page.locator('#share-dialog').is_visible():
+        page.click('#share-native')
+        page.keyboard.press('Escape')
+    null_html = ctx.request.get(page.evaluate('nullShared.url')).text()
+    null_snapshot = json.loads(re.search(r'<script id="shared-clock" type="application/json">(.*?)</script>',null_html).group(1))['snapshot']
+    assert null_snapshot['t'] == '004159' and null_snapshot['ast'] is None
     checks.append('Shared preview returns to live mode; a legitimate null expression is shareable as the ordinary clock')
     for width in [320, 390, 768, 1200]:
         page.set_viewport_size({'width': width, 'height': 800})

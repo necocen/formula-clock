@@ -236,25 +236,46 @@ new FormulaData.FetchHourProvider('data/manifest.json')
 
 ## 9. 共有URLとOG画像
 
-共有状態の正規URLは `/` に次のクエリを付けたもの。
+共有状態の正規URLは `/s/<ID>`。IDは暗号学的乱数から作る英大文字・英小文字・数字の10文字。
+`-`・`_`は使わず、62文字からの選択には剰余による偏りを避ける棄却法を使う。
 
 ```text
-?v=1&t=235334&font=stix2&numerals=oldstyle&division=fraction
+/s/aB3x7Kp2Qm
 ```
 
-`t` はASCIIのHHMMSS（00:00:00〜23:59:59）。日付やタイムゾーンを表さない。
-`v` 省略は1として扱う。時刻がない・不正・バージョン未対応なら通常起動する。
-書体・数字スタイル・除算表示の欠落や不正値には、それぞれstix2・oldstyle・fractionを使う。
-未知のパラメータは無視し、生成URLには含めない。音とアニメーション設定も共有しない。
+`POST /api/shares`へ`Content-Type: application/json`で次のスナップショットを送る。
+`SharedSnapshot`の`ast`は正規`formula-clock/1`の式木、または通常時計を表す明示的な`null`。
 
-`share.ts` の `FormulaShare.parse(url)` と `FormulaShare.url(origin,state)` をブラウザとWorkerで共用する。
+```json
+{"v":1,"t":"123421","font":"stix2","numerals":"oldstyle","division":"fraction","ast":{"op":"mul","a":{"op":"add","a":{"op":"lit","i":0,"j":1},"b":{"op":"lit","i":1,"j":2}},"b":{"op":"add","a":{"op":"lit","i":2,"j":3},"b":{"op":"lit","i":3,"j":4}}}}
+```
+
+`t`はASCIIのHHMMSS（00:00:00〜23:59:59）。日付やタイムゾーンを表さない。
+音・アニメーション設定・言語は含めない。時刻・表示列挙値・ASTの構造・スロット順序を実行時に検証する。
+入力は16 KiB以下で、未知のフィールドやTeX・外部URL・画像を受け付けない。
+異なるOriginからのブラウザ要求は拒否する。IDはサーバーで生成し、利用者は指定できない。
+Workerは`SHARES` KVの`share/<ID>`へ期限なしで保存し、書き込み完了後に`201 {"id":"…"}`と`Location: /s/<ID>`を返す。
+保存済みレコードを書き換えるAPIは提供しない。
+
+`share.ts`の`FormulaShare.snapshot(value)`・`view(value)`で外部入力を検証し、`id(path)`・`shortUrl(origin,id)`でURLを扱う。
+Workerは`/s/<ID>`のHTMLへ検証済みスナップショットを埋め込み、画面とOG画像の両方がその式木を使う。
+式データの更新・取得失敗・リサイズがあっても共有表示の式木と`null`を保つ。
 復元は保存設定を読み取った後、最初の組版エンジンを選ぶ前に行い、localStorageへ書き戻さない。
-プレビューは停止状態で始まり、日付は表示しない。共有時も端末の現在秒ではなく、最後に描画を適用した時刻・設定を使う。
+プレビューは停止状態で始まり、共有時も最後に描画を適用した時刻・設定・式木を同期的に停止・確定する。
+KV保存後に共有し、ユーザー操作の有効期間が切れていれば共有・コピーのボタン付きURLを表示する。画像生成は待たない。
+同じ画面の再共有では作成済みのリンクを使う。保存失敗は再試行でき、時刻や設定の操作後に古い共有処理を表示しない。
 
-Workerは `/` のHTMLへOG・Twitter Card・canonicalを挿入し、`/og.png` で画像を配信する。
-画像URLは共有状態に描画版 `r` を加える。`r` はキャッシュの更新用であり、過去の描画版を指定するAPIではない。
-式データは現在の版を使い、入力として任意のTeX・AST・外部URL・画像は受け付けない。
+再生・速度変更・秒／時刻の指定・現在時刻への復帰・表示設定変更時に、`history.replaceState`でURLを`/`へ戻す。
+画面遷移や履歴の追加は行わない。表示設定の変更だけなら停止中の式木を保ち、時刻操作で現在の式データに戻る。
+設定画面を開くだけの操作や音量変更では共有URLを保つ。
+
+以前の`/?v=1&t=235334&font=stix2&numerals=oldstyle&division=fraction`も読み込める。
+この形式は`parse(url)`・`url(origin,state)`で扱い、過去の式木を持たないため現在のデータを使う。
+旧形式では`v`省略を1、表示の不正値をstix2・oldstyle・fractionとする。共有ボタンは常に新形式を生成する。
+
+Workerは`/`・`/s/<ID>`のHTMLへOG・Twitter Card・canonicalを挿入し、`/s/<ID>/og.png`で保存した式木の画像を配信する。
+旧形式の`/og.png`も維持する。画像URLの描画版`r`はキャッシュの更新用で、過去の描画版を指定するAPIではない。
 `renderOg({state,ast})` は正規ASTからPNGを返す、Cloudflareのストレージに依存しない処理。
 
 `FetchHourProvider(manifestUrl, {fetch})` の任意の第2引数で取得関数を差し替えられる。
-WorkerではASSETS bindingを使い、既存の `getMinute(hhmm, {signal})` 契約とキャッシュ・中止処理を維持する。
+旧形式のOG画像ではASSETS bindingを使い、既存の`getMinute(hhmm, {signal})`契約とキャッシュ・中止処理を維持する。

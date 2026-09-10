@@ -7,7 +7,7 @@
     "build": "npm run typecheck && tsx build.ts",
     "build:external": "npm run typecheck && tsx build.ts --external",
     "generate": "npm run typecheck && tsx tools/generate.ts",
-    "test": "npm run typecheck && node --import tsx tests/expression.test.cjs && node --import tsx tests/data.test.cjs && node --import tsx --test tests/hourly.test.cjs tests/build.test.cjs tests/symbols.test.cjs tests/share.test.cjs tests/i18n.test.cjs tests/og-cache.test.mjs",
+    "test": "npm run typecheck && node --import tsx tests/expression.test.cjs && node --import tsx tests/data.test.cjs && node --import tsx --test tests/hourly.test.cjs tests/build.test.cjs tests/symbols.test.cjs tests/share.test.cjs tests/share-storage.test.mjs tests/i18n.test.cjs tests/og-cache.test.mjs",
     "test:og": "node --import tsx --test tests/og-render.test.mjs tests/og-worker.test.mjs",
     "deploy": "wrangler deploy",
     "preview": "wrangler versions upload",

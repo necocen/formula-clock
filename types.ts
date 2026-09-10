@@ -53,10 +53,17 @@ export interface SharedClockState extends Pick<DisplayOptions, 'font' | 'numeral
   /** Six ASCII HHMMSS digits, interpreted as a wall-clock reading, without date/timezone. */
   readonly t: string;
 }
+/** Immutable snapshot; null preserves ordinary clock mode, independently of future datasets. */
+export interface SharedSnapshot extends SharedClockState { readonly ast: Expr | null; }
+export interface SharedView { readonly id: string; readonly snapshot: SharedSnapshot; }
 export interface FormulaShareAPI {
   parse(url: string | URL): Readonly<SharedClockState> | null;
   params(state: SharedClockState): URLSearchParams;
   url(origin: string, state: SharedClockState): URL;
+  snapshot(value: unknown): Readonly<SharedSnapshot>;
+  id(path: string): string | null;
+  shortUrl(origin: string, id: string): URL;
+  view(value: unknown): Readonly<SharedView>;
   timeLabel(state: SharedClockState): string;
   title(state: SharedClockState | null): string;
   localDate(time: string): Date;

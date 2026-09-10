@@ -68,7 +68,8 @@ with sync_playwright() as p:
         }''')
         page.click('#share')
         page.wait_for_function('window.copied')
-        assert page.evaluate('new URL(copied).search') == query
+        assert page.evaluate('new URL(copied).search') == ''
+        assert re.fullmatch(r'/s/[A-Za-z0-9]{10}',page.evaluate('new URL(copied).pathname'))
         assert page.locator('#share-status').inner_text() == ('共有URLをコピーしました' if locale == 'ja' else 'Share link copied')
         page.evaluate("Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>Promise.reject(new Error('Test denial'))}})")
         page.click('#share')
@@ -89,7 +90,7 @@ with sync_playwright() as p:
         page.evaluate("FormulaClock.setDataProvider({getMinute:async()=>{throw new Error('Test data failure')}})")
         page.wait_for_function('FormulaClock.state.dataError')
         assert page.locator('#state-label').text_content() == ('式データを読み込めなかった。通常の時計を表示中。' if locale == 'ja' else 'Could not load formula data. Showing the clock.')
-        report['checks'].append({'language':language,'locale':locale,'savedPreferencesUnchanged':True,'shareQueryUnchanged':True,
+        report['checks'].append({'language':language,'locale':locale,'savedPreferencesUnchanged':True,'shortShareUrl':True,
           'settingsControlsAndMessages':True,'legalTextUnchanged':True,'licenseExplanationsAlwaysJapanese':True,'narrowWidths':[320,390,768],'persistentDigitsAndLayouts':True})
         ctx.close()
     ctx = browser.new_context(locale='en-US')
@@ -100,6 +101,9 @@ with sync_playwright() as p:
     assert page.locator('#settings-title').text_content() == 'Settings'
     assert page.locator('#share').is_hidden()
     assert page.evaluate('FormulaClock.state.paused')
+    page.click('#go-live')
+    assert not page.evaluate('FormulaClock.state.preview')
+    assert page.url == (ROOT/'index.html').as_uri()
     report['standaloneEnglish'] = True
     ctx.close()
     browser.close()

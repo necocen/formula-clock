@@ -1,10 +1,10 @@
-import type {R2Bucket,HTMLRewriterElementContentHandlers} from '@cloudflare/workers-types';
+import type {R2Bucket,KVNamespace,HTMLRewriterElementContentHandlers} from '@cloudflare/workers-types';
 import type {SharedClockState,Expr} from '../types.ts';
 export interface RenderInput {state: SharedClockState; ast: Expr | null;}
 // Use the standard fetch surface so the same handler runs in Worker and Node
 // integration tests; bindings retain their actual R2 method signatures.
 export interface Assets {fetch(request: Request): Promise<Response>;}
-export interface Env {ASSETS: Assets; OG_IMAGES?: Pick<R2Bucket,'get'|'put'>;}
+export interface Env {ASSETS: Assets; OG_IMAGES?: Pick<R2Bucket,'get'|'put'>; SHARES?: Pick<KVNamespace,'get'|'put'>;}
 export interface Context {waitUntil(promise: Promise<unknown>): void;}
 export interface Rewriter {
   on(selector: string, handlers: HTMLRewriterElementContentHandlers): Rewriter;

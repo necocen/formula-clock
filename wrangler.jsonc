@@ -12,10 +12,11 @@
   "build": {"command":"npm run build:external"},
   "observability": {"enabled":true},
   "r2_buckets": [{"binding":"OG_IMAGES","bucket_name":"formula-clock-og","preview_bucket_name":"formula-clock-og-preview"}],
+  "kv_namespaces": [{"binding":"SHARES","id":"45dec9f90c424cffadf045e593c1093c","preview_id":"8a8ef6457a4a4018bc0c36435244e4a2"}],
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist-external",
-    "run_worker_first": ["/", "/og.png"],
+    "run_worker_first": ["/", "/og.png", "/s/*", "/api/shares"],
     "not_found_handling": "none"
   }
 }

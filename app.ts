@@ -1,4 +1,4 @@
-import {isRecord, type DisplayOptions, type FormulaProvider, type Expr, type SecondEntries, type SharedClockState, type LayoutItem, type ClockLayout, type AudioEvent} from './types.ts';
+import {isRecord, type DisplayOptions, type FormulaProvider, type Expr, type SecondEntries, type SharedSnapshot, type SharedView, type LayoutItem, type ClockLayout, type AudioEvent} from './types.ts';
 import type {Typesetter} from './typesetter.ts';
 import type {ClockFace,Frame,PlacedToken} from './browser-types.ts';
 
@@ -28,7 +28,32 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   const settingsDialog = $<HTMLDialogElement>('#settings'), settingsButton = $<HTMLButtonElement>('#settings-open');
   const licenseDialog = $<HTMLDialogElement>('#licenses');
   const shareButton = $<HTMLButtonElement>('#share'), shareDialog = $<HTMLDialogElement>('#share-dialog');
-  const sharedState = FormulaShare.parse(new URL(location.href));
+  let sharedView: SharedView | null = null;
+  try {
+    const embedded = document.querySelector('#shared-clock');
+    if (embedded) {
+      const candidate = FormulaShare.view(JSON.parse(embedded.textContent || ''));
+      if (candidate.id === FormulaShare.id(location.pathname)) sharedView = candidate;
+    }
+  } catch (error) { console.warn('[Formula Clock] Invalid shared snapshot.',error); }
+  const sharedState = sharedView?.snapshot || FormulaShare.parse(new URL(location.href));
+  let activeSnapshot: SharedSnapshot | null = sharedView?.snapshot || null;
+  let sharedAddress = !!sharedState;
+  let preparedShare = sharedView ? {key:JSON.stringify(sharedView.snapshot),id:sharedView.id} : null;
+  let shareSerial = 0, shareBusy = false, shareRequest: AbortController | null = null;
+  function snapshotAt(code: string,seconds: number) { return activeSnapshot?.t === code+pad(seconds) ? activeSnapshot : null; }
+  function leaveSharedView(keepFormula = false) {
+    if (!keepFormula) activeSnapshot = null;
+    ++shareSerial; shareRequest?.abort(); shareRequest = null; shareBusy = false; lastVisual = '';
+    shareButton.removeAttribute('aria-busy'); showNotice('');
+    if (shareDialog.open) shareDialog.close();
+    if (sharedAddress) {
+      const target = new URL(location.href); target.search = ''; target.hash = '';
+      // file:// previews retain their pathname; changing it would fail the origin check.
+      if (['http:','https:'].includes(target.protocol)) target.pathname = '/';
+      history.replaceState(history.state,'',target); document.title = FormulaShare.title(null); sharedAddress = false;
+    }
+  }
   function setupDialog(dialog: HTMLDialogElement, opener: HTMLButtonElement, closeButton: HTMLButtonElement, openOnClick = true) {
     if (openOnClick) opener.addEventListener('click', () => {
       dialog.showModal(); closeButton.focus({preventScroll:true}); dialog.scrollTop = 0;
@@ -121,6 +146,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   }
   function setDataProvider(next: FormulaProvider) {
     if (!next || typeof next.getMinute !== 'function') throw new TypeError('Provider needs getMinute(hhmm, {signal})');
+    leaveSharedView();
     dataRevision++;
     pending.forEach(controller => controller.abort()); pending.clear(); cache.clear();
     provider = next; lastVisual = ''; lastCode = null; ++requestSerial;
@@ -161,6 +187,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   async function setDisplay(changes: Partial<DisplayOptions>) {
     const next = {...displaySettings,...changes};
     if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || (['symbolMotion','structureMotion','symbolMorph'] as const).some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
+    leaveSharedView(true); // Restyle the saved formula until the user changes time.
     displaySettings = {font:next.font,numerals:next.numerals,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
     shareButton.disabled = true;
     syncMotionControls();
@@ -403,10 +430,12 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     stage.setAttribute('aria-label',ast ? t('clockEquation',{time,expression:FormulaExpression.plain(ast,code),seconds}) : time);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
     displayedFrame = {frame,ast,code,seconds,view};
-    shareButton.disabled = loading || !!engineError || !cache.has(code) || !!cache.get(code)?.error;
+    shareButton.disabled = shareBusy || loading || !!engineError || (!snapshotAt(code,seconds) && (!cache.has(code) || !!cache.get(code)?.error));
     firstFrame = false;
   }
   function renderExpression(ast: Expr | null, code: string, seconds: number, loading: boolean, instant = false) {
+    const snapshot = snapshotAt(code,seconds);
+    if (snapshot) { ast = snapshot.ast; loading = false; }
     if (loading) shareButton.disabled = true;
     const engine = typesetter, view = activeDisplay();
     const key = `${view.font}:${view.numerals}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
@@ -457,6 +486,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   function getNow() { return preview ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started) * preview.speed) : new Date(); }
   function setPreview(date: Date, paused = false) {
     if (!(date instanceof Date) || !Number.isFinite(+date)) return;
+    leaveSharedView();
     preview = { epoch: +date, started: performance.now(), speed: 1, paused };
     resetTransport();
   }
@@ -468,14 +498,16 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     $<HTMLButtonElement>('#slow').setAttribute('aria-pressed', String(!!preview && preview.speed < 1));
     refresh(true); scheduleTick();
   }
-  function goLive() { preview = null; resetTransport(); }
+  function goLive() { leaveSharedView(); preview = null; resetTransport(); }
   function togglePlay() {
     if (!preview) return;
+    leaveSharedView();
     preview = { ...preview, epoch: +getNow(), started: performance.now(), paused: !preview.paused };
     resetTransport();
   }
   function toggleSlow() {
     if (!preview) return;
+    leaveSharedView();
     preview = { ...preview, epoch: +getNow(), started: performance.now(), speed: preview.speed === 1 ? .5 : 1 };
     resetTransport();
   }
@@ -487,35 +519,64 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   }
   function manualShare(url: string) {
     const input = $<HTMLInputElement>('#share-url'); input.value = url;
-    shareDialog.showModal(); input.focus(); input.select();
+    $<HTMLButtonElement>('#share-native').hidden = typeof navigator.share !== 'function';
+    if (!shareDialog.open) shareDialog.showModal(); input.focus(); input.select();
   }
-  async function copyShare(url: string) {
+  async function copyShare(url: string,serial = shareSerial) {
     try {
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(url);
-      showNotice(t('shareCopied'));
-    } catch { manualShare(url); }
+      if (serial === shareSerial) { if (shareDialog.open) shareDialog.close(); showNotice(t('shareCopied')); }
+    } catch { if (serial === shareSerial) manualShare(url); }
   }
-  shareButton.addEventListener('click', () => {
+  function deliverShare(url: string,state: SharedSnapshot,serial: number) {
+    if (serial !== shareSerial) return;
+    if (typeof navigator.share !== 'function') { void copyShare(url,serial); return; }
+    if (navigator.userActivation && !navigator.userActivation.isActive) { manualShare(url); return; }
+    const failed = (error: unknown) => {
+      if (serial !== shareSerial || ((isRecord(error) || error instanceof Error) && error.name === 'AbortError')) return;
+      manualShare(url);
+    };
+    try { void navigator.share({title:FormulaShare.title(state),url}).catch(failed); } catch (error) { failed(error); }
+  }
+  $('#share-copy').addEventListener('click',() => { void copyShare($<HTMLInputElement>('#share-url').value); });
+  $('#share-native').addEventListener('click',() => {
+    if (activeSnapshot) deliverShare($<HTMLInputElement>('#share-url').value,activeSnapshot,shareSerial);
+  });
+  shareButton.addEventListener('click', async () => {
     if (shareButton.disabled || !displayedFrame) return;
     const snapshot = displayedFrame, {code,seconds,view} = snapshot;
-    const state: SharedClockState = {v:1,t:code+pad(seconds),font:view.font,numerals:view.numerals,division:view.division};
-    const url = FormulaShare.url(location.origin,state).href;
+    const state = FormulaShare.snapshot({v:1,t:code+pad(seconds),font:view.font,numerals:view.numerals,division:view.division,ast:snapshot.ast});
     // Invalidate work for a newer second and settle the frame the user saw.
-    // Everything before navigator.share is synchronous to retain user activation.
+    // Capture the AST before any network await, including an ordinary null frame.
     Object.assign(displaySettings,{font:state.font,numerals:state.numerals,division:state.division});
-    setPreview(FormulaShare.localDate(state.t),true);
+    activeSnapshot = state;
+    preview = {epoch:+FormulaShare.localDate(state.t),started:performance.now(),speed:1,paused:true};
+    resetTransport();
     ++requestSerial;
     scene.getAnimations({subtree:true}).forEach(animation => animation.finish());
     applyFrame(snapshot.frame,snapshot.ast,code,seconds,false,true,view);
     showNotice('');
-    if (typeof navigator.share !== 'function') { void copyShare(url); return; }
+    const key = JSON.stringify(state), serial = ++shareSerial;
+    if (preparedShare?.key === key) { deliverShare(FormulaShare.shortUrl(location.origin,preparedShare.id).href,state,serial); return; }
+    const controller = new AbortController(); shareRequest = controller;
+    shareBusy = true; shareButton.disabled = true; shareButton.setAttribute('aria-busy','true');
+    showNotice(t('shareCreating'));
+    const timeout = setTimeout(() => controller.abort(),15000);
     try {
-      navigator.share({title:FormulaShare.title(state),url}).catch(error => {
-        if (!(isRecord(error) || error instanceof Error) || error.name !== 'AbortError') void copyShare(url);
-      });
-    } catch (error) {
-      if (!(isRecord(error) || error instanceof Error) || error.name !== 'AbortError') void copyShare(url);
+      const response = await fetch('/api/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:key,signal:controller.signal});
+      if (!response.ok) throw new Error(`Share storage returned ${response.status}`);
+      const result: unknown = await response.json();
+      if (!isRecord(result) || typeof result.id !== 'string') throw new Error('Invalid share response');
+      const url = FormulaShare.shortUrl(location.origin,result.id).href;
+      if (serial !== shareSerial) return;
+      preparedShare = {key,id:result.id}; showNotice('');
+      deliverShare(url,state,serial);
+    } catch {
+      if (serial === shareSerial) showNotice(t('shareFailed'));
+    } finally {
+      clearTimeout(timeout);
+      if (serial === shareSerial) { shareBusy = false; shareRequest = null; shareButton.removeAttribute('aria-busy'); lastVisual = ''; refresh(true); }
     }
   });
   function refresh(force = false) {
@@ -538,13 +599,14 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     }
     sourceTime.setAttribute('aria-label',t('clockTime',{hours:pad(now.getHours()),minutes:pad(now.getMinutes()),seconds:pad(seconds)}));
     $('#playback').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(seconds)}`;
-    const ast = result?.solutions[seconds] || null;
+    const snapshot = snapshotAt(code,seconds), ast = snapshot ? snapshot.ast : result?.solutions[seconds] || null;
     renderExpression(ast, code, seconds, !result);
     prepareNext(now);
     ticks.forEach((el, i) => {
-      el.classList.toggle('solved', !!result?.solutions[i]); el.classList.toggle('current', i === seconds); el.classList.toggle('past', i < seconds);
+      const saved = snapshotAt(code,i), entry = saved ? saved.ast : result?.solutions[i];
+      el.classList.toggle('solved', !!entry); el.classList.toggle('current', i === seconds); el.classList.toggle('past', i < seconds);
       if (i === seconds) el.setAttribute('aria-current', 'time'); else el.removeAttribute('aria-current');
-      const status = t(result ? (result.error ? 'dataFailed' : result.solutions[i] ? 'formulaAvailable' : 'noFormula') : 'loading');
+      const status = t(saved ? (saved.ast ? 'formulaAvailable' : 'noFormula') : result ? (result.error ? 'dataFailed' : entry ? 'formulaAvailable' : 'noFormula') : 'loading');
       el.title = t('secondStatus',{seconds:pad(i),status});
     });
     const label = $('#state-label'); label.className = 'state-label';
@@ -552,7 +614,8 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
       label.textContent = t('newDayIn',{seconds:60 - seconds}); label.classList.add('counting');
     } else if (now.getHours() === 0 && now.getMinutes() === 0 && seconds === 0) {
       label.textContent = t('newDay'); label.classList.add('counting');
-    } else if (!result) label.textContent = t('loadingData');
+    } else if (snapshot) label.textContent = '';
+    else if (!result) label.textContent = t('loadingData');
     else if (result.error) label.textContent = t('dataClockFallback');
     else if (!ast) { label.textContent = ''; label.classList.add('quiet'); }
     else label.textContent = '';

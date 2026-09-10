@@ -38,6 +38,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
 @media(max-width:480px){.topbar{gap:8px}.tools{gap:4px}.tool.icon-only{width:36px;min-width:36px;padding:8px}}
 .advanced .state-label{height:auto;min-height:26px;text-align:center}
 @media(max-width:360px){.segmented-control{width:144px}}
+.share-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.share-status{width:max-content;max-width:calc(100vw - 32px);white-space:normal;text-align:center}
 </style>
 </head>
 <body>
@@ -89,6 +90,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
   <div class="settings-header"><h2 id="share-title"><span data-i18n="shareTitle">Share</span></h2><button class="settings-close" id="share-close" data-i18n-aria-label="close" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
   <p><span data-i18n="shareHelp">このURLをコピーして共有できます。</span></p>
   <input id="share-url" data-i18n-aria-label="shareUrl" class="share-url" type="url" readonly aria-label="共有URL">
+  <div class="share-actions"><button id="share-native" class="small-button" data-i18n="shareNative" hidden>共有する</button><button id="share-copy" class="small-button" data-i18n="shareCopy">リンクをコピー</button></div>
 </dialog>
 <dialog class="settings-dialog" id="settings" aria-labelledby="settings-title">
   <div class="settings-header"><h2 id="settings-title"><span data-i18n="settings">設定</span></h2><button class="settings-close" id="settings-close" data-i18n-aria-label="closeSettings" aria-label="設定を閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>

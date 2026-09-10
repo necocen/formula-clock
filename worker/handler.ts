@@ -1,8 +1,10 @@
-import type {SharedClockState} from '../types.ts';
+import type {SharedClockState,SharedView} from '../types.ts';
 import type {Assets,Env,Context,Rewriter,HandlerOptions,ImageResult} from './types.ts';
 declare const HTMLRewriter: {new(): Rewriter};
 import Share from '../share.ts';
 import * as Data from '../data.ts';
+import {createShare,readShare,ShareError,json} from './shares.ts';
+import I18n from '../i18n.ts';
 
 const escape = (value: unknown) => String(value).replace(/[&<>"']/g,character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]!));
 const normalDescription = '時刻の4桁が、秒を表す数式に変わる。';
@@ -31,8 +33,8 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
     return providers.get(assets)!;
   }
   function record(fields: Record<string,unknown>) { log({event:'og',revision,...fields}); }
-  function imageJob(state: SharedClockState,env: Env) {
-    const key = keyFor(state,revision);
+  function imageJob(state: SharedClockState,env: Env,shared?: SharedView) {
+    const key = shared ? `og/${revision}/shares/${shared.id}.png` : keyFor(state,revision);
     if (pending.has(key)) return {task:pending.get(key)!,coalesced:true};
     const task = deadline<ImageResult>(async signal => {
       if (env.OG_IMAGES) {
@@ -42,9 +44,9 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
           if (object) return {bytes:new Uint8Array(await object.arrayBuffer()),cache:'hit',key};
         } catch (error) { check(signal); record({status:'cache-read-error',reason:String(error instanceof Error ? error.message : error)}); }
       }
-      const minute = await providerFor(env.ASSETS).getMinute(state.t.slice(0,4),{signal});
+      const ast = shared ? shared.snapshot.ast : (await providerFor(env.ASSETS).getMinute(state.t.slice(0,4),{signal})).seconds[Number(state.t.slice(4))];
       check(signal);
-      const bytes = await renderOg({state,ast:minute.seconds[Number(state.t.slice(4))]});
+      const bytes = await renderOg({state,ast});
       check(signal);
       return {bytes,cache:'miss',key};
     },timeoutMs,'Image generation').then(async result => {
@@ -68,11 +70,11 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
     // The bundled fallback is independent of R2 and the renderer.
     return new Response(request.method === 'HEAD' ? null : asset.body,{status:asset.status,headers});
   }
-  async function image(request: Request,env: Env,ctx: Context,url: URL) {
-    const state = Share.parse(url);
+  async function image(request: Request,env: Env,ctx: Context,url: URL,shared?: SharedView) {
+    const state = shared?.snapshot || Share.parse(url);
     if (!state) return fallback(request,env,'no-shared-state');
     const started = Date.now();
-    const {task,coalesced} = imageJob(state,env);
+    const {task,coalesced} = imageJob(state,env,shared);
     ctx.waitUntil(task.catch(() => {}));
     try {
       const result = await task, etag = `"${result.key}"`;
@@ -83,10 +85,10 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
       return new Response(request.method === 'HEAD' ? null : result.bytes,{headers});
     } catch (error) { return fallback(request,env,String(error instanceof Error ? error.message : error)); }
   }
-  async function html(request: Request,env: Env,url: URL) {
-    const state = Share.parse(url), canonical = state ? Share.url(url.origin,state) : new URL('/',url.origin);
-    const imageUrl = new URL('/og.png',url.origin);
-    if (state) imageUrl.search = Share.params(state).toString();
+  async function html(request: Request,env: Env,url: URL,shared?: SharedView) {
+    const state = shared?.snapshot || Share.parse(url), canonical = shared ? Share.shortUrl(url.origin,shared.id) : state ? Share.url(url.origin,state) : new URL('/',url.origin);
+    const imageUrl = new URL(shared ? `/s/${shared.id}/og.png` : '/og.png',url.origin);
+    if (state && !shared) imageUrl.search = Share.params(state).toString();
     imageUrl.searchParams.set('r',revision);
     const title = Share.title(state), description = state ? `${Share.timeLabel(state)}のFormula Clock。` : normalDescription;
     const metadata: Record<string,string> = {'description':description,'og:title':title,'og:description':description,'og:image':imageUrl.href,
@@ -106,14 +108,38 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
         if (name && Object.hasOwn(metadata,name)) element.setAttribute('content',metadata[name]);
       }})
       .on('head',{element(element) {
+        if (shared) {
+          // Root-relative data fetching also works while the address is /s/{id}.
+          const payload = JSON.stringify(shared).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+          element.prepend(`<base href="/"><script id="shared-clock" type="application/json">${payload}</script>`,{html:true});
+        }
         element.append(`<meta property="og:url" content="${escape(canonical.href)}"><meta property="og:image:alt" content="${escape(title)}"><meta name="twitter:description" content="${escape(description)}"><link rel="canonical" href="${escape(canonical.href)}">`,{html:true});
       }})
       .transform(response);
   }
   return {async fetch(request: Request,env: Env,ctx: Context) {
     const url = new URL(request.url);
-    if (!['/','/og.png'].includes(url.pathname)) return env.ASSETS.fetch(request);
+    if (url.pathname === '/api/shares') {
+      if (request.method !== 'POST') return json({error:'method-not-allowed'},405,{Allow:'POST'});
+      try { return await deadline(() => createShare(request,env),timeoutMs,'Share creation'); }
+      catch (error) { return json({error:error instanceof ShareError ? error.message : 'share-storage-unavailable'},error instanceof ShareError ? error.status : 503); }
+    }
+    const imagePath = url.pathname.endsWith('/og.png'), id = Share.id(imagePath ? url.pathname.slice(0,-7) : url.pathname);
+    if (!['/','/og.png'].includes(url.pathname) && !url.pathname.startsWith('/s/')) return env.ASSETS.fetch(request);
     if (!['GET','HEAD'].includes(request.method)) return new Response('Method not allowed',{status:405,headers:{Allow:'GET, HEAD'}});
+    if (url.pathname.startsWith('/s/')) {
+      try {
+        if (!id) throw new ShareError(404,'share-not-found');
+        const shared = await deadline(() => readShare(id,env),timeoutMs,'Share lookup');
+        return imagePath ? image(request,env,ctx,url,shared) : html(request,env,url,shared);
+      } catch (error) {
+        const status = error instanceof ShareError ? error.status : 503;
+        if (imagePath) return new Response(request.method === 'HEAD' ? null : JSON.stringify({error:'share-unavailable'}),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store','Retry-After':'60'}});
+        const {t,locale} = I18n.create(request.headers.get('Accept-Language')?.split(',')[0]?.split(';')[0]);
+        const body = `<!doctype html><html lang="${locale}"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${t('shareUnavailable')} — Formula Clock</title><style>body{margin:0;background:#111710;color:#d8dccf;font:16px/1.8 system-ui}main{max-width:32em;margin:15vh auto;padding:24px}h1{font-size:22px}p{color:#a4aa9b}a{color:inherit;display:inline-block;margin-right:24px}</style><main><h1>${t('shareUnavailable')}</h1><p>${t(status === 404 ? 'shareNotFound' : 'shareLoadFailed')}</p><a href="${escape(url.pathname)}">${t('reload')}</a><a href="/">Formula Clock</a></main></html>`;
+        return new Response(request.method === 'HEAD' ? null : body,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Retry-After':'60'}});
+      }
+    }
     return url.pathname === '/' ? html(request,env,url) : image(request,env,ctx,url);
   }};
 }

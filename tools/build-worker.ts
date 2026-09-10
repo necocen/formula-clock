@@ -8,7 +8,7 @@ import {initRenderer,renderDefaultOg} from '../worker/render.ts';
 const root = fileURLToPath(new URL('../',import.meta.url));
 const output = path.join(root,'dist-worker');
 const sources = ['display.ts','share.ts','expression.ts','data.ts','data/expressions.json','package-lock.json',
-  'worker/index.ts','worker/handler.ts','worker/render.ts','worker/brand.ts','types.ts','worker/types.ts','worker/globals.d.ts','build.ts','tools/build-worker.ts'];
+  'worker/index.ts','worker/handler.ts','worker/shares.ts','worker/render.ts','worker/brand.ts','i18n.ts','types.ts','worker/types.ts','worker/globals.d.ts','build.ts','tools/build-worker.ts'];
 const hash = createHash('sha256');
 for (const name of sources) { hash.update(name); hash.update(await fs.readFile(path.join(root,name))); }
 const revision = hash.digest('hex').slice(0,24);
