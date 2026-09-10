@@ -27,7 +27,7 @@ Cloudflareへのプレビュー・公開・KV／R2設定は[共有機能の運�
 ## 使い方
 
 右上の設定からフォント、数字のスタイル、除算のスタイル、音量を変更できます。
-フォントはSTIX Two / Termes / Fira / Euler、数字はLining / Oldstyleを独立して選びます。初期値はSTIX Two + Oldstyle + 分数です。
+フォントはSTIX Two / Termes / Fira / Euler、数字はLining / Oldstyleを独立して選びます。除算は分数・÷・/ の3種類です。初期値はSTIX Two + Oldstyle + 分数です。
 表示設定と時報のオン／オフ・音量はブラウザに保存します。
 
 秒の目盛りや時刻指定からプレビューでき、Play / Pauseで再生・一時停止、「現在時刻へ」で通常の時計に戻ります。

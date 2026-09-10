@@ -14,7 +14,7 @@
   → 同じ数字オブジェクトを移動
 ```
 
-構文木には演算の意味と元の桁への参照を記録する。括弧、色、TeXマクロ、フォント、分数線か「÷」か、といった表示の指定は記録しない。
+構文木には演算の意味と元の桁への参照を記録する。括弧、色、TeXマクロ、フォント、分数線か「÷」「/」か、といった表示の指定は記録しない。
 
 TeXを受け取る形式だと、分数を「÷」へ変える前にTeXを解析し直す必要がある。数字の文字列だけからは、同じ数字が複数現れたときの元の桁も決まらない。構文木なら、その両方を保存できる。
 
@@ -162,13 +162,13 @@ TeX生成は `expression.ts` に集約した。表示上の優先度は次のと
 | 弱い → 強い | 表記 |
 |---|---|
 | 1 | `+ −` |
-| 2 | `× ÷`（左結合） |
+| 2 | `× ÷ /`（左結合） |
 | 3 | 単項の負号 |
 | 4 | 累乗 |
 | 5 | 階乗 |
 | 6 | 数字、平方根、分数線でまとまった分数 |
 
-分数線は分子・分母の範囲を明示する。`÷` にはそれがないので、同じ構文木でも必要な括弧が変わる。
+分数線は分子・分母の範囲を明示する。`÷` と `/` にはそれがないので、同じ構文木でも必要な括弧が変わる。
 
 | 意味 | ÷での表示 |
 |---|---|
@@ -189,6 +189,8 @@ TeX生成は `expression.ts` に集約した。表示上の優先度は次のと
 await FormulaClock.setDisplay({ font: 'stix2', numerals: 'oldstyle', division: 'inline' });
 await FormulaClock.setDisplay({ font: 'euler', numerals: 'lining', division: 'fraction' });
 ```
+
+除算スタイルは`division: fraction | inline | slash`。`fraction`は分数、`inline`は÷、`slash`は/を表示し、後者2つは同じ優先度・括弧の規則を使う。共有URL・KV・OG画像でも3種類を保持する。
 
 字体は `stix2` / `termes` / `fira` / `euler`、数字スタイルは独立した `numerals: lining | oldstyle`。初期値は `stix2` + `oldstyle`。Eulerは `mathjax-modern` に `mathjax-euler` 拡張を追加し、ほかは対応するMathJaxフォントを使う。全書体のliningでは、0の実字形の中心から数式軸を求め、記号を `\vcenter` で合わせる。oldstyleは各数字に `\oldstyle` を指定し、記号と構造には書体本来の数式軸を使う。等号の画面上の縦位置は全組み合わせで固定する。
 
@@ -282,7 +284,7 @@ ID発行後に共有し、通信中にユーザー操作の有効期間が切れ
 Workerは`/`・`/s/<ID>`のHTMLへOG・Twitter Card・canonicalを挿入し、`/s/<ID>/og.png`で保存した式木の画像を配信する。
 ページのタイトルは`FormulaShare.title(state)`で作る数式のテキスト表記。
 `state.ast`がある場合は優先順位と結合順序に必要な括弧だけを付け、除算を`/`、累乗を`^`で表して秒との等式にする（例：`12 / 3 + 4 = 8`）。
-表示の分数／÷設定には影響されない。式がない場合は`Formula Clock — HH:MM:SS`。旧形式は現在データのASTを使い、取得失敗時は時刻に戻す。
+表示の分数／÷／スラッシュ設定には影響されない。式がない場合は`Formula Clock — HH:MM:SS`。旧形式は現在データのASTを使い、取得失敗時は時刻に戻す。
 OG／Twitterカードは`FormulaShare.card(state)`で作り、タイトルは`Formula Clock - HH:MM:SS`、Descriptionは空白なしの数式にする。
 ネイティブ共有でも同じ`FormulaShare.card(state)`を使い、`navigator.share`へカードのタイトルと共有URLだけを渡す。`text`は渡さず、数式は共有先のOG画像・Descriptionで扱う。
 `expression.ts`の`compact(ast,code)`で結合の意味を保つ括弧を付け、`+`・`-`・`×`・`/`・`^`を使う（例：`-(2×3)+50=44`）。式がない場合のDescriptionは`HH:MM:SS`。

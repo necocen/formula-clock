@@ -54,10 +54,11 @@ test('every supported display choice and boundary time round-trips canonically',
   for(const t of ['000000','000059','005959','120000','235959'])
     for(const font of ['stix2','termes','fira','euler'])
       for(const numerals of ['lining','oldstyle'])
-        for(const division of ['fraction','inline']){
+        for(const division of ['fraction','inline','slash']){
           const state={v:1,t,font,numerals,division},url=Share.url('https://clock.example/ignored?old=1#fragment',state);
           assert.equal(url.pathname,'/');assert.equal(url.hash,'');
           assert.deepEqual(Share.parse(url),state);
+          assert.deepEqual(Share.snapshot({...state,ast:snapshot.ast}),{...state,ast:snapshot.ast});
           assert.equal(url.search,`?v=1&t=${t}&font=${font}&numerals=${numerals}&division=${division}`);
         }
 });

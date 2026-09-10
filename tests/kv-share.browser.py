@@ -79,7 +79,7 @@ with sync_playwright() as p:
     ready(page,'123421')
     assert page.evaluate('FormulaClock.state.layout.ast') == ast
     page.screenshot(path=str(args.output_dir/'saved-formula.png'))
-    page.evaluate('FormulaClock.setDisplay({font:"termes",division:"inline"})')
+    page.evaluate('FormulaClock.setDisplay({font:"termes",division:"slash"})')
     page.wait_for_function('FormulaClock.state.layout.display.font==="termes" && !document.querySelector("#share").disabled',timeout=45000)
     assert page.url == args.url
     assert page.title() == 'Formula Clock'
@@ -91,7 +91,7 @@ with sync_playwright() as p:
         page.click('#share-native'); page.keyboard.press('Escape')
     restyled = page.evaluate('nativeCalls.at(-1).url')
     assert restyled != url
-    assert read_snapshot(ctx,restyled) == {**snapshot,'font':'termes','division':'inline'}
+    assert read_snapshot(ctx,restyled) == {**snapshot,'font':'termes','division':'slash'}
     page.click('#play-pause')
     page.wait_for_function('!FormulaClock.state.paused')
     page.wait_for_function('FormulaClock.state.layout.seconds!==21',timeout=5000)

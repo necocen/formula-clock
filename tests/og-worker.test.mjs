@@ -44,7 +44,7 @@ test('workerd serves state-specific metadata, real PNGs, R2 cache, and static as
     assert.equal((await mf.dispatchFetch('https://clock.example/data/manifest.json')).status,200);
     const defaults=await (await mf.dispatchFetch('https://clock.example/?t=bad&font=%22%3E%3Cscript%3E')).text();
     assert.match(defaults,/<title>Formula Clock<\/title>/);assert.ok(!defaults.includes('font=%22'));
-    const snapshot={v:1,t:'123421',font:'euler',numerals:'lining',division:'inline',ast:{op:'mul',a:{op:'add',a:{op:'lit',i:0,j:1},b:{op:'lit',i:1,j:2}},b:{op:'add',a:{op:'lit',i:2,j:3},b:{op:'lit',i:3,j:4}}}};
+    const snapshot={v:1,t:'123421',font:'euler',numerals:'lining',division:'slash',ast:{op:'mul',a:{op:'add',a:{op:'lit',i:0,j:1},b:{op:'lit',i:1,j:2}},b:{op:'add',a:{op:'lit',i:2,j:3},b:{op:'lit',i:3,j:4}}}};
     const created=await mf.dispatchFetch('https://clock.example/api/shares',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(snapshot)});
     assert.equal(created.status,202);const {id}=await created.json();assert.match(id,/^[A-Za-z0-9]{10}$/);
     const namespace=await mf.getKVNamespace('SHARES');

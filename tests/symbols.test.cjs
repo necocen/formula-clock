@@ -61,7 +61,7 @@ test('part 3 morphs every directed arithmetic pair only at the same gap and font
     assert.deepEqual(match([{...a,exiting:true}],[b],{morph:true}),[-1]);
     assert.deepEqual(match([{...a,font:undefined}],[b],{morph:true}),[-1]);
   }
-  for (const a of signs) for (const b of [glyph('−','neg-u01-0'),glyph('!','fact-u01-0'),glyph('fraction-rule','frac-b1-0')]) {
+  for (const a of signs) for (const b of [glyph('−','neg-u01-0'),glyph('!','fact-u01-0'),glyph('fraction-rule','frac-b1-0'),glyph('/','div-b1-0')]) {
     const other={...b,font:'stix2'};
     assert.deepEqual(match([a],[other],{morph:true}),[-1]);
     assert.deepEqual(match([other],[a],{morph:true}),[-1]);

@@ -97,7 +97,7 @@ body.fullscreen .shell{max-width:none;padding-block:16px}body.fullscreen main{pa
   <div class="settings-header"><h2 id="settings-title"><span data-i18n="settings">設定</span></h2><button class="settings-close" id="settings-close" data-i18n-aria-label="closeSettings" aria-label="設定を閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
   <label class="setting-row"><span data-i18n="font">フォント</span><select id="font-choice" data-i18n-aria-label="mathFont" aria-label="数式のフォント"><option value="stix2" selected>STIX Two</option><option value="termes">Termes</option><option value="fira">Fira</option><option value="euler">Euler</option></select></label>
   <div class="setting-row"><span id="numeral-label" data-i18n="numerals">数字のスタイル</span><div class="segmented-control" id="numeral-choice" role="radiogroup" aria-labelledby="numeral-label"><label><input type="radio" name="numerals" value="lining"><span>Lining</span></label><label><input type="radio" name="numerals" value="oldstyle" checked><span>Oldstyle</span></label></div></div>
-  <div class="setting-row"><span id="division-label" data-i18n="division">除算のスタイル</span><div class="segmented-control" id="division-choice" role="radiogroup" aria-labelledby="division-label"><label><input type="radio" name="division" value="fraction" checked><span data-i18n="fraction">分数</span></label><label><input type="radio" name="division" value="inline"><span>÷</span></label></div></div>
+  <div class="setting-row"><span id="division-label" data-i18n="division">除算のスタイル</span><div class="segmented-control" id="division-choice" role="radiogroup" aria-labelledby="division-label"><label><input type="radio" name="division" value="fraction" checked><span data-i18n="fraction">分数</span></label><label><input type="radio" name="division" value="inline"><span>÷</span></label><label><input type="radio" name="division" value="slash"><span>/</span></label></div></div>
   <label class="setting-row"><span data-i18n="volume">音量</span><input id="volume" data-i18n-aria-label="signalVolume" type="range" min="0" max="100" value="25" aria-label="時報の音量"></label>
   <label class="custom-time-label" for="custom-time"><span data-i18n="setTime">時刻を指定</span></label>
   <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go"><span data-i18n="show">表示</span></button></div>
@@ -1756,7 +1756,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   }
   function options(value = {}) {
     const division = value.division ?? "fraction";
-    if (!["fraction", "inline"].includes(division)) throw new TypeError("Unknown division style");
+    if (!["fraction", "inline", "slash"].includes(division)) throw new TypeError("Unknown division style");
     return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true, structureMotion: value.structureMotion === true, symbolMorph: value.symbolMorph === true };
   }
   function mark(slot, digit, opt) {
@@ -1834,7 +1834,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         const associative = (a.op === "add" || a.op === "mul") && x.op === a.op && homogeneous(x);
         return q < p || right && (q === p && !associative || x.op === "neg") ? enclose(x, tex) : tex;
       }
-      const glyph = { add: "+", sub: "-", mul: "\\times", div: "\\div" }[a.op];
+      const glyph = { add: "+", sub: "-", mul: "\\times", div: opt.division === "slash" ? "/" : "\\div" }[a.op];
       if (!glyph) throw new TypeError(`Unsupported operation: ${a.op}`);
       return `${child(a.a, false)} ${symbol(a, glyph, "mathbin")} ${child(a.b, true)}`;
     }
@@ -1891,11 +1891,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       t: time,
       font: font && Object.hasOwn(PROFILES, font) ? font : DEFAULTS.font,
       numerals: numerals && Object.hasOwn(NUMERALS, numerals) ? numerals : DEFAULTS.numerals,
-      division: division === "fraction" || division === "inline" ? division : DEFAULTS.division
+      division: division === "fraction" || division === "inline" || division === "slash" ? division : DEFAULTS.division
     });
   }
   function params(state) {
-    if (!state || !validTime(state.t) || state.v !== 1 || !Object.hasOwn(PROFILES, state.font) || !Object.hasOwn(NUMERALS, state.numerals) || !["fraction", "inline"].includes(state.division)) {
+    if (!state || !validTime(state.t) || state.v !== 1 || !Object.hasOwn(PROFILES, state.font) || !Object.hasOwn(NUMERALS, state.numerals) || !["fraction", "inline", "slash"].includes(state.division)) {
       throw new TypeError("Invalid shared clock state");
     }
     return new URLSearchParams({ v: "1", t: state.t, font: state.font, numerals: state.numerals, division: state.division });
@@ -1906,7 +1906,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     return result;
   }
   function snapshot(value) {
-    if (!isRecord(value) || value.v !== 1 || !validTime(value.t) || typeof value.font !== "string" || !Object.hasOwn(PROFILES, value.font) || typeof value.numerals !== "string" || !Object.hasOwn(NUMERALS, value.numerals) || value.division !== "fraction" && value.division !== "inline" || !Object.hasOwn(value, "ast") || Object.keys(value).some((key) => !["v", "t", "font", "numerals", "division", "ast"].includes(key))) {
+    if (!isRecord(value) || value.v !== 1 || !validTime(value.t) || typeof value.font !== "string" || !Object.hasOwn(PROFILES, value.font) || typeof value.numerals !== "string" || !Object.hasOwn(NUMERALS, value.numerals) || value.division !== "fraction" && value.division !== "inline" && value.division !== "slash" || !Object.hasOwn(value, "ast") || Object.keys(value).some((key) => !["v", "t", "font", "numerals", "division", "ast"].includes(key))) {
       throw new TypeError("Invalid shared snapshot");
     }
     return Object.freeze({
@@ -2444,7 +2444,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         this.cache.set(tex, hit);
         return hit;
       }
-      const task = this.tail.then(() => this.boot).then(() => this.convert(tex, code, seconds));
+      const task = this.tail.then(() => this.boot).then(() => this.convert(tex, code, seconds, false, settings.division));
       this.tail = task.catch(() => {
       });
       this.cache.set(tex, task);
@@ -2476,7 +2476,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       }
       return this.clockFaceTask;
     }
-    async convert(tex, code, seconds, clockFace = false) {
+    async convert(tex, code, seconds, clockFace = false, division = "fraction") {
       const node = await this.engine.tex2svgPromise(tex, { display: true, em: 16, ex: 8, containerWidth: 1e5 });
       const svg = node.querySelector("svg");
       if (!svg || svg.querySelector('[data-mml-node="merror"]')) throw new Error("TeX typesetting failed");
@@ -2554,7 +2554,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         if (equality) slots.push("eq");
         const symbolMarks = new Map([...svg.querySelectorAll('[id^="fc-op-"]')].map((el) => {
           const [, role, attachment, ordinal] = el.id.match(/^fc-op-\d+-(add|sub|neg|mul|div|fact)-(b[1-3]|u[0-3][1-4])-(\d+)$/);
-          const kinds = { add: "+", sub: "\u2212", neg: "\u2212", mul: "\xD7", div: "\xF7", fact: "!" };
+          const kinds = { add: "+", sub: "\u2212", neg: "\u2212", mul: "\xD7", div: division === "slash" ? "/" : "\xF7", fact: "!" };
           const kind = kinds[role];
           return [el.id.slice(3), { kind, role, site: `${role}-${attachment}-${ordinal}` }];
         }));
@@ -2754,7 +2754,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       font: typeof saved.font === "string" && Object.hasOwn(FormulaTypesetter.PROFILES, saved.font) ? saved.font : "stix2",
       // Preserve the appearance of settings saved before numeral styles were independent.
       numerals: typeof saved.numerals === "string" && Object.hasOwn(FormulaTypesetter.NUMERALS, saved.numerals) ? saved.numerals : saved.font === "euler" ? "lining" : "oldstyle",
-      division: saved.division === "fraction" || saved.division === "inline" ? saved.division : "fraction",
+      division: saved.division === "fraction" || saved.division === "inline" || saved.division === "slash" ? saved.division : "fraction",
       symbolMotion: saved.symbolMotion !== false,
       structureMotion: saved.structureMotion !== false,
       symbolMorph: saved.symbolMorph !== false
@@ -2853,7 +2853,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     }
     async function setDisplay(changes) {
       const next = { ...displaySettings, ...changes };
-      if (!Object.hasOwn(FormulaTypesetter.PROFILES, next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS, next.numerals) || !["fraction", "inline"].includes(next.division) || ["symbolMotion", "structureMotion", "symbolMorph"].some((key) => typeof next[key] !== "boolean")) throw new TypeError("Invalid display options");
+      if (!Object.hasOwn(FormulaTypesetter.PROFILES, next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS, next.numerals) || !["fraction", "inline", "slash"].includes(next.division) || ["symbolMotion", "structureMotion", "symbolMorph"].some((key) => typeof next[key] !== "boolean")) throw new TypeError("Invalid display options");
       leaveSharedView(true);
       displaySettings = { font: next.font, numerals: next.numerals, division: next.division, symbolMotion: next.symbolMotion, structureMotion: next.structureMotion, symbolMorph: next.symbolMorph };
       shareButton.disabled = true;

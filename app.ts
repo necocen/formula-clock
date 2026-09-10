@@ -105,7 +105,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     font: typeof saved.font === 'string' && Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font as DisplayOptions['font'] : 'stix2',
     // Preserve the appearance of settings saved before numeral styles were independent.
     numerals: typeof saved.numerals === 'string' && Object.hasOwn(FormulaTypesetter.NUMERALS,saved.numerals) ? saved.numerals as DisplayOptions['numerals'] : saved.font === 'euler' ? 'lining' : 'oldstyle',
-    division: saved.division === 'fraction' || saved.division === 'inline' ? saved.division : 'fraction',
+    division: saved.division === 'fraction' || saved.division === 'inline' || saved.division === 'slash' ? saved.division : 'fraction',
     symbolMotion: saved.symbolMotion !== false,
     structureMotion: saved.structureMotion !== false,
     symbolMorph: saved.symbolMorph !== false
@@ -187,7 +187,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   }
   async function setDisplay(changes: Partial<DisplayOptions>) {
     const next = {...displaySettings,...changes};
-    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || (['symbolMotion','structureMotion','symbolMorph'] as const).some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
+    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline','slash'].includes(next.division) || (['symbolMotion','structureMotion','symbolMorph'] as const).some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
     leaveSharedView(true); // Restyle the saved formula until the user changes time.
     displaySettings = {font:next.font,numerals:next.numerals,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
     shareButton.disabled = true;

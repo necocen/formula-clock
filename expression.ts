@@ -37,7 +37,7 @@ function validateAst(ast: unknown, code: string): Expr | null {
 
 function options(value: Partial<TexOptions> = {}): TexOptions {
   const division = value.division ?? 'fraction';
-  if (!['fraction','inline'].includes(division)) throw new TypeError('Unknown division style');
+  if (!['fraction','inline','slash'].includes(division)) throw new TypeError('Unknown division style');
   return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true, structureMotion: value.structureMotion === true, symbolMorph: value.symbolMorph === true };
 }
 function mark(slot: string, digit: string, opt: Pick<TexOptions,'oldstyle'>) {
@@ -51,7 +51,7 @@ const negative = (opt: Pick<TexOptions,'centerOperators'>) => opt.centerOperator
 const relation = (opt: Pick<TexOptions,'centerOperators'>) => `\\mathrel{\\cssId{fc-eq}{${center('=',opt)}}}`;
 
 // Precedence is a property of the PRESENTATION. A fraction is a visual group;
-// an obelus is a left-associative infix operator with multiplication's priority.
+// An obelus or slash is a left-associative infix operator with multiplication's priority.
 function precedence(ast: Expr, opt: TexOptions): number {
   if (ast.op === 'lit' || ast.op === 'sqrt' || (ast.op === 'div' && opt.division === 'fraction')) return 60;
   return {add:10, sub:10, mul:20, div:20, neg:30, pow:40, fact:50}[ast.op];
@@ -125,7 +125,7 @@ function expressionTex(ast: Expr, code: string, settings: Partial<TexOptions> = 
       const associative = (a.op === 'add' || a.op === 'mul') && x.op === a.op && homogeneous(x);
       return q < p || (right && ((q === p && !associative) || x.op === 'neg')) ? enclose(x,tex) : tex;
     }
-    const glyph = {add:'+', sub:'-', mul:'\\times', div:'\\div'}[a.op];
+    const glyph = {add:'+', sub:'-', mul:'\\times', div:opt.division === 'slash' ? '/' : '\\div'}[a.op];
     if (!glyph) throw new TypeError(`Unsupported operation: ${a.op}`);
     return `${child(a.a,false)} ${symbol(a,glyph,'mathbin')} ${child(a.b,true)}`;
   }

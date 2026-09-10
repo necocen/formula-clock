@@ -29,7 +29,8 @@ export interface DisplayOptions {
   font: 'stix2' | 'termes' | 'fira' | 'euler';
   /** Lining centers mathematical signs on the digits; oldstyle uses the native font axis. */
   numerals: 'lining' | 'oldstyle';
-  division: 'fraction' | 'inline';
+  /** fraction: stacked; inline: ÷; slash: /. */
+  division: 'fraction' | 'inline' | 'slash';
   /** Experimental reuse of +, −, ×, ÷ and ! glyphs. Defaults to true. */
   symbolMotion: boolean;
   /** Rule/√/parenthesis motion preference. Defaults to true; retained when symbolMotion is off; active only when it is on. */

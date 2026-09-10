@@ -19,7 +19,7 @@ test('all four fonts and independent styles render complete, bounded OG images',
   await fs.mkdir(output,{recursive:true});
   const cases=[];
   for(const font of ['stix2','termes','fira','euler']) for(const numerals of ['oldstyle','lining'])
-    for(const division of ['fraction','inline']) for(const sample of samples) {
+    for(const division of ['fraction','inline','slash']) for(const sample of samples) {
       const state={v:1,t:sample.t,font,numerals,division},ast=table.minutes[state.t.slice(0,4)][Number(state.t.slice(4))];
       const result=await renderSvg({state,ast}),{fit,ink}=result;
       assert.ok(Math.abs(result.axisY * fit.scale + fit.y - 315) < .001);
@@ -38,7 +38,7 @@ test('all four fonts and independent styles render complete, bounded OG images',
       const {svg,...metrics}=result;
       cases.push({name,state,...metrics,bytes:png.byteLength});
     }
-  assert.equal(cases.length,128);
+  assert.equal(cases.length,192);
   assertPng(renderDefaultOg());
   await fs.writeFile(path.join(output,'default.png'),renderDefaultOg());
   await fs.writeFile(path.join(output,'render-results.json'),JSON.stringify({node:process.version,mathjax:'4.1.3',resvg:'2.6.2',at:new Date().toISOString(),cases},null,2));

@@ -10,11 +10,11 @@ function parse(url: string | URL): Readonly<SharedClockState> | null {
   return Object.freeze({v:1,t:time,
     font:font && Object.hasOwn(Display.PROFILES,font) ? font as SharedClockState['font'] : Display.DEFAULTS.font,
     numerals:numerals && Object.hasOwn(Display.NUMERALS,numerals) ? numerals as SharedClockState['numerals'] : Display.DEFAULTS.numerals,
-    division:division === 'fraction' || division === 'inline' ? division : Display.DEFAULTS.division});
+    division:division === 'fraction' || division === 'inline' || division === 'slash' ? division : Display.DEFAULTS.division});
 }
 function params(state: SharedClockState) {
   if (!state || !validTime(state.t) || state.v !== 1 || !Object.hasOwn(Display.PROFILES,state.font) ||
-      !Object.hasOwn(Display.NUMERALS,state.numerals) || !['fraction','inline'].includes(state.division)) {
+      !Object.hasOwn(Display.NUMERALS,state.numerals) || !['fraction','inline','slash'].includes(state.division)) {
     throw new TypeError('Invalid shared clock state');
   }
   return new URLSearchParams({v:'1',t:state.t,font:state.font,numerals:state.numerals,division:state.division});
@@ -28,7 +28,7 @@ function snapshot(value: unknown): Readonly<SharedSnapshot> {
   if (!isRecord(value) || value.v !== 1 || !validTime(value.t) ||
       typeof value.font !== 'string' || !Object.hasOwn(Display.PROFILES,value.font) ||
       typeof value.numerals !== 'string' || !Object.hasOwn(Display.NUMERALS,value.numerals) ||
-      (value.division !== 'fraction' && value.division !== 'inline') || !Object.hasOwn(value,'ast') ||
+      (value.division !== 'fraction' && value.division !== 'inline' && value.division !== 'slash') || !Object.hasOwn(value,'ast') ||
       Object.keys(value).some(key => !['v','t','font','numerals','division','ast'].includes(key))) {
     throw new TypeError('Invalid shared snapshot');
   }

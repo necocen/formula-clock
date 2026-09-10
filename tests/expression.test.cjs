@@ -14,9 +14,9 @@ function parse(tex) {
   assert.equal(depth,0,'Unbalanced structural marker');
   tex=tex.slice(0,mark.index)+tex.slice(start,end-1)+tex.slice(end);
  }
- const s=tex.replace(/\\cssId\{fc-op-\d+-(?:add|sub|neg|mul|div|fact)-(?:b[1-3]|u[0-3][1-4])-\d+\}\{(\\vcenter\{[^{}]+\}|[^{}]+)\}/g,'$1').replace(/\\mathbin\{\\vcenter\{(\\times|\\div|[+\-])\}\}/g,'$1')
+ const s=tex.replace(/\\cssId\{fc-op-\d+-(?:add|sub|neg|mul|div|fact)-(?:b[1-3]|u[0-3][1-4])-\d+\}\{(\\vcenter\{[^{}]+\}|[^{}]+)\}/g,'$1').replace(/\\mathbin\{\\vcenter\{(\\times|\\div|[+/\-])\}\}/g,'$1')
   .replace(/\\mathord\{\\vcenter\{-\}\}/g,'-')
-  .replace(/\\(?:mathbin|mathord|mathclose)\{(\\times|\\div|[+!\-])\}/g,'$1')
+  .replace(/\\(?:mathbin|mathord|mathclose)\{(\\times|\\div|[+!/\-])\}/g,'$1')
   .replace(/\\cssId\{fc-d(\d)\}\{(?:\{\\oldstyle\s+\d\}|\d)\}/g,'d$1')
   .replace(/\\(?:left|right)/g,'').replace(/\s+/g,'');
  let i=0;
@@ -37,7 +37,7 @@ function parse(tex) {
  function fact(){let x=atom();while(take('!'))x=un('fact',x);return x;}
  function pow(){let x=fact();if(take('^'))x=bin('pow',x,unary());return x;}
  function unary(){if(take('-'))return un('neg',unary());return pow();}
- function product(){let x=unary();while(true){if(take('\\times'))x=bin('mul',x,unary());else if(take('\\div'))x=bin('div',x,unary());else return x;}}
+ function product(){let x=unary();while(true){if(take('\\times'))x=bin('mul',x,unary());else if(take('\\div')||take('/'))x=bin('div',x,unary());else return x;}}
  function sum(){let x=product();while(true){if(take('+'))x=bin('add',x,product());else if(take('-'))x=bin('sub',x,product());else return x;}}
  const ast=sum();assert.equal(i,s.length,`Unparsed suffix: ${s.slice(i)}`);return ast;
 }
@@ -80,7 +80,7 @@ function roundtrip(ast,code){
   assert.deepEqual(canonical(parseText(text,code)),canonical(ast),`${code}: ${text}`);
   assert.ok(!text.includes('!!'));textSerializations++;
  }
- for(const profile of profiles)for(const division of ['fraction','inline'])for(const symbolMotion of [false,true])for(const structureMotion of [false,true])for(const symbolMorph of [false,true]){
+ for(const profile of profiles)for(const division of ['fraction','inline','slash'])for(const symbolMotion of [false,true])for(const structureMotion of [false,true])for(const symbolMorph of [false,true]){
   const opt={...profile,division,symbolMotion,structureMotion,symbolMorph},tex=E.expressionTex(ast,code,opt), parsed=parse(tex);
   assert.deepEqual(canonical(parsed),canonical(ast),`${code}: ${tex}`);
   assert.ok(!tex.includes('!!'));
@@ -120,6 +120,6 @@ const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),
 assert.ok(!html.includes('function createSolver'));
 const b64=html.match(/data-encoding="gzip-base64">([^<]+)/)[1];
 assert.deepEqual(JSON.parse(zlib.gunzipSync(Buffer.from(b64,'base64'))),table);
-const report={build:'r6-minimal',minutes:Object.keys(table.minutes).length,equations,rest,fuzzTrees:fuzz,checkedSerializations:serializations,textSerializations,profiles:2,divisionModes:2,elapsedMs:Date.now()-start};
+const report={build:'r6-minimal',minutes:Object.keys(table.minutes).length,equations,rest,fuzzTrees:fuzz,checkedSerializations:serializations,textSerializations,profiles:2,divisionModes:3,elapsedMs:Date.now()-start};
 require('./report.cjs')('expression-results.json',report);console.log(report);
 module.exports={parse,canonical};

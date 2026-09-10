@@ -60,7 +60,7 @@ with sync_playwright() as p:
     assert page.locator('#symbol-morph').is_checked()==args.symbol_morph
 
     assert page.locator('#font-choice option').evaluate_all('(options)=>options.map(x=>x.value)')==['stix2','termes','fira','euler']
-    assert page.locator('#division-choice input').evaluate_all('(options)=>options.map(x=>x.value)')==['fraction','inline']
+    assert page.locator('#division-choice input').evaluate_all('(options)=>options.map(x=>x.value)')==['fraction','inline','slash']
     assert page.locator('#import-data,#restore-data,#data-file,#data-status').count()==0
     assert page.locator('#advanced-settings .experimental-option').count()==3
     assert page.locator('.intro,.source-caption,.mode,.minute-head,.demo-panel,footer,#info,#coverage,#date,#zone').count()==0
@@ -168,7 +168,7 @@ with sync_playwright() as p:
     numeral_shapes={}
     for font in ['stix2','termes','fira','euler']:
         for numerals in ['lining','oldstyle']:
-            for division in ['fraction','inline']:
+            for division in ['fraction','inline','slash']:
                 settings(font,division,numerals)
                 for time in ['12:34:08','12:34:16','12:34:17','12:34:30','12:34:31','12:34:59','08:59:05','00:00:08']:
                     preview(time)
@@ -249,7 +249,7 @@ with sync_playwright() as p:
 
     for width in [320,390,768]:
         page.set_viewport_size({'width':width,'height':840})
-        for division in ['fraction','inline']:
+        for division in ['fraction','inline','slash']:
             settings('stix2',division)
             for time in ['12:34:08','12:34:59','00:00:08']:
                 preview(time);check_geometry()
@@ -289,7 +289,11 @@ with sync_playwright() as p:
     page.wait_for_function("FormulaClock.state.coverage===1 && FormulaClock.state.layout?.mode==='formula'")
     settings('stix2','inline');check_geometry()
     tex=page.evaluate('FormulaClock.state.layout.tex');assert tex.count('\\div')==2 and tex.count('\\left(')==1,tex
-    report['checks'].append('Nested division produces visible denominator parentheses and remains a valid clock equation')
+    settings('stix2','slash');check_geometry()
+    tex=page.evaluate('FormulaClock.state.layout.tex');assert tex.count('/')==2 and tex.count('\\left(')==1,tex
+    assert page.locator('#operator-root path[data-c="2F"]').count()==2
+    assert page.evaluate('FormulaClock.state.layout.ast')==nested
+    report['checks'].append('Nested obelus and slash division preserve denominator parentheses, the AST and persistent digits')
 
     # A provider is allowed to ignore AbortSignal: revision checks still reject late data.
     page.evaluate('''()=>{

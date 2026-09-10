@@ -189,7 +189,7 @@ class Typesetter {
       this.cache.delete(tex); this.cache.set(tex, hit);
       return hit;
     }
-    const task = this.tail.then(() => this.boot).then(() => this.convert(tex, code, seconds));
+    const task = this.tail.then(() => this.boot).then(() => this.convert(tex, code, seconds, false, settings.division));
     // A failed conversion must not poison subsequent frames.
     this.tail = task.catch(() => {});
     this.cache.set(tex, task);
@@ -221,7 +221,7 @@ class Typesetter {
     }
     return this.clockFaceTask;
   }
-  private async convert(tex: string, code: string, seconds: number, clockFace = false): Promise<Frame> {
+  private async convert(tex: string, code: string, seconds: number, clockFace = false, division: TexOptions['division'] = 'fraction'): Promise<Frame> {
     const node = await this.engine.tex2svgPromise(tex, { display: true, em: 16, ex: 8, containerWidth: 100000 });
     const svg = node.querySelector('svg');
     if (!svg || svg.querySelector('[data-mml-node="merror"]')) throw new Error('TeX typesetting failed');
@@ -243,7 +243,7 @@ class Typesetter {
       if (equality) slots.push('eq');
       const symbolMarks = new Map([...svg.querySelectorAll('[id^="fc-op-"]')].map(el => {
         const [,role,attachment,ordinal] = el.id.match(/^fc-op-\d+-(add|sub|neg|mul|div|fact)-(b[1-3]|u[0-3][1-4])-(\d+)$/)!;
-        const kinds: Record<string,string> = {add:'+',sub:'−',neg:'−',mul:'×',div:'÷',fact:'!'};
+        const kinds: Record<string,string> = {add:'+',sub:'−',neg:'−',mul:'×',div:division === 'slash' ? '/' : '÷',fact:'!'};
         const kind = kinds[role];
         return [el.id.slice(3),{kind,role,site:`${role}-${attachment}-${ordinal}`}];
       }));
