@@ -355,12 +355,13 @@ with sync_playwright() as p:
         page.wait_for_function('document.fullscreenElement || document.webkitFullscreenElement')
         assert page.locator('#fullscreen').get_attribute('aria-pressed') == 'true'
         page.wait_for_function('size=>FormulaClock.state.layout.fontSize>size*1.4',arg=normal_size)
+        assert page.evaluate('FormulaClock.state.layout.fontSize') <= 160.01
         assert page.evaluate('FormulaClock.digits.every((el,i)=>el===originalDigits[i])')
         page.click('#fullscreen')
         page.wait_for_function('!document.fullscreenElement && !document.webkitFullscreenElement')
         assert page.locator('#fullscreen').get_attribute('aria-pressed') == 'false'
         page.wait_for_function('size=>Math.abs(FormulaClock.state.layout.fontSize-size)<.01',arg=normal_size)
-        report['checks'].append('Native fullscreen enlarges the clock, preserves digit elements and restores the normal size on exit')
+        report['checks'].append('Native fullscreen enlarges the clock within 160px, preserves digit elements and restores the normal size on exit')
     else:
         assert not page.evaluate("document.body.classList.contains('fullscreen')")
         report['checks'].append('Unsupported fullscreen control is hidden')

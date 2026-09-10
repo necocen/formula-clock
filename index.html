@@ -3092,7 +3092,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     }
     function applyFrame(frame, ast, code, seconds, loading, instant, view) {
       const W = stage.clientWidth, H = stage.clientHeight, b = frame.viewBox;
-      const maxFontSize = document.body.classList.contains("fullscreen") ? H * 0.7 : 112;
+      const maxFontSize = document.body.classList.contains("fullscreen") ? Math.min(160, H * 0.7) : 112;
       const { axis, scale, x, y } = FormulaDisplay.fitFrame(b, frame.axisY, W, H, maxFontSize);
       const fit = new DOMMatrix([scale, 0, 0, scale, x, y]);
       const animated = !instant && !firstFrame && !reducedMotion.matches;
