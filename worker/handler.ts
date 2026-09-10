@@ -7,7 +7,7 @@ import {createShare,readShare,ShareError,json} from './shares.ts';
 import I18n from '../i18n.ts';
 
 const escape = (value: unknown) => String(value).replace(/[&<>"']/g,character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]!));
-const normalDescription = '時刻の4桁が、秒を表す数式に変わる。';
+const normalDescription = 'A clock that displays a different mathematical expression every second.';
 const keyFor = (state: SharedClockState,revision: string) => `og/${revision}/${state.t}-${state.font}-${state.numerals}-${state.division}.png`;
 function deadline<T>(task: (signal: AbortSignal) => T | Promise<T>, milliseconds: number, label: string): Promise<T> {
   const controller = new AbortController();
