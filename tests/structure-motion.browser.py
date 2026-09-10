@@ -53,7 +53,8 @@ with sync_playwright() as p:
     page.on('console',lambda msg:warnings.append(msg.text) if msg.type=='warning' else None)
     page.on('request',lambda req:cdn.append(req.url) if 'cdn.jsdelivr.net' in req.url else None)
     page.goto(args.url);page.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout')
-    assert not page.evaluate('FormulaClock.state.display.structureMotion')
+    assert page.evaluate('FormulaClock.state.display.structureMotion')
+    page.evaluate('FormulaClock.setDisplay({symbolMotion:false,structureMotion:false,symbolMorph:false})')
     page.evaluate("window.originalProvider=window.FORMULA_CLOCK_CONFIG?.provider || new FormulaData.TableProvider(()=>FormulaData.loadEmbedded(document.querySelector('#clock-data')))")
     report['mathjax']=page.evaluate('FormulaClock.diagnostics().mathjax');assert report['mathjax']=='4.1.3'
     page.evaluate('''fixtures=>{

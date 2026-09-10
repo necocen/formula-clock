@@ -3,6 +3,16 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const {execFileSync}=require('node:child_process');
 const Share=require('../share.ts');
 const snapshot={v:1,t:'123421',font:'stix2',numerals:'oldstyle',division:'fraction',ast:{op:'mul',a:{op:'add',a:{op:'lit',i:0,j:1},b:{op:'lit',i:1,j:2}},b:{op:'add',a:{op:'lit',i:2,j:3},b:{op:'lit',i:3,j:4}}}};
+test('share titles use the saved expression with slash division and caret powers',()=>{
+  const L=i=>({op:'lit',i,j:i+1}),B=(op,a,b)=>({op,a,b});
+  const state=Share.snapshot({...snapshot,t:'123405',ast:B('add',L(0),B('div',B('pow',L(1),L(2)),{op:'sqrt',a:L(3)}))});
+  assert.equal(Share.title(state),'(1 + ((2 ^ 3) / √(4))) = 5');
+  assert.equal(Share.title({...state,division:'inline'}),Share.title(state));
+  assert.equal(Share.title(snapshot),'((1 + 2) × (3 + 4)) = 21');
+  assert.equal(Share.title({...state,ast:null}),'Formula Clock — 12:34:05');
+  assert.equal(Share.title(null),'Formula Clock');
+  assert.equal(require('../expression.ts').plain(state.ast,'1234'),'(1 + ((2 ^ 3) ÷ √(4)))');
+});
 test('snapshots preserve bounded ASTs and explicit null; reject extra fields and malformed trees',()=>{
   const saved=Share.snapshot(snapshot);assert.deepEqual(saved,snapshot);assert.notEqual(saved.ast,snapshot.ast);
   assert.ok(Object.isFrozen(saved) && Object.isFrozen(saved.ast));

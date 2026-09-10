@@ -196,6 +196,9 @@ await FormulaClock.setDisplay({ font: 'euler', numerals: 'lining', division: 'fr
 
 異なるフォント・除算表記でもデータを取り直す必要はない。TeXと組版結果のキャッシュは表示設定を区別する。
 
+実験設定`symbolMotion`・`structureMotion`・`symbolMorph`の初期値はすべて`true`。
+保存済みの`false`は維持し、未保存の項目はオンで始める。描画時の前提条件と選択値の保存は従来どおり分ける。
+
 ## 7. 検証の境界
 
 `formula.schema.json` がJSON Schema、`types.ts`が共通のTypeScript型、`api.d.ts`が公開型の入口。実装も同じ型を使う。スキーマの配列サイズや演算の形に加えて、実行時に次を検証する。
@@ -274,6 +277,9 @@ KV保存後に共有し、ユーザー操作の有効期間が切れていれば
 旧形式では`v`省略を1、表示の不正値をstix2・oldstyle・fractionとする。共有ボタンは常に新形式を生成する。
 
 Workerは`/`・`/s/<ID>`のHTMLへOG・Twitter Card・canonicalを挿入し、`/s/<ID>/og.png`で保存した式木の画像を配信する。
+ページとカード、ネイティブ共有のタイトルは`FormulaShare.title(state)`で作る数式のテキスト表記。
+`state.ast`がある場合は式木の括弧を保ち、除算を`/`、累乗を`^`で表して秒との等式にする（例：`((12 / 3) + 4) = 8`）。
+表示の分数／÷設定には影響されない。式がない場合は`Formula Clock — HH:MM:SS`。旧形式は現在データのASTを使い、取得失敗時は時刻に戻す。
 旧形式の`/og.png`も維持する。画像URLの描画版`r`はキャッシュの更新用で、過去の描画版を指定するAPIではない。
 `renderOg({state,ast})` は正規ASTからPNGを返す、Cloudflareのストレージに依存しない処理。
 

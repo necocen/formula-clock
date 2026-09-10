@@ -55,6 +55,8 @@ with sync_playwright() as p:
     page.goto(url,wait_until='domcontentloaded')
     ready(page,'123421')
     assert page.evaluate('FormulaClock.state.layout.ast') == ast
+    assert page.title() == '((1 + 2) × (3 + 4)) = 21'
+    assert page.locator('meta[property="og:title"]').get_attribute('content') == page.title()
     assert page.evaluate('FormulaClock.state.preview && FormulaClock.state.paused')
     assert page.evaluate('JSON.parse(localStorage.getItem("formula-clock-display-v2"))') == saved
     assert page.url == url
@@ -64,6 +66,7 @@ with sync_playwright() as p:
     page.evaluate('window.sameDocument=true;window.initialHistoryLength=history.length;window.originalDigits=FormulaClock.digits')
     page.click('#share')
     assert page.evaluate('nativeCalls.at(-1).url') == url
+    assert page.evaluate('nativeCalls.at(-1).title') == page.title()
     assert page.evaluate('nativeCalls.at(-1).activation')
     assert page.evaluate('postBodies.length') == 0
     page.set_viewport_size({'width':390,'height':844})
@@ -73,6 +76,7 @@ with sync_playwright() as p:
     page.evaluate('FormulaClock.setDisplay({font:"termes",division:"inline"})')
     page.wait_for_function('FormulaClock.state.layout.display.font==="termes" && !document.querySelector("#share").disabled',timeout=45000)
     assert page.url == args.url
+    assert page.title() == 'Formula Clock'
     assert page.evaluate('sameDocument && history.length===initialHistoryLength')
     assert page.evaluate('FormulaClock.state.layout.ast') == ast
     page.click('#share')
@@ -94,6 +98,7 @@ with sync_playwright() as p:
     page.goto(args.url+'s/'+null_id,wait_until='domcontentloaded')
     ready(page,'123430')
     assert page.evaluate('FormulaClock.state.layout.mode') == 'time'
+    assert page.title() == 'Formula Clock — 12:34:30'
     assert page.evaluate('async()=>!!(await FORMULA_CLOCK_CONFIG.provider.getMinute("1234")).seconds[30]')
     page.evaluate('FormulaClock.preview(FormulaShare.localDate("123430"),true)')
     ready(page,'123430')
@@ -153,6 +158,17 @@ with sync_playwright() as p:
     assert page.evaluate('copies.length') == 1
     assert page.locator('#share-status').inner_text() == ''
     report['checks'].append('Storage errors enable retry; leaving the view cancels pending shares without stale copies or dialogs')
+    title_ast = {'op':'add','a':{'op':'lit','i':0,'j':1},'b':{'op':'div',
+                 'a':{'op':'pow','a':{'op':'lit','i':1,'j':2},'b':{'op':'lit','i':2,'j':3}},
+                 'b':{'op':'sqrt','a':{'op':'lit','i':3,'j':4}}}}
+    title_id = ctx.request.post(args.url+'api/shares',data={**snapshot,'t':'123405','ast':title_ast}).json()['id']
+    page.goto(args.url+'s/'+title_id,wait_until='domcontentloaded');ready(page,'123405')
+    assert page.title() == '(1 + ((2 ^ 3) / √(4))) = 5'
+    for selector in ['meta[property="og:title"]','meta[name="twitter:title"]']:
+        assert page.locator(selector).get_attribute('content') == page.title()
+    page.click('#share')
+    assert page.evaluate('nativeCalls.at(-1).title') == page.title()
+    report['checks'].append('Page, OG/Twitter and native share titles use the saved equation with / and ^; null uses wall-clock time')
     report['mathjax'] = page.evaluate('FormulaClock.diagnostics().mathjax')
     assert report['mathjax'] == '4.1.3'
     ctx.close();browser.close()

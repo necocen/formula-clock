@@ -105,9 +105,9 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     // Preserve the appearance of settings saved before numeral styles were independent.
     numerals: typeof saved.numerals === 'string' && Object.hasOwn(FormulaTypesetter.NUMERALS,saved.numerals) ? saved.numerals as DisplayOptions['numerals'] : saved.font === 'euler' ? 'lining' : 'oldstyle',
     division: saved.division === 'fraction' || saved.division === 'inline' ? saved.division : 'fraction',
-    symbolMotion: saved.symbolMotion === true,
-    structureMotion: saved.structureMotion === true,
-    symbolMorph: saved.symbolMorph === true
+    symbolMotion: saved.symbolMotion !== false,
+    structureMotion: saved.structureMotion !== false,
+    symbolMorph: saved.symbolMorph !== false
   };
   // Restore before selecting an engine; opening a link never saves preferences.
   if (sharedState) {
@@ -430,6 +430,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     stage.setAttribute('aria-label',ast ? t('clockEquation',{time,expression:FormulaExpression.plain(ast,code),seconds}) : time);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
     displayedFrame = {frame,ast,code,seconds,view};
+    if (sharedAddress && !loading && !engineError) document.title = FormulaShare.title({v:1,t:code+pad(seconds),...view,ast});
     shareButton.disabled = shareBusy || loading || !!engineError || (!snapshotAt(code,seconds) && (!cache.has(code) || !!cache.get(code)?.error));
     firstFrame = false;
   }

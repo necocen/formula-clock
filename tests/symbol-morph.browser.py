@@ -20,7 +20,8 @@ with sync_playwright() as p:
     page.on('console',lambda msg:warnings.append(msg.text) if msg.type=='warning' else None)
     page.goto(args.url);page.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout')
     report['mathjax']=page.evaluate('FormulaClock.diagnostics().mathjax');assert report['mathjax']=='4.1.3'
-    assert not page.evaluate('FormulaClock.state.display.symbolMorph')
+    assert page.evaluate('FormulaClock.state.display.symbolMorph')
+    page.evaluate('FormulaClock.setDisplay({symbolMotion:false,structureMotion:false,symbolMorph:false})')
     page.evaluate('''()=>{
       window.originalDigits=FormulaClock.digits;window.originalEqual=document.querySelector('#equal-sign');
       window.geometry=()=>[...document.querySelectorAll('#math-scene path,#math-scene rect')].map(el=>{

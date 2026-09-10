@@ -17,7 +17,8 @@ with sync_playwright() as p:
     page=browser.new_page(viewport={'width':1440,'height':1000},timezone_id='Asia/Tokyo')
     page.on('pageerror',lambda e:errors.append(str(e)))
     page.goto(args.url);page.wait_for_function('window.FormulaClock?.state.engineReady && FormulaClock.state.layout')
-    assert not page.evaluate('FormulaClock.state.display.symbolMotion')
+    assert page.evaluate('FormulaClock.state.display.symbolMotion')
+    page.evaluate('FormulaClock.setDisplay({symbolMotion:false,structureMotion:false,symbolMorph:false})')
     page.evaluate("window.originalProvider=window.FORMULA_CLOCK_CONFIG?.provider || new FormulaData.TableProvider(()=>FormulaData.loadEmbedded(document.querySelector('#clock-data')))")
     report['mathjax']=page.evaluate('FormulaClock.diagnostics().mathjax')
     assert report['mathjax']=='4.1.3'

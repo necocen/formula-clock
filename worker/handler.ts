@@ -90,7 +90,12 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
     const imageUrl = new URL(shared ? `/s/${shared.id}/og.png` : '/og.png',url.origin);
     if (state && !shared) imageUrl.search = Share.params(state).toString();
     imageUrl.searchParams.set('r',revision);
-    const title = Share.title(state), description = state ? `${Share.timeLabel(state)}のFormula Clock。` : normalDescription;
+    let ast = shared?.snapshot.ast;
+    if (state && !shared) {
+      try { ast = (await deadline(signal => providerFor(env.ASSETS).getMinute(state.t.slice(0,4),{signal}),timeoutMs,'Shared title')).seconds[Number(state.t.slice(4))]; }
+      catch { /* Legacy links retain the time title when the dataset is unavailable. */ }
+    }
+    const title = Share.title(state ? {...state,ast} : null), description = state ? `${Share.timeLabel(state)}のFormula Clock。` : normalDescription;
     const metadata: Record<string,string> = {'description':description,'og:title':title,'og:description':description,'og:image':imageUrl.href,
       'twitter:title':title,'twitter:image':imageUrl.href};
     // Clear query and conditional headers: the source asset's ETag cannot stand

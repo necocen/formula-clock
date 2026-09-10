@@ -30,11 +30,11 @@ export interface DisplayOptions {
   /** Lining centers mathematical signs on the digits; oldstyle uses the native font axis. */
   numerals: 'lining' | 'oldstyle';
   division: 'fraction' | 'inline';
-  /** Experimental reuse of +, −, ×, ÷ and ! glyphs. Defaults to false. */
+  /** Experimental reuse of +, −, ×, ÷ and ! glyphs. Defaults to true. */
   symbolMotion: boolean;
-  /** Rule/√/parenthesis motion preference. Retained when symbolMotion is off; active only when it is on. */
+  /** Rule/√/parenthesis motion preference. Defaults to true; retained when symbolMotion is off; active only when it is on. */
   structureMotion: boolean;
-  /** Arithmetic morph preference, independent of structureMotion. Retained when symbolMotion is off; active only when it is on. */
+  /** Arithmetic morph preference, independent of structureMotion. Defaults to true; retained when symbolMotion is off; active only when it is on. */
   symbolMorph: boolean;
 }
 export interface FormulaClockAPI {
@@ -65,7 +65,7 @@ export interface FormulaShareAPI {
   shortUrl(origin: string, id: string): URL;
   view(value: unknown): Readonly<SharedView>;
   timeLabel(state: SharedClockState): string;
-  title(state: SharedClockState | null): string;
+  title(state: (SharedClockState & {readonly ast?: Expr | null}) | null): string;
   localDate(time: string): Date;
 }
 

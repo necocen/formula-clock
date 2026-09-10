@@ -140,13 +140,13 @@ function frameTex(ast: Expr | null, code: string, seconds: number, settings: Par
   const colon = `\\mkern2mu\\mathord{${center(':',opt)}}\\mkern2mu`;
   return mark('d0',code[0],opt) + mark('d1',code[1],opt) + colon + mark('d2',code[2],opt) + mark('d3',code[3],opt) + colon + right;
 }
-function plain(ast: Expr, code: string): string {
+function plain(ast: Expr, code: string, options: {division?: '÷' | '/'} = {}): string {
   if (ast.op === 'lit') return code.slice(ast.i,ast.j);
-  const a = plain(ast.a,code);
+  const a = plain(ast.a,code,options);
   if (ast.op === 'sqrt') return `√(${a})`;
   if (ast.op === 'neg') return `−(${a})`;
   if (ast.op === 'fact') return `(${a})!`;
-  return `(${a} ${{add:'+',sub:'−',mul:'×',div:'÷',pow:'^'}[ast.op]} ${plain(ast.b,code)})`;
+  return `(${a} ${{add:'+',sub:'−',mul:'×',div:options.division || '÷',pow:'^'}[ast.op]} ${plain(ast.b,code,options)})`;
 }
 const api = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain };
 export {assertCode,validateAst,expressionTex,frameTex,mark,relation,options,plain};

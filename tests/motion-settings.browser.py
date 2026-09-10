@@ -54,7 +54,12 @@ with sync_playwright() as p:
     assert page.locator('#engine-status,.experimental-option small').count() == 0
     assert page.locator('#render-status').get_attribute('hidden') is not None
     assert 'MathJax' not in page.locator('#advanced-settings').inner_text()
-    check([False, False, False])
+    check([True, True, True])
+    assert page.evaluate('localStorage.getItem("formula-clock-display-v2")') is None
+    page.screenshot(path=str(args.output_dir/'desktop-defaults.png'))
+    report['checks'].append('All three experimental options are enabled by default without writing saved preferences')
+    display(symbolMotion=False,structureMotion=False,symbolMorph=False)
+    check([False, False, False], saved=True)
     page.screenshot(path=str(args.output_dir/'desktop-disabled.png'))
     for index, bits in [(0, [True, False, False]), (2, [True, False, True]), (1, [True, True, True])]:
         page.check(selectors[index])
@@ -85,6 +90,12 @@ with sync_playwright() as p:
         display(**raw); check(expected, saved=True)
         migrations.append({'saved': raw, 'effective': dict(zip(keys, [basic, basic and structure, basic and morph]))})
     report['restoredCombinations'] = migrations
+    for raw, expected in [({},[True,True,True]),({'symbolMotion':False},[False,True,True]),
+                          ({'structureMotion':False},[True,False,True]),({'symbolMorph':False},[True,True,False])]:
+        page.evaluate('(raw)=>localStorage.setItem("formula-clock-display-v2",JSON.stringify(raw))',raw)
+        page.reload(); ready(); check(expected)
+        assert page.evaluate('JSON.parse(localStorage.getItem("formula-clock-display-v2"))') == raw
+    report['checks'].append('Missing preferences default to on; explicitly saved off selections survive unchanged')
     report['checks'].append('All eight saved/API preference combinations retain their values; layout settings mask inactive motions; invalid option types still reject')
     before = page.evaluate('FormulaClock.state.display')
     assert page.evaluate('''async()=>{

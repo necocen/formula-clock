@@ -1,7 +1,7 @@
-import {isRecord, type SharedClockState, type SharedSnapshot, type SharedView} from './types.ts';
+import {isRecord, type SharedClockState, type SharedSnapshot, type SharedView, type Expr} from './types.ts';
 /* A shared link identifies a wall-clock reading, never a date or an instant. */
 import * as Display from './display.ts';
-import {validateAst} from './expression.ts';
+import {validateAst,plain} from './expression.ts';
 const validTime = (value: unknown): value is string => typeof value === 'string' && /^(?:[01][0-9]|2[0-3])[0-5][0-9][0-5][0-9]$/.test(value);
 function parse(url: string | URL): Readonly<SharedClockState> | null {
   const p = (url instanceof URL ? url : new URL(url)).searchParams;
@@ -47,7 +47,10 @@ function view(value: unknown): Readonly<SharedView> {
   return Object.freeze({id:value.id,snapshot:snapshot(value.snapshot)});
 }
 function timeLabel(state: SharedClockState) { return state.t.match(/../g)!.join(':'); }
-function title(state: SharedClockState | null) { return state ? `Formula Clock — ${timeLabel(state)}` : 'Formula Clock'; }
+function title(state: (SharedClockState & {readonly ast?: Expr | null}) | null) {
+  if (!state) return 'Formula Clock';
+  return state.ast ? `${plain(state.ast,state.t.slice(0,4),{division:'/'})} = ${Number(state.t.slice(4))}` : `Formula Clock — ${timeLabel(state)}`;
+}
 function localDate(time: string) {
   if (!validTime(time)) throw new TypeError('Invalid shared time');
   // A fixed calendar day avoids a spring-forward gap on the day the URL opens.

@@ -1848,13 +1848,13 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     const colon = `\\mkern2mu\\mathord{${center(":", opt)}}\\mkern2mu`;
     return mark("d0", code[0], opt) + mark("d1", code[1], opt) + colon + mark("d2", code[2], opt) + mark("d3", code[3], opt) + colon + right;
   }
-  function plain(ast, code) {
+  function plain(ast, code, options2 = {}) {
     if (ast.op === "lit") return code.slice(ast.i, ast.j);
-    const a = plain(ast.a, code);
+    const a = plain(ast.a, code, options2);
     if (ast.op === "sqrt") return `\u221A(${a})`;
     if (ast.op === "neg") return `\u2212(${a})`;
     if (ast.op === "fact") return `(${a})!`;
-    return `(${a} ${{ add: "+", sub: "\u2212", mul: "\xD7", div: "\xF7", pow: "^" }[ast.op]} ${plain(ast.b, code)})`;
+    return `(${a} ${{ add: "+", sub: "\u2212", mul: "\xD7", div: options2.division || "\xF7", pow: "^" }[ast.op]} ${plain(ast.b, code, options2)})`;
   }
   var api3 = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain };
   var expression_default = Object.freeze(api3);
@@ -1914,7 +1914,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     return state.t.match(/../g).join(":");
   }
   function title(state) {
-    return state ? `Formula Clock \u2014 ${timeLabel(state)}` : "Formula Clock";
+    if (!state) return "Formula Clock";
+    return state.ast ? `${plain(state.ast, state.t.slice(0, 4), { division: "/" })} = ${Number(state.t.slice(4))}` : `Formula Clock \u2014 ${timeLabel(state)}`;
   }
   function localDate(time) {
     if (!validTime(time)) throw new TypeError("Invalid shared time");
@@ -2672,9 +2673,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       // Preserve the appearance of settings saved before numeral styles were independent.
       numerals: typeof saved.numerals === "string" && Object.hasOwn(FormulaTypesetter.NUMERALS, saved.numerals) ? saved.numerals : saved.font === "euler" ? "lining" : "oldstyle",
       division: saved.division === "fraction" || saved.division === "inline" ? saved.division : "fraction",
-      symbolMotion: saved.symbolMotion === true,
-      structureMotion: saved.structureMotion === true,
-      symbolMorph: saved.symbolMorph === true
+      symbolMotion: saved.symbolMotion !== false,
+      structureMotion: saved.structureMotion !== false,
+      symbolMorph: saved.symbolMorph !== false
     };
     if (sharedState) {
       const { font, numerals, division } = sharedState;
@@ -3066,6 +3067,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       stage.setAttribute("aria-label", ast ? t("clockEquation", { time, expression: FormulaExpression.plain(ast, code), seconds }) : time);
       latestLayout = { display: { ...view }, ast, code, seconds, mode: ast ? "formula" : "time", tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1e3, axisY: axis, localAxisY: frame.axisY, fit: [scale, 0, 0, scale, x, y], typography: frame.typography };
       displayedFrame = { frame, ast, code, seconds, view };
+      if (sharedAddress && !loading && !engineError) document.title = FormulaShare.title({ v: 1, t: code + pad(seconds), ...view, ast });
       shareButton.disabled = shareBusy || loading || !!engineError || !snapshotAt(code, seconds) && (!cache.has(code) || !!cache.get(code)?.error);
       firstFrame = false;
     }
