@@ -55,7 +55,7 @@ with sync_playwright() as p:
     page.goto(url,wait_until='domcontentloaded')
     ready(page,'123421')
     assert page.evaluate('FormulaClock.state.layout.ast') == ast
-    assert page.title() == '((1 + 2) × (3 + 4)) = 21'
+    assert page.title() == '(1 + 2) × (3 + 4) = 21'
     assert page.locator('meta[property="og:title"]').get_attribute('content') == 'Formula Clock - 12:34:21'
     assert page.locator('meta[property="og:description"]').get_attribute('content') == '(1+2)x(3+4)=21'
     assert page.evaluate('FormulaClock.state.preview && FormulaClock.state.paused')
@@ -164,11 +164,11 @@ with sync_playwright() as p:
                  'b':{'op':'sqrt','a':{'op':'lit','i':3,'j':4}}}}
     title_id = ctx.request.post(args.url+'api/shares',data={**snapshot,'t':'123405','ast':title_ast}).json()['id']
     page.goto(args.url+'s/'+title_id,wait_until='domcontentloaded');ready(page,'123405')
-    assert page.title() == '(1 + ((2 ^ 3) / √(4))) = 5'
+    assert page.title() == '1 + 2^3 / √4 = 5'
     for selector in ['meta[property="og:title"]','meta[name="twitter:title"]']:
         assert page.locator(selector).get_attribute('content') == 'Formula Clock - 12:34:05'
     for selector in ['meta[property="og:description"]','meta[name="twitter:description"]','meta[name="description"]']:
-        assert page.locator(selector).get_attribute('content') == '1+2^3/√(4)=5'
+        assert page.locator(selector).get_attribute('content') == '1+2^3/√4=5'
     page.click('#share')
     assert page.evaluate('nativeCalls.at(-1).title') == page.title()
     report['checks'].append('OG/Twitter cards use time titles and compact equation descriptions; page/native titles retain the equation')

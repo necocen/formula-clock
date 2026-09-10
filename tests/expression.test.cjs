@@ -49,10 +49,37 @@ function canonical(x){
  }
  return x.b?[x.op,canonical(x.a),canonical(x.b)]:[x.op,canonical(x.a)];
 }
+// Parse text independently using ordinary infix precedence and right-associative
+// powers. Read digits in slot order, so equal digits cannot mask a changed AST.
+function parseText(text,code){
+ const s=text.replace(/\s+/g,'').replace(/−/g,'-').replace(/[×x]/g,'*').replace(/÷/g,'/');
+ let i=0,slot=0;
+ const take=x=>s.startsWith(x,i)?(i+=x.length,true):false;
+ const need=x=>assert.ok(take(x),`Expected ${x} at ${i}: ${s}`);
+ const bin=(op,a,b)=>({op,a,b}),un=(op,a)=>({op,a});
+ function atom(){
+  if(take('(')){const x=sum();need(')');return x;}
+  if(take('√'))return un('sqrt',atom());
+  const start=slot;
+  while(i<s.length && /\d/.test(s[i])){assert.equal(s[i++],code[slot++]);}
+  assert.ok(slot>start,`Expected digit at ${i}: ${s}`);
+  return {op:'lit',i:start,j:slot};
+ }
+ function fact(){let x=atom();while(take('!'))x=un('fact',x);return x;}
+ function pow(){let x=fact();if(take('^'))x=bin('pow',x,unary());return x;}
+ function unary(){return take('-')?un('neg',unary()):pow();}
+ function product(){let x=unary();while(true){if(take('*'))x=bin('mul',x,unary());else if(take('/'))x=bin('div',x,unary());else return x;}}
+ function sum(){let x=product();while(true){if(take('+'))x=bin('add',x,product());else if(take('-'))x=bin('sub',x,product());else return x;}}
+ const ast=sum();assert.equal(i,s.length,`Unparsed suffix: ${s.slice(i)}`);assert.equal(slot,4);return ast;
+}
 const profiles=[{oldstyle:false,centerOperators:true},{oldstyle:true,centerOperators:false}];
-let equations=0,serializations=0,rest=0;
+let equations=0,serializations=0,textSerializations=0,rest=0;
 const start=Date.now();
 function roundtrip(ast,code){
+ for(const text of [E.plain(ast,code),E.plain(ast,code,{division:'/'}),E.compact(ast,code)]){
+  assert.deepEqual(canonical(parseText(text,code)),canonical(ast),`${code}: ${text}`);
+  assert.ok(!text.includes('!!'));textSerializations++;
+ }
  for(const profile of profiles)for(const division of ['fraction','inline'])for(const symbolMotion of [false,true])for(const structureMotion of [false,true])for(const symbolMorph of [false,true]){
   const opt={...profile,division,symbolMotion,structureMotion,symbolMorph},tex=E.expressionTex(ast,code,opt), parsed=parse(tex);
   assert.deepEqual(canonical(parsed),canonical(ast),`${code}: ${tex}`);
@@ -93,6 +120,6 @@ const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),
 assert.ok(!html.includes('function createSolver'));
 const b64=html.match(/data-encoding="gzip-base64">([^<]+)/)[1];
 assert.deepEqual(JSON.parse(zlib.gunzipSync(Buffer.from(b64,'base64'))),table);
-const report={build:'r6-minimal',minutes:Object.keys(table.minutes).length,equations,rest,fuzzTrees:fuzz,checkedSerializations:serializations,profiles:2,divisionModes:2,elapsedMs:Date.now()-start};
+const report={build:'r6-minimal',minutes:Object.keys(table.minutes).length,equations,rest,fuzzTrees:fuzz,checkedSerializations:serializations,textSerializations,profiles:2,divisionModes:2,elapsedMs:Date.now()-start};
 require('./report.cjs')('expression-results.json',report);console.log(report);
 module.exports={parse,canonical};

@@ -140,26 +140,21 @@ function frameTex(ast: Expr | null, code: string, seconds: number, settings: Par
   const colon = `\\mkern2mu\\mathord{${center(':',opt)}}\\mkern2mu`;
   return mark('d0',code[0],opt) + mark('d1',code[1],opt) + colon + mark('d2',code[2],opt) + mark('d3',code[3],opt) + colon + right;
 }
-function plain(ast: Expr, code: string, options: {division?: '÷' | '/'} = {}): string {
-  if (ast.op === 'lit') return code.slice(ast.i,ast.j);
-  const a = plain(ast.a,code,options);
-  if (ast.op === 'sqrt') return `√(${a})`;
-  if (ast.op === 'neg') return `−(${a})`;
-  if (ast.op === 'fact') return `(${a})!`;
-  return `(${a} ${{add:'+',sub:'−',mul:'×',div:options.division || '÷',pow:'^'}[ast.op]} ${plain(ast.b,code,options)})`;
-}
-/** Compact text for link cards; grouping follows the AST, never TeX replacement. */
-function compact(ast: Expr, code: string): string {
+/** Both text styles use the same grouping rules, independently of SVG/TeX. */
+function expressionText(ast: Expr, code: string, style: {space: string; minus: string; multiply: string; division: string}): string {
   const opt = options({division:'inline'}), group = (text: string) => `(${text})`;
   function write(a: Expr): string {
     if (a.op === 'lit') return code.slice(a.i,a.j);
     const left = write(a.a);
-    if (a.op === 'sqrt') return `√(${left})`;
-    if (a.op === 'neg') return '-' + (precedence(a.a,opt) <= 30 ? group(left) : left);
-    if (a.op === 'fact') return (['lit','sqrt'].includes(a.a.op) ? left : group(left)) + '!';
+    if (a.op === 'sqrt') return '√' + (a.a.op === 'lit' ? left : group(left));
+    if (a.op === 'neg') return style.minus + (precedence(a.a,opt) <= 30 ? group(left) : left);
+    // Text has no radical bar: (√4)! and (√4)^2 must not look like √(4!) / √(4^2).
+    // Also retain (n!)!, since n!! conventionally means double factorial.
+    if (a.op === 'fact') return (a.a.op === 'lit' ? left : group(left)) + '!';
     const right = write(a.b);
-    if (a.op === 'pow') return (precedence(a.a,opt) <= 40 ? group(left) : left) + '^' +
-      (precedence(a.b,opt) <= 40 ? group(right) : right);
+    // Powers associate to the right; a negative exponent is unambiguous after ^.
+    if (a.op === 'pow') return (precedence(a.a,opt) <= 40 || a.a.op === 'sqrt' ? group(left) : left) + '^' +
+      (precedence(a.b,opt) < 30 ? group(right) : right);
     const p = precedence(a,opt);
     function child(node: Expr,text: string,isRight: boolean) {
       const q = precedence(node,opt);
@@ -168,9 +163,17 @@ function compact(ast: Expr, code: string): string {
       const associative = (a.op === 'add' || a.op === 'mul') && node.op === a.op && homogeneous(node);
       return q < p || (isRight && ((q === p && !associative) || node.op === 'neg')) ? group(text) : text;
     }
-    return child(a.a,left,false) + {add:'+',sub:'-',mul:'x',div:'/'}[a.op] + child(a.b,right,true);
+    const glyph = {add:'+',sub:style.minus,mul:style.multiply,div:style.division}[a.op];
+    return child(a.a,left,false) + style.space + glyph + style.space + child(a.b,right,true);
   }
   return write(ast);
+}
+function plain(ast: Expr, code: string, options: {division?: '÷' | '/'} = {}): string {
+  return expressionText(ast,code,{space:' ',minus:'−',multiply:'×',division:options.division || '÷'});
+}
+/** Compact text for link cards; grouping follows the AST, never TeX replacement. */
+function compact(ast: Expr, code: string): string {
+  return expressionText(ast,code,{space:'',minus:'-',multiply:'x',division:'/'});
 }
 const api = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain, compact };
 export {assertCode,validateAst,expressionTex,frameTex,mark,relation,options,plain,compact};

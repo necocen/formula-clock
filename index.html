@@ -1849,24 +1849,16 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     const colon = `\\mkern2mu\\mathord{${center(":", opt)}}\\mkern2mu`;
     return mark("d0", code[0], opt) + mark("d1", code[1], opt) + colon + mark("d2", code[2], opt) + mark("d3", code[3], opt) + colon + right;
   }
-  function plain(ast, code, options2 = {}) {
-    if (ast.op === "lit") return code.slice(ast.i, ast.j);
-    const a = plain(ast.a, code, options2);
-    if (ast.op === "sqrt") return `\u221A(${a})`;
-    if (ast.op === "neg") return `\u2212(${a})`;
-    if (ast.op === "fact") return `(${a})!`;
-    return `(${a} ${{ add: "+", sub: "\u2212", mul: "\xD7", div: options2.division || "\xF7", pow: "^" }[ast.op]} ${plain(ast.b, code, options2)})`;
-  }
-  function compact(ast, code) {
+  function expressionText(ast, code, style) {
     const opt = options({ division: "inline" }), group = (text) => `(${text})`;
     function write(a) {
       if (a.op === "lit") return code.slice(a.i, a.j);
       const left = write(a.a);
-      if (a.op === "sqrt") return `\u221A(${left})`;
-      if (a.op === "neg") return "-" + (precedence(a.a, opt) <= 30 ? group(left) : left);
-      if (a.op === "fact") return (["lit", "sqrt"].includes(a.a.op) ? left : group(left)) + "!";
+      if (a.op === "sqrt") return "\u221A" + (a.a.op === "lit" ? left : group(left));
+      if (a.op === "neg") return style.minus + (precedence(a.a, opt) <= 30 ? group(left) : left);
+      if (a.op === "fact") return (a.a.op === "lit" ? left : group(left)) + "!";
       const right = write(a.b);
-      if (a.op === "pow") return (precedence(a.a, opt) <= 40 ? group(left) : left) + "^" + (precedence(a.b, opt) <= 40 ? group(right) : right);
+      if (a.op === "pow") return (precedence(a.a, opt) <= 40 || a.a.op === "sqrt" ? group(left) : left) + "^" + (precedence(a.b, opt) < 30 ? group(right) : right);
       const p = precedence(a, opt);
       function child(node, text, isRight) {
         const q = precedence(node, opt);
@@ -1874,9 +1866,16 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         const associative = (a.op === "add" || a.op === "mul") && node.op === a.op && homogeneous(node);
         return q < p || isRight && (q === p && !associative || node.op === "neg") ? group(text) : text;
       }
-      return child(a.a, left, false) + { add: "+", sub: "-", mul: "x", div: "/" }[a.op] + child(a.b, right, true);
+      const glyph = { add: "+", sub: style.minus, mul: style.multiply, div: style.division }[a.op];
+      return child(a.a, left, false) + style.space + glyph + style.space + child(a.b, right, true);
     }
     return write(ast);
+  }
+  function plain(ast, code, options2 = {}) {
+    return expressionText(ast, code, { space: " ", minus: "\u2212", multiply: "\xD7", division: options2.division || "\xF7" });
+  }
+  function compact(ast, code) {
+    return expressionText(ast, code, { space: "", minus: "-", multiply: "x", division: "/" });
   }
   var api3 = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain, compact };
   var expression_default = Object.freeze(api3);

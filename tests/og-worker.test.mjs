@@ -15,16 +15,16 @@ test('workerd serves state-specific metadata, real PNGs, R2 cache, and static as
   try {
     const rootUrl='https://clock.example/?v=1&t=123430&font=euler&numerals=lining&division=inline';
     const page=await mf.dispatchFetch(rootUrl),html=await page.text();assert.equal(page.status,200);
-    assert.ok(html.includes('<title>((12 + 3) × √(4)) = 30</title>'));
+    assert.ok(html.includes('<title>(12 + 3) × √4 = 30</title>'));
     assert.ok(html.includes('property="og:title" content="Formula Clock - 12:34:30"'));
-    assert.ok(html.includes('property="og:description" content="(12+3)x√(4)=30"'));
-    assert.ok(html.includes('name="twitter:description" content="(12+3)x√(4)=30"'));
+    assert.ok(html.includes('property="og:description" content="(12+3)x√4=30"'));
+    assert.ok(html.includes('name="twitter:description" content="(12+3)x√4=30"'));
     assert.match(html,/property="og:image" content="https:\/\/clock.example\/og.png\?/);
     assert.match(html,/name="twitter:card" content="summary_large_image"/);
     assert.match(html,/rel="canonical" href="https:\/\/clock.example\/\?v=1&amp;t=123430/);
     assert.equal(page.headers.get('ETag'),null);assert.equal(page.headers.get('Cache-Control'),'no-cache');
     const other=await (await mf.dispatchFetch('https://clock.example/?t=235334')).text();
-    assert.match(other,/<title>.* = 34<\/title>/);assert.ok(!other.includes('((12 + 3) × √(4)) = 30'));
+    assert.match(other,/<title>.* = 34<\/title>/);assert.ok(!other.includes('(12 + 3) × √4 = 30'));
     const head=await mf.dispatchFetch(rootUrl,{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');
     const imageUrl=new URL('/og.png',rootUrl);imageUrl.search=new URL(rootUrl).search;
     const first=await mf.dispatchFetch(imageUrl),png=Buffer.from(await first.arrayBuffer());
@@ -49,7 +49,7 @@ test('workerd serves state-specific metadata, real PNGs, R2 cache, and static as
     assert.equal(created.status,201);const {id}=await created.json();assert.match(id,/^[A-Za-z0-9]{10}$/);
     const namespace=await mf.getKVNamespace('SHARES');assert.deepEqual(await namespace.get('share/'+id,'json'),snapshot);
     const stored=await mf.dispatchFetch(`https://clock.example/s/${id}?t=000000`),storedHtml=await stored.text();
-    assert.equal(stored.status,200);assert.ok(storedHtml.includes('<title>((1 + 2) × (3 + 4)) = 21</title>'));
+    assert.equal(stored.status,200);assert.ok(storedHtml.includes('<title>(1 + 2) × (3 + 4) = 21</title>'));
     assert.ok(storedHtml.includes('name="twitter:title" content="Formula Clock - 12:34:21"'));
     assert.ok(storedHtml.includes('property="og:description" content="(1+2)x(3+4)=21"'));
     assert.ok(storedHtml.includes(`<base href="/">`));assert.ok(storedHtml.includes(`rel="canonical" href="https://clock.example/s/${id}"`));

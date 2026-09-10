@@ -6,12 +6,12 @@ const snapshot={v:1,t:'123421',font:'stix2',numerals:'oldstyle',division:'fracti
 test('share titles use the saved expression with slash division and caret powers',()=>{
   const L=i=>({op:'lit',i,j:i+1}),B=(op,a,b)=>({op,a,b});
   const state=Share.snapshot({...snapshot,t:'123405',ast:B('add',L(0),B('div',B('pow',L(1),L(2)),{op:'sqrt',a:L(3)}))});
-  assert.equal(Share.title(state),'(1 + ((2 ^ 3) / √(4))) = 5');
+  assert.equal(Share.title(state),'1 + 2^3 / √4 = 5');
   assert.equal(Share.title({...state,division:'inline'}),Share.title(state));
-  assert.equal(Share.title(snapshot),'((1 + 2) × (3 + 4)) = 21');
+  assert.equal(Share.title(snapshot),'(1 + 2) × (3 + 4) = 21');
   assert.equal(Share.title({...state,ast:null}),'Formula Clock — 12:34:05');
   assert.equal(Share.title(null),'Formula Clock');
-  assert.equal(require('../expression.ts').plain(state.ast,'1234'),'(1 + ((2 ^ 3) ÷ √(4)))');
+  assert.equal(require('../expression.ts').plain(state.ast,'1234'),'1 + 2^3 ÷ √4');
 });
 test('link cards use time titles and compact expressions with grouping preserved',()=>{
   const L=(i,j=i+1)=>({op:'lit',i,j}),B=(op,a,b)=>({op,a,b}),U=(op,a)=>({op,a});
@@ -21,13 +21,20 @@ test('link cards use time titles and compact expressions with grouping preserved
   assert.deepEqual(Share.card(null),{title:'Formula Clock',description:null});
   const compact=require('../expression.ts').compact;
   for(const [ast,text] of [
-    [B('add',L(0),B('div',B('pow',L(1),L(2)),U('sqrt',L(3)))),'1+2^3/√(4)'],
+    [B('add',L(0),B('div',B('pow',L(1),L(2)),U('sqrt',L(3)))),'1+2^3/√4'],
     [B('div',L(0),B('div',L(1),B('add',L(2),L(3)))),'1/(2/(3+4))'],
     [B('sub',L(0),B('add',L(1),B('mul',L(2),L(3)))),'1-(2+3x4)'],
     [B('pow',B('pow',L(0),L(1)),B('add',L(2),L(3))),'(1^2)^(3+4)'],
-    [B('pow',L(0),B('pow',L(1),B('add',L(2),L(3)))),'1^(2^(3+4))'],
+    [B('pow',L(0),B('pow',L(1),B('add',L(2),L(3)))),'1^2^(3+4)'],
     [B('add',B('pow',U('neg',L(0)),L(1)),B('mul',L(2),L(3))),'(-1)^2+3x4'],
-    [B('add',U('fact',U('fact',L(0))),B('mul',L(1),B('add',L(2),L(3)))),'(1!)!+2x(3+4)']
+    [B('add',U('fact',U('fact',L(0))),B('mul',L(1),B('add',L(2),L(3)))),'(1!)!+2x(3+4)'],
+    [B('add',U('fact',L(0)),B('mul',L(1),B('mul',L(2),L(3)))),'1!+2x3x4'],
+    [B('add',L(0),B('add',L(1),B('add',L(2),L(3)))),'1+2+3+4'],
+    [B('mul',L(0),B('div',L(1),B('mul',L(2),L(3)))),'1x(2/(3x4))'],
+    [B('add',B('pow',U('sqrt',L(0)),L(1)),B('pow',L(2),U('neg',L(3)))),'(√1)^2+3^-4'],
+    [B('add',U('sqrt',B('pow',L(0),L(1))),B('pow',L(2),L(3))),'√(1^2)+3^4'],
+    [B('add',U('fact',U('sqrt',L(0))),B('mul',L(1),B('mul',L(2),L(3)))),'(√1)!+2x3x4'],
+    [B('add',U('sqrt',U('fact',L(0))),B('mul',L(1),B('mul',L(2),L(3)))),'√(1!)+2x3x4']
   ]) assert.equal(compact(ast,'1234'),text);
 });
 test('snapshots preserve bounded ASTs and explicit null; reject extra fields and malformed trees',()=>{
