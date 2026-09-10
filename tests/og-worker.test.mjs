@@ -17,8 +17,8 @@ test('workerd serves state-specific metadata, real PNGs, R2 cache, and static as
     const page=await mf.dispatchFetch(rootUrl),html=await page.text();assert.equal(page.status,200);
     assert.ok(html.includes('<title>(12 + 3) × √4 = 30</title>'));
     assert.ok(html.includes('property="og:title" content="Formula Clock - 12:34:30"'));
-    assert.ok(html.includes('property="og:description" content="(12+3)x√4=30"'));
-    assert.ok(html.includes('name="twitter:description" content="(12+3)x√4=30"'));
+    assert.ok(html.includes('property="og:description" content="(12+3)×√4=30"'));
+    assert.ok(html.includes('name="twitter:description" content="(12+3)×√4=30"'));
     assert.match(html,/property="og:image" content="https:\/\/clock.example\/og.png\?/);
     assert.match(html,/name="twitter:card" content="summary_large_image"/);
     assert.match(html,/rel="canonical" href="https:\/\/clock.example\/\?v=1&amp;t=123430/);
@@ -58,7 +58,7 @@ test('workerd serves state-specific metadata, real PNGs, R2 cache, and static as
     const stored=await mf.dispatchFetch(`https://clock.example/s/${id}?t=000000`),storedHtml=await stored.text();
     assert.equal(stored.status,200);assert.ok(storedHtml.includes('<title>(1 + 2) × (3 + 4) = 21</title>'));
     assert.ok(storedHtml.includes('name="twitter:title" content="Formula Clock - 12:34:21"'));
-    assert.ok(storedHtml.includes('property="og:description" content="(1+2)x(3+4)=21"'));
+    assert.ok(storedHtml.includes('property="og:description" content="(1+2)×(3+4)=21"'));
     assert.ok(storedHtml.includes(`<base href="/">`));assert.ok(storedHtml.includes(`rel="canonical" href="https://clock.example/s/${id}"`));
     const embedded=JSON.parse(storedHtml.match(/<script id="shared-clock" type="application\/json">(.*?)<\/script>/s)[1]);assert.deepEqual(embedded,{id,snapshot});
     assert.ok(storedHtml.includes(`https://clock.example/s/${id}/og.png?r=`));

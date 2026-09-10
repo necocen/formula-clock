@@ -173,7 +173,7 @@ function plain(ast: Expr, code: string, options: {division?: '÷' | '/'} = {}): 
 }
 /** Compact text for link cards; grouping follows the AST, never TeX replacement. */
 function compact(ast: Expr, code: string): string {
-  return expressionText(ast,code,{space:'',minus:'-',multiply:'x',division:'/'});
+  return expressionText(ast,code,{space:'',minus:'-',multiply:'×',division:'/'});
 }
 const api = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain, compact };
 export {assertCode,validateAst,expressionTex,frameTex,mark,relation,options,plain,compact};

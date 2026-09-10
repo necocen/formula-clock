@@ -61,7 +61,7 @@ with sync_playwright() as p:
     assert page.evaluate('FormulaClock.state.layout.ast') == ast
     assert page.title() == '(1 + 2) × (3 + 4) = 21'
     assert page.locator('meta[property="og:title"]').get_attribute('content') == 'Formula Clock - 12:34:21'
-    assert page.locator('meta[property="og:description"]').get_attribute('content') == '(1+2)x(3+4)=21'
+    assert page.locator('meta[property="og:description"]').get_attribute('content') == '(1+2)×(3+4)=21'
     assert page.evaluate('FormulaClock.state.preview && FormulaClock.state.paused')
     assert page.evaluate('JSON.parse(localStorage.getItem("formula-clock-display-v2"))') == saved
     assert page.url == url

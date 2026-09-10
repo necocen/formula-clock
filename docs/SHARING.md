@@ -86,7 +86,7 @@ R2ヒット時はそのPNGを返し、未保存時だけMathJax → SVG → resv
 
 正常画像は`Cache-Control: public, max-age=86400`。ETag・HEAD・条件付きGETに対応する。
 HTMLは共有状態ごとにメタデータを作り、静的HTMLのETagを引き継がず`no-cache`にする。
-OG／Twitter Cardのタイトルは`Formula Clock - HH:MM:SS`、Descriptionは保存した式木の短い等式テキスト（`-(2x3)+50=44`など）。式がなければ時刻を使う。
+OG／Twitter Cardのタイトルは`Formula Clock - HH:MM:SS`、Descriptionは保存した式木の短い等式テキスト（`-(2×3)+50=44`など）。式がなければ時刻を使う。
 ページのタイトルは等式テキスト（`1 + 2^3 / √4 = 5`など）。ネイティブ共有の`title`は、式の有無によらず`Formula Clock - 12:34:05`のようにカードと同じタイトルを使う。ページのタイトルとDescriptionは同じ優先順位・結合順序の規則で不要な括弧を省く。旧クエリURLのメタデータだけはASSETSから現在の式データを取得し、失敗時は時刻へ戻す。
 旧画像URLのパラメータなし・不正な時刻・データ取得失敗と、両形式の描画失敗では、ビルドに同梱したロゴPNGを返す。
 新形式のIDが未検出・KVが利用不能の場合は404／503を返し、別の時刻の画像へ置き換えない。

@@ -285,7 +285,7 @@ Workerは`/`・`/s/<ID>`のHTMLへOG・Twitter Card・canonicalを挿入し、`/
 表示の分数／÷設定には影響されない。式がない場合は`Formula Clock — HH:MM:SS`。旧形式は現在データのASTを使い、取得失敗時は時刻に戻す。
 OG／Twitterカードは`FormulaShare.card(state)`で作り、タイトルは`Formula Clock - HH:MM:SS`、Descriptionは空白なしの数式にする。
 ネイティブ共有でも同じ`FormulaShare.card(state)`を使い、`navigator.share`へカードのタイトルと共有URLだけを渡す。`text`は渡さず、数式は共有先のOG画像・Descriptionで扱う。
-`expression.ts`の`compact(ast,code)`で結合の意味を保つ括弧を付け、`+`・`-`・`x`・`/`・`^`を使う（例：`-(2x3)+50=44`）。式がない場合のDescriptionは`HH:MM:SS`。
+`expression.ts`の`compact(ast,code)`で結合の意味を保つ括弧を付け、`+`・`-`・`×`・`/`・`^`を使う（例：`-(2×3)+50=44`）。式がない場合のDescriptionは`HH:MM:SS`。
 `plain`と`compact`は同じ括弧の規則を使う。式全体や単独の数字は囲まず、加算だけ・乗算だけの連鎖と右結合の累乗は省略できる（`1^2^3`）。減算・除算を含む右辺、累乗の左辺の累乗（`(1^2)^3`）、負の底、複合式の根号は必要な括弧を残す。テキストには根号の上線がないため、`(√4)^2`と`√(4^2)`、`(√4)!`と`√(4!)`を区別し、連続階乗も`(4!)!`のままにする。TeXの配置やAST自体は変えない。
 旧形式の`/og.png`も維持する。画像URLの描画版`r`はキャッシュの更新用で、過去の描画版を指定するAPIではない。
 `renderOg({state,ast})` は正規ASTからPNGを返す、Cloudflareのストレージに依存しない処理。
