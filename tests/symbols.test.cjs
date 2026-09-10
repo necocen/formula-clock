@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {match}=require('../symbols.js');
+const {match}=require('../symbols.ts');
 const glyph=(kind,site,extra={})=>({kind,site,...extra});
 test('empty frames and glyphs without an attachment are never accidentally reused',()=>{
   assert.deepEqual(match([],[]),[]);

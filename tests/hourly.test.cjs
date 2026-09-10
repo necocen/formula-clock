@@ -1,7 +1,7 @@
 'use strict';
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {FetchHourProvider} = require('../data.js');
+const {FetchHourProvider} = require('../data.ts');
 const origin = 'https://clock.test/data/manifest.json';
 const version = letter => letter.repeat(64);
 const manifest = (letter='a') => ({schema:'formula-clock-hours/1',version:version(letter),hours:Object.fromEntries(

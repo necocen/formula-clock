@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'), fs=require('node:fs');
-const {SCHEMA,InlineProvider,FetchMinuteProvider,TableProvider,normalizeMinute}=require('../data.js');
+const {SCHEMA,InlineProvider,FetchMinuteProvider,TableProvider,normalizeMinute}=require('../data.ts');
 const table=require('../data/expressions.json');
 (async()=>{
  const checks=[];

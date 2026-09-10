@@ -10,8 +10,8 @@ function wordmark() {
   let x = 71;
   for (const character of 'FORMULA CLOCK') {
     if (character === ' ') { x += 6; continue; }
-    const [, ,width, data] = font.getChar('normal',character.codePointAt(0));
-    if (!data.p) throw new Error(`Missing brand glyph ${character}`);
+    const [, ,width, data] = font.getChar('normal',character.codePointAt(0)!);
+    if (!data?.p) throw new Error(`Missing brand glyph ${character}`);
     paths.push(`<path transform="translate(${x} 52.2) scale(.012 -.012)" d="M${data.p}Z"/>`);
     x += width * 12 + 2.3;
   }
@@ -22,4 +22,4 @@ export const BRAND = `<g id="brand" fill="${COLORS.foreground}">${COLORS.digits.
   `<circle cx="${51.5 + (i % 2) * 7}" cy="${44.5 + Math.floor(i / 2) * 7}" r="1.5" fill="${color}"/>`).join('')}${word.paths}</g>`;
 const CORNER_BRAND = `<g transform="translate(50 40) scale(6) translate(-50 -43)">${BRAND}</g>`;
 export const DEFAULT_BRAND = `<g transform="translate(${600 - (50 + word.width / 2) * 6} 27) scale(6)">${BRAND}</g>`;
-export const canvas = (content,brand = CORNER_BRAND) => `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="${COLORS.background}"/>${brand}${content}</svg>`;
+export const canvas = (content: string,brand = CORNER_BRAND) => `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="${COLORS.background}"/>${brand}${content}</svg>`;

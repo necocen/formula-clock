@@ -1,13 +1,16 @@
-import Share from '../share.js';
-import Data from '../data.js';
+import type {SharedClockState} from '../types.ts';
+import type {Assets,Env,Context,Rewriter,HandlerOptions,ImageResult} from './types.ts';
+declare const HTMLRewriter: {new(): Rewriter};
+import Share from '../share.ts';
+import * as Data from '../data.ts';
 
-const escape = value => String(value).replace(/[&<>"']/g,character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+const escape = (value: unknown) => String(value).replace(/[&<>"']/g,character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]!));
 const normalDescription = '時刻の4桁が、秒を表す数式に変わる。';
-const keyFor = (state,revision) => `og/${revision}/${state.t}-${state.font}-${state.numerals}-${state.division}.png`;
-function deadline(task, milliseconds, label) {
+const keyFor = (state: SharedClockState,revision: string) => `og/${revision}/${state.t}-${state.font}-${state.numerals}-${state.division}.png`;
+function deadline<T>(task: (signal: AbortSignal) => T | Promise<T>, milliseconds: number, label: string): Promise<T> {
   const controller = new AbortController();
-  let timer;
-  const expired = new Promise((_,reject) => {
+  let timer: ReturnType<typeof setTimeout>;
+  const expired = new Promise<never>((_,reject) => {
     timer = setTimeout(() => {
       const error = new Error(`${label} timed out`);
       controller.abort(error); reject(error);
@@ -15,29 +18,29 @@ function deadline(task, milliseconds, label) {
   });
   return Promise.race([Promise.resolve().then(() => task(controller.signal)),expired]).finally(() => clearTimeout(timer));
 }
-const check = signal => { if (signal.aborted) throw signal.reason; };
+const check = (signal: AbortSignal) => { if (signal.aborted) throw signal.reason; };
 
 // The entrypoint supplies the renderer, leaving routing/cache failures testable
 // without loading MathJax. No URL or TeX supplied by a visitor is ever rendered.
-export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs = 1000,log = value => console.log(JSON.stringify(value))}) {
-  const providers = new WeakMap(), pending = new Map();
-  function providerFor(assets) {
+export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs = 1000,log = value => console.log(JSON.stringify(value))}: HandlerOptions) {
+  const providers = new WeakMap<Assets,Data.FetchHourProvider>(), pending = new Map<string,Promise<ImageResult>>();
+  function providerFor(assets: Assets) {
     if (!providers.has(assets)) providers.set(assets,new Data.FetchHourProvider('https://assets.local/data/manifest.json',{
       fetch:(url,options) => assets.fetch(new Request(url,options))
     }));
-    return providers.get(assets);
+    return providers.get(assets)!;
   }
-  function record(fields) { log({event:'og',revision,...fields}); }
-  function imageJob(state,env) {
+  function record(fields: Record<string,unknown>) { log({event:'og',revision,...fields}); }
+  function imageJob(state: SharedClockState,env: Env) {
     const key = keyFor(state,revision);
-    if (pending.has(key)) return {task:pending.get(key),coalesced:true};
-    const task = deadline(async signal => {
+    if (pending.has(key)) return {task:pending.get(key)!,coalesced:true};
+    const task = deadline<ImageResult>(async signal => {
       if (env.OG_IMAGES) {
         try {
           const object = await env.OG_IMAGES.get(key);
           check(signal);
           if (object) return {bytes:new Uint8Array(await object.arrayBuffer()),cache:'hit',key};
-        } catch (error) { check(signal); record({status:'cache-read-error',reason:String(error.message || error)}); }
+        } catch (error) { check(signal); record({status:'cache-read-error',reason:String(error instanceof Error ? error.message : error)}); }
       }
       const minute = await providerFor(env.ASSETS).getMinute(state.t.slice(0,4),{signal});
       check(signal);
@@ -47,16 +50,16 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
     },timeoutMs,'Image generation').then(async result => {
       if (result.cache === 'miss' && env.OG_IMAGES) {
         try {
-          await deadline(() => env.OG_IMAGES.put(key,result.bytes,{httpMetadata:{contentType:'image/png',cacheControl:'public, max-age=86400'},
+          await deadline(() => env.OG_IMAGES!.put(key,result.bytes,{httpMetadata:{contentType:'image/png',cacheControl:'public, max-age=86400'},
             customMetadata:{revision}}),writeTimeoutMs,'Image cache write');
-        } catch (error) { record({status:'cache-write-error',reason:String(error.message || error)}); }
+        } catch (error) { record({status:'cache-write-error',reason:String(error instanceof Error ? error.message : error)}); }
       }
       return result;
     }).finally(() => pending.delete(key));
     pending.set(key,task);
     return {task,coalesced:false};
   }
-  async function fallback(request,env,reason) {
+  async function fallback(request: Request,env: Env,reason: string) {
     record({status:'default',reason});
     const asset = await env.ASSETS.fetch(new Request(new URL('/og-default.png',request.url)));
     const headers = new Headers(asset.headers);
@@ -65,7 +68,7 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
     // The bundled fallback is independent of R2 and the renderer.
     return new Response(request.method === 'HEAD' ? null : asset.body,{status:asset.status,headers});
   }
-  async function image(request,env,ctx,url) {
+  async function image(request: Request,env: Env,ctx: Context,url: URL) {
     const state = Share.parse(url);
     if (!state) return fallback(request,env,'no-shared-state');
     const started = Date.now();
@@ -73,20 +76,20 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
     ctx.waitUntil(task.catch(() => {}));
     try {
       const result = await task, etag = `"${result.key}"`;
-      const headers = {'Content-Type':'image/png','Cache-Control':'public, max-age=86400','ETag':etag,'X-Content-Type-Options':'nosniff'};
+      const headers: Record<string,string> = {'Content-Type':'image/png','Cache-Control':'public, max-age=86400','ETag':etag,'X-Content-Type-Options':'nosniff'};
       record({status:'ok',cache:coalesced ? 'coalesced' : result.cache,time:state.t,elapsedMs:Date.now() - started,bytes:result.bytes.byteLength});
       if (request.headers.get('If-None-Match') === etag) return new Response(null,{status:304,headers});
       headers['Content-Length'] = String(result.bytes.byteLength);
       return new Response(request.method === 'HEAD' ? null : result.bytes,{headers});
-    } catch (error) { return fallback(request,env,String(error.message || error)); }
+    } catch (error) { return fallback(request,env,String(error instanceof Error ? error.message : error)); }
   }
-  async function html(request,env,url) {
+  async function html(request: Request,env: Env,url: URL) {
     const state = Share.parse(url), canonical = state ? Share.url(url.origin,state) : new URL('/',url.origin);
     const imageUrl = new URL('/og.png',url.origin);
     if (state) imageUrl.search = Share.params(state).toString();
     imageUrl.searchParams.set('r',revision);
     const title = Share.title(state), description = state ? `${Share.timeLabel(state)}のFormula Clock。` : normalDescription;
-    const metadata = {'description':description,'og:title':title,'og:description':description,'og:image':imageUrl.href,
+    const metadata: Record<string,string> = {'description':description,'og:title':title,'og:description':description,'og:image':imageUrl.href,
       'twitter:title':title,'twitter:image':imageUrl.href};
     // Clear query and conditional headers: the source asset's ETag cannot stand
     // for the dynamically rewritten representation of every shared state.
@@ -100,14 +103,14 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
       .on('title',{element(element) { element.setInnerContent(title); }})
       .on('meta',{element(element) {
         const name = element.getAttribute('property') || element.getAttribute('name');
-        if (Object.hasOwn(metadata,name)) element.setAttribute('content',metadata[name]);
+        if (name && Object.hasOwn(metadata,name)) element.setAttribute('content',metadata[name]);
       }})
       .on('head',{element(element) {
         element.append(`<meta property="og:url" content="${escape(canonical.href)}"><meta property="og:image:alt" content="${escape(title)}"><meta name="twitter:description" content="${escape(description)}"><link rel="canonical" href="${escape(canonical.href)}">`,{html:true});
       }})
       .transform(response);
   }
-  return {async fetch(request,env,ctx) {
+  return {async fetch(request: Request,env: Env,ctx: Context) {
     const url = new URL(request.url);
     if (!['/','/og.png'].includes(url.pathname)) return env.ASSETS.fetch(request);
     if (!['GET','HEAD'].includes(request.method)) return new Response('Method not allowed',{status:405,headers:{Allow:'GET, HEAD'}});

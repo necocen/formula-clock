@@ -4,18 +4,20 @@
   "private": true,
   "description": "A mathematical clock with persistent digits, switchable typography, and AST data providers",
   "scripts": {
-    "build": "node build.cjs",
-    "build:external": "node build.cjs --external",
-    "generate": "node tools/generate.cjs",
-    "test": "node tests/expression.test.cjs && node tests/data.test.cjs && node --test tests/hourly.test.cjs tests/build.test.cjs tests/symbols.test.cjs tests/share.test.cjs tests/i18n.test.cjs tests/og-cache.test.mjs",
-    "test:og": "node --test tests/og-render.test.mjs tests/og-worker.test.mjs",
+    "build": "npm run typecheck && tsx build.ts",
+    "build:external": "npm run typecheck && tsx build.ts --external",
+    "generate": "npm run typecheck && tsx tools/generate.ts",
+    "test": "npm run typecheck && node --import tsx tests/expression.test.cjs && node --import tsx tests/data.test.cjs && node --import tsx --test tests/hourly.test.cjs tests/build.test.cjs tests/symbols.test.cjs tests/share.test.cjs tests/i18n.test.cjs tests/og-cache.test.mjs",
+    "test:og": "node --import tsx --test tests/og-render.test.mjs tests/og-worker.test.mjs",
     "deploy": "wrangler deploy",
-    "preview": "wrangler versions upload"
+    "preview": "wrangler versions upload",
+    "typecheck": "tsc --noEmit"
   },
   "engines": {
     "node": "22.x"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "5.20260910.1",
     "@mathjax/mathjax-euler-font-extension": "4.1.3",
     "@mathjax/mathjax-fira-font": "4.1.3",
     "@mathjax/mathjax-modern-font": "4.1.3",
@@ -23,8 +25,12 @@
     "@mathjax/mathjax-termes-font": "4.1.3",
     "@mathjax/src": "4.1.3",
     "@resvg/resvg-wasm": "2.6.2",
+    "@types/node": "22.20.2",
     "esbuild": "0.28.1",
     "miniflare": "5.20260907.0-alpha",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2",
     "wrangler": "4.129.1"
-  }
+  },
+  "type": "module"
 }

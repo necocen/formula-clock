@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),zlib=require('node:zlib');
-const E=require('../expression.js'),D=require('../data.js');
-const {createSolver}=require('../tools/solver.cjs');
+const E=require('../expression.ts'),D=require('../data.ts');
+const {createSolver}=require('../tools/solver.ts');
 const table=require('../data/expressions.json'), solver=createSolver();
 
 // Independent parser for the emitted TeX subset. It knows no serializer rules.

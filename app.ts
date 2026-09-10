@@ -1,18 +1,35 @@
+import {isRecord, type DisplayOptions, type FormulaProvider, type Expr, type SecondEntries, type SharedClockState, type LayoutItem, type ClockLayout, type AudioEvent} from './types.ts';
+import type {Typesetter} from './typesetter.ts';
+import type {ClockFace,Frame,PlacedToken} from './browser-types.ts';
+
+interface MinuteSolutions {input: string; solutions: SecondEntries; count: number; error?: string; retryAfter?: number;}
+interface Movement {from: number[]; to: number[]; started: number;}
+type MovingElement = SVGGElement & {_shapeKey?: string};
+interface MorphState {angle: number; weights: Record<string,number>; center: number[];}
+interface MorphPart {group: SVGGElement; shape: Node; center: number[];}
+interface Morph {parts: Record<string,MorphPart>; from: MorphState; to: {angle: number; center: number[]}; started: number; target: string;}
+interface SymbolRecord {el: MovingElement; token: PlacedToken; exiting?: boolean; animation?: Animation | null;}
+interface DisplayedFrame {frame: Frame; ast: Expr | null; code: string; seconds: number; view: DisplayOptions;}
+interface Preview {epoch: number; started: number; speed: number; paused: boolean;}
 /* Formula Clock: persistent digit objects, separate typography and data delivery. */
 (() => {
   'use strict';
   const ui = FormulaI18n.create(navigator.languages?.[0] || navigator.language), t = ui.t;
   ui.apply(document);
-  const $ = s => document.querySelector(s);
-  const stage = $('#stage'), digitsEls = [...stage.querySelectorAll('.digit')];
-  const sourceTime = $('#source-time'), sourceEls = [...sourceTime.querySelectorAll('.source-digit')];
-  const sourceColons = [...sourceTime.querySelectorAll('.colon')];
-  const cache = new Map(), pending = new Map();
-  const settingsDialog = $('#settings'), settingsButton = $('#settings-open');
-  const licenseDialog = $('#licenses');
-  const shareButton = $('#share'), shareDialog = $('#share-dialog');
+  function $<T extends Element = HTMLElement>(selector: string): T {
+    const element = document.querySelector<T>(selector);
+    if (!element) throw new Error(`Missing clock element ${selector}`);
+    return element;
+  }
+  const stage = $('#stage'), digitsEls = [...stage.querySelectorAll<MovingElement>('.digit')];
+  const sourceTime = $('#source-time'), sourceEls = [...sourceTime.querySelectorAll<MovingElement>('.source-digit')];
+  const sourceColons = [...sourceTime.querySelectorAll<MovingElement>('.colon')];
+  const cache = new Map<string,MinuteSolutions>(), pending = new Map<string,AbortController>();
+  const settingsDialog = $<HTMLDialogElement>('#settings'), settingsButton = $<HTMLButtonElement>('#settings-open');
+  const licenseDialog = $<HTMLDialogElement>('#licenses');
+  const shareButton = $<HTMLButtonElement>('#share'), shareDialog = $<HTMLDialogElement>('#share-dialog');
   const sharedState = FormulaShare.parse(new URL(location.href));
-  function setupDialog(dialog, opener, closeButton, openOnClick = true) {
+  function setupDialog(dialog: HTMLDialogElement, opener: HTMLButtonElement, closeButton: HTMLButtonElement, openOnClick = true) {
     if (openOnClick) opener.addEventListener('click', () => {
       dialog.showModal(); closeButton.focus({preventScroll:true}); dialog.scrollTop = 0;
     });
@@ -20,15 +37,15 @@
     dialog.addEventListener('close', () => opener.focus({preventScroll:true}));
     dialog.addEventListener('keydown', event => {
       if (event.key !== 'Tab') return;
-      const controls = [...dialog.querySelectorAll('button,input,select,summary,a[href]')]
-        .filter(el => !el.disabled && el.getClientRects().length);
+      const controls = [...dialog.querySelectorAll<HTMLElement>('button,input,select,summary,a[href]')]
+        .filter(el => !('disabled' in el && el.disabled) && el.getClientRects().length);
       const first = controls[0], last = controls.at(-1);
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     });
     // Dragging out from a control must not count as a backdrop click.
     let backdropPointer = false;
-    function outsideDialog(event) {
+    function outsideDialog(event: MouseEvent) {
       const r = dialog.getBoundingClientRect();
       return event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom;
     }
@@ -38,31 +55,31 @@
       backdropPointer = false;
     });
   }
-  setupDialog(settingsDialog,settingsButton,$('#settings-close'));
-  setupDialog(licenseDialog,$('#licenses-open'),$('#licenses-close'));
-  setupDialog(shareDialog,shareButton,$('#share-close'),false);
+  setupDialog(settingsDialog,settingsButton,$<HTMLButtonElement>('#settings-close'));
+  setupDialog(licenseDialog,$<HTMLButtonElement>('#licenses-open'),$<HTMLButtonElement>('#licenses-close'));
+  setupDialog(shareDialog,shareButton,$<HTMLButtonElement>('#share-close'),false);
   shareButton.hidden = !['http:','https:'].includes(location.protocol);
   const {normalizeMinute, TableProvider} = FormulaData;
   const defaultProvider = () => new TableProvider(async () => {
-    const embedded = document.querySelector('#clock-data');
+    const embedded = document.querySelector<HTMLElement>('#clock-data');
     if (!embedded) throw new Error('No embedded formula table or custom provider');
     return FormulaData.loadEmbedded(embedded);
   });
   let provider = window.FORMULA_CLOCK_CONFIG?.provider || defaultProvider();
   let dataRevision = 0;
-  function savedDisplay() {
-    try { return JSON.parse(localStorage.getItem('formula-clock-display-v2') || '{}') || {}; } catch { return {}; }
+  function savedDisplay(): Record<string,unknown> {
+    try { const saved: unknown = JSON.parse(localStorage.getItem('formula-clock-display-v2') || '{}'); return isRecord(saved) ? saved : {}; } catch { return {}; }
   }
-  function activeDisplay(options = displaySettings) {
+  function activeDisplay(options: DisplayOptions = displaySettings): DisplayOptions {
     return {...options,structureMotion:options.symbolMotion && options.structureMotion,
       symbolMorph:options.symbolMotion && options.symbolMorph};
   }
   const saved = savedDisplay();
-  let displaySettings = {
-    font: Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font : 'stix2',
+  let displaySettings: DisplayOptions = {
+    font: typeof saved.font === 'string' && Object.hasOwn(FormulaTypesetter.PROFILES,saved.font) ? saved.font as DisplayOptions['font'] : 'stix2',
     // Preserve the appearance of settings saved before numeral styles were independent.
-    numerals: Object.hasOwn(FormulaTypesetter.NUMERALS,saved.numerals) ? saved.numerals : saved.font === 'euler' ? 'lining' : 'oldstyle',
-    division: ['fraction','inline'].includes(saved.division) ? saved.division : 'fraction',
+    numerals: typeof saved.numerals === 'string' && Object.hasOwn(FormulaTypesetter.NUMERALS,saved.numerals) ? saved.numerals as DisplayOptions['numerals'] : saved.font === 'euler' ? 'lining' : 'oldstyle',
+    division: saved.division === 'fraction' || saved.division === 'inline' ? saved.division : 'fraction',
     symbolMotion: saved.symbolMotion === true,
     structureMotion: saved.structureMotion === true,
     symbolMorph: saved.symbolMorph === true
@@ -74,17 +91,17 @@
     document.title = FormulaShare.title(sharedState);
   }
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const pad = n => String(n).padStart(2, '0');
-  const timeCode = d => pad(d.getHours()) + pad(d.getMinutes());
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const timeCode = (d: Date) => pad(d.getHours()) + pad(d.getMinutes());
   const ticks = Array.from({ length: 60 }, (_, i) => {
     const b = document.createElement('button'); b.className = 'tick' + (i % 5 === 0 ? ' major' : '');
     b.setAttribute('aria-label',t('previewSecond',{seconds:i}));
     b.addEventListener('click', () => { const d = getNow(); d.setSeconds(i, 0); setPreview(d, true); });
     $('#ruler').append(b); return b;
   });
-  function requestSolutions(code) {
+  function requestSolutions(code: string) {
     const existing = cache.get(code);
-    if (pending.has(code) || (existing && (!existing.error || Date.now() < existing.retryAfter))) return;
+    if (pending.has(code) || (existing && (!existing.error || Date.now() < (existing.retryAfter || 0)))) return;
     const revision = dataRevision, currentProvider = provider, controller = new AbortController();
     pending.set(code,controller);
     Promise.resolve().then(() => currentProvider.getMinute(code,{signal:controller.signal})).then(raw => {
@@ -98,11 +115,11 @@
     }).finally(() => {
       if (revision !== dataRevision) return;
       if (pending.get(code) === controller) pending.delete(code);
-      while (cache.size > 10) cache.delete(cache.keys().next().value);
+      while (cache.size > 10) cache.delete(cache.keys().next().value!);
       if (timeCode(getNow()) === code) refresh(true);
     });
   }
-  function setDataProvider(next) {
+  function setDataProvider(next: FormulaProvider) {
     if (!next || typeof next.getMinute !== 'function') throw new TypeError('Provider needs getMinute(hhmm, {signal})');
     dataRevision++;
     pending.forEach(controller => controller.abort()); pending.clear(); cache.clear();
@@ -112,9 +129,9 @@
 
   // MathJax computes the layout; persistent digits and equality display it.
   // The four HHMM objects are never recreated, including ordinary clock mode.
-  const engines = new Map(), clockFaces = new Map();
-  const typographyKey = (font,numerals) => `${font}:${numerals}`;
-  function engineFor(font,numerals) {
+  const engines = new Map<string,Typesetter>(), clockFaces = new Map<string,ClockFace>();
+  const typographyKey = (font: DisplayOptions['font'],numerals: DisplayOptions['numerals']) => `${font}:${numerals}`;
+  function engineFor(font: DisplayOptions['font'],numerals: DisplayOptions['numerals']): Typesetter {
     const key = typographyKey(font,numerals);
     const selected = () => typographyKey(displaySettings.font,displaySettings.numerals) === key;
     if (!engines.has(key)) {
@@ -130,60 +147,62 @@
         if (selected()) { engineError=String(error); lastVisual=''; refresh(true); }
       });
     }
-    return engines.get(key);
+    return engines.get(key)!;
   }
   let typesetter = engineFor(displaySettings.font,displaySettings.numerals);
-  const segmentedChoices = [...settingsDialog.querySelectorAll('.segmented-control input')];
+  const segmentedChoices = [...settingsDialog.querySelectorAll<HTMLInputElement>('.segmented-control input')];
   function syncMotionControls() {
-    $('#symbol-motion').checked = displaySettings.symbolMotion;
-    $('#structure-motion').checked = displaySettings.structureMotion;
-    $('#structure-motion').disabled = !displaySettings.symbolMotion;
-    $('#symbol-morph').checked = displaySettings.symbolMorph;
-    $('#symbol-morph').disabled = !displaySettings.symbolMotion;
+    $<HTMLInputElement>('#symbol-motion').checked = displaySettings.symbolMotion;
+    $<HTMLInputElement>('#structure-motion').checked = displaySettings.structureMotion;
+    $<HTMLInputElement>('#structure-motion').disabled = !displaySettings.symbolMotion;
+    $<HTMLInputElement>('#symbol-morph').checked = displaySettings.symbolMorph;
+    $<HTMLInputElement>('#symbol-morph').disabled = !displaySettings.symbolMotion;
   }
-  async function setDisplay(changes) {
+  async function setDisplay(changes: Partial<DisplayOptions>) {
     const next = {...displaySettings,...changes};
-    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
+    if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || (['symbolMotion','structureMotion','symbolMorph'] as const).some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
     displaySettings = {font:next.font,numerals:next.numerals,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
     shareButton.disabled = true;
     syncMotionControls();
-    $('#font-choice').value = next.font;
-    segmentedChoices.forEach(input => { input.checked = input.value === next[input.name]; });
+    $<HTMLSelectElement>('#font-choice').value = next.font;
+    segmentedChoices.forEach(input => { input.checked = input.value === next[input.name as keyof DisplayOptions]; });
     try {localStorage.setItem('formula-clock-display-v2',JSON.stringify(displaySettings));} catch {}
     typesetter = engineFor(next.font,next.numerals); engineError=null; lastVisual='';
     refresh(true);
     await typesetter.boot;
   }
   syncMotionControls();
-  $('#symbol-motion').addEventListener('change',e=>{setDisplay({symbolMotion:e.target.checked}).catch(()=>{});});
-  $('#structure-motion').addEventListener('change',e=>{setDisplay({structureMotion:e.target.checked}).catch(()=>{});});
-  $('#symbol-morph').addEventListener('change',e=>{setDisplay({symbolMorph:e.target.checked}).catch(()=>{});});
-  $('#font-choice').value = displaySettings.font;
-  segmentedChoices.forEach(input => { input.checked = input.value === displaySettings[input.name]; });
-  $('#font-choice').addEventListener('change',e=>{setDisplay({font:e.target.value}).catch(()=>{});});
-  $('#numeral-choice').addEventListener('change',e=>{setDisplay({numerals:e.target.value}).catch(()=>{});});
-  $('#division-choice').addEventListener('change',e=>{setDisplay({division:e.target.value}).catch(()=>{});});
-  const scene = $('#math-scene'), notationRoot = $('#notation-root'), equalSign = $('#equal-sign');
-  const operatorRoot = $('#operator-root'), symbolRecords = new Set();
-  const secondsEls = [...scene.querySelectorAll('.answer-digit')];
+  $<HTMLInputElement>('#symbol-motion').addEventListener('change',e=>{setDisplay({symbolMotion:(e.target as HTMLInputElement).checked}).catch(()=>{});});
+  $<HTMLInputElement>('#structure-motion').addEventListener('change',e=>{setDisplay({structureMotion:(e.target as HTMLInputElement).checked}).catch(()=>{});});
+  $<HTMLInputElement>('#symbol-morph').addEventListener('change',e=>{setDisplay({symbolMorph:(e.target as HTMLInputElement).checked}).catch(()=>{});});
+  $<HTMLSelectElement>('#font-choice').value = displaySettings.font;
+  segmentedChoices.forEach(input => { input.checked = input.value === displaySettings[input.name as keyof DisplayOptions]; });
+  $<HTMLSelectElement>('#font-choice').addEventListener('change',e=>{setDisplay({font:(e.target as HTMLSelectElement).value as DisplayOptions['font']}).catch(()=>{});});
+  $('#numeral-choice').addEventListener('change',e=>{setDisplay({numerals:(e.target as HTMLInputElement).value as DisplayOptions['numerals']}).catch(()=>{});});
+  $('#division-choice').addEventListener('change',e=>{setDisplay({division:(e.target as HTMLInputElement).value as DisplayOptions['division']}).catch(()=>{});});
+  const scene = $<SVGSVGElement>('#math-scene'), notationRoot = $<MovingElement>('#notation-root'), equalSign = $<MovingElement>('#equal-sign');
+  const operatorRoot = $<MovingElement>('#operator-root'), symbolRecords = new Set<SymbolRecord>();
+  const secondsEls = [...scene.querySelectorAll<MovingElement>('.answer-digit')];
   const movingEls = [...digitsEls, ...secondsEls];
   const plainTime = $('#plain-time');
-  const movement = new Map();
-  const morphs = new Map();
-  let notation = null, lastVisual = '', firstFrame = true, latestLayout = null, displayedFrame = null;
-  let requestSerial = 0, animationId = 0, engineError = null;
-  const reportedRenderErrors = new Set();
+  const movement = new Map<MovingElement,Movement>();
+  const morphs = new Map<MovingElement,Morph>();
+  let notation: SVGGElement | null = null, lastVisual = '', firstFrame = true;
+  let latestLayout: ClockLayout | null = null, displayedFrame: DisplayedFrame | null = null;
+  let requestSerial = 0, animationId = 0;
+  let engineError: string | null = null;
+  const reportedRenderErrors = new Set<string>();
   const mathNS = 'http://www.w3.org/2000/svg';
   const DURATION = 680;
   const MORPH_DURATION = 320;
-  const matrixString = a => `matrix(${a.map(n => n.toFixed(7)).join(' ')})`;
-  const ease = t => 1 - Math.pow(1 - t, 4);
-  function matrixAt(record, now) {
+  const matrixString = (a: number[]) => `matrix(${a.map(n => n.toFixed(7)).join(' ')})`;
+  const ease = (t: number) => 1 - Math.pow(1 - t, 4);
+  function matrixAt(record: Movement, now: number) {
     const p = Math.min(1, Math.max(0, (now - record.started) / DURATION));
     const k = ease(p);
     return record.to.map((v, i) => record.from[i] + (v - record.from[i]) * k);
   }
-  function animatePositions(now) {
+  function animatePositions(now: number) {
     let active = false;
     for (const [el, record] of movement) {
       const matrix = matrixAt(record, now);
@@ -197,40 +216,41 @@
     }
     animationId = active ? requestAnimationFrame(animatePositions) : 0;
   }
-  function setPosition(el, target, animated, now) {
+  function setPosition(el: MovingElement, target: number[], animated: boolean, now: number) {
     const old = movement.get(el);
     const from = old ? matrixAt(old, now) : target;
     movement.set(el, { from: animated ? from : target, to: target, started: animated ? now : now - DURATION });
     el.setAttribute('transform', matrixString(animated ? from : target));
     if (animated && !animationId) animationId = requestAnimationFrame(animatePositions);
   }
-  function fadeIn(el, duration, delayed = false) {
+  function fadeIn(el: Element, duration: number, delayed = false) {
     if (reducedMotion.matches) return;
     el.animate(delayed ? [{ opacity: 0 }, { opacity: 0, offset: .18 }, { opacity: 1 }] : [{ opacity: .15 }, { opacity: 1 }], { duration, easing: 'ease-out' });
   }
-  function morphStateAt(record,now) {
+  function morphStateAt(record: Morph,now: number): MorphState {
     const p = Math.min(1,Math.max(0,(now-record.started)/MORPH_DURATION));
-    const k = p*p*(3-2*p), mix = (a,b)=>a+(b-a)*k;
+    const k = p*p*(3-2*p), mix = (a: number,b: number)=>a+(b-a)*k;
     return {angle:mix(record.from.angle,record.to.angle),
       weights:Object.fromEntries(Object.keys(record.parts).map(kind=>[kind,mix(record.from.weights[kind] || 0,kind===record.target?1:0)])),
       center:record.from.center.map((v,i)=>mix(v,record.to.center[i]))};
   }
-  function paintMorph(record,now) {
+  function paintMorph(record: Morph,now: number) {
     const state=morphStateAt(record,now);
     for (const [kind,part] of Object.entries(record.parts)) {
       const angle=state.angle-(kind==='×'?45:0);
       part.group.setAttribute('transform',`translate(${state.center.join(' ')}) rotate(${angle}) translate(${-part.center[0]} ${-part.center[1]})`);
-      part.group.setAttribute('opacity',state.weights[kind]);
+      part.group.setAttribute('opacity',String(state.weights[kind]));
     }
     return state;
   }
-  function finishMorph(el) {
+  function finishMorph(el: MovingElement) {
     const record=morphs.get(el);
     if (!record) return;
     el.replaceChildren(record.parts[record.target].shape);
     el.removeAttribute('data-morphing');morphs.delete(el);
   }
-  function startMorph(el,oldToken,token,now) {
+  function startMorph(el: MovingElement,oldToken: PlacedToken,token: PlacedToken,now: number) {
+    if (!oldToken.inkCenter || !token.inkCenter) return;
     const existing=morphs.get(el);
     const from=existing ? paintMorph(existing,now) : {
       angle:oldToken.kind==='×'?45:0,weights:{[oldToken.kind]:1},center:oldToken.inkCenter
@@ -241,7 +261,7 @@
       if (parts[glyph.kind]) continue;
       const group=document.createElementNS(mathNS,'g'),shape=glyph.shape.cloneNode(true);
       group.dataset.morphGlyph=glyph.kind;group.append(shape);
-      parts[glyph.kind]={group,shape,center:glyph.inkCenter};
+      parts[glyph.kind]={group,shape,center:glyph.inkCenter!};
     }
     // Preserve every visible contribution when interrupted by a third sign.
     // One layer per arithmetic glyph bounds even rapid switching to four;
@@ -251,7 +271,7 @@
     el.dataset.morphing='true';el.dataset.value=token.text;el._shapeKey=token.shape.innerHTML;
     morphs.set(el,record);paintMorph(record,now);
   }
-  function updateSymbols(tokens,animated,placeToken,morphEnabled) {
+  function updateSymbols(tokens: PlacedToken[],animated: boolean,placeToken: (token: PlacedToken, el: MovingElement, morphFrom: PlacedToken | null) => void,morphEnabled: boolean) {
     const previous=[...symbolRecords];
     const old=previous.map(record=>({...record.token,exiting:record.exiting}));
     const matches=FormulaSymbols.match(old,tokens,{morph:animated && morphEnabled}),used=new Set();
@@ -260,7 +280,7 @@
       if(!record) {
         const el=document.createElementNS(mathNS,'g');
         el.classList.add('moving-symbol');operatorRoot.append(el);
-        record={el};symbolRecords.add(record);
+        record={el,token};symbolRecords.add(record);
       } else if(record.animation) {
         const opacity=getComputedStyle(record.el).opacity;
         record.animation.cancel();record.animation=null;
@@ -269,7 +289,7 @@
       const oldToken=record.token;
       used.add(record);record.exiting=false;record.token=token;
       record.el.dataset.kind=token.kind;
-      record.el.dataset.site=token.site;
+      record.el.dataset.site=token.site || '';
       record.el.dataset.glyphKey=token.glyphKey || '';
       placeToken(token,record.el,oldToken && FormulaSymbols.morphPair(oldToken,token) ? oldToken : null);
     });
@@ -287,7 +307,7 @@
     const status = $('#render-status');
     status.textContent = message; status.hidden = !message;
   }
-  function plainFallback(code, seconds, reason) {
+  function plainFallback(code: string, seconds: number, reason: string) {
     shareButton.disabled = true;
     const full = `${code.slice(0,2)}:${code.slice(2)}:${pad(seconds)}`;
     [...plainTime.querySelectorAll('span')].forEach((el, i) => { el.textContent = full[i]; });
@@ -297,7 +317,7 @@
     stage.setAttribute('aria-label', full);
     renderStatus(reason);
   }
-  function renderSourceTime(font, numerals, code, seconds, visible) {
+  function renderSourceTime(font: DisplayOptions['font'], numerals: DisplayOptions['numerals'], code: string, seconds: number, visible: boolean) {
     const face = clockFaces.get(typographyKey(font,numerals));
     if (face) {
       const colon = face.glyphs[':'];
@@ -305,7 +325,7 @@
       // or proportional glyphs. Fixed 450-unit separators match ordinary clock spacing.
       const centers = [400,900,1850,2350,3300,3800];
       const baseline = 550 - (colon.bounds.y + colon.bounds.h / 2) * face.scale;
-      function place(el, text, center) {
+      const place = (el: MovingElement, text: string, center: number) => {
         const token = face.glyphs[text];
         if (el.dataset.font === font && el.dataset.numerals === numerals && el.dataset.value === text) return;
         const matrix = token.matrix.map(value => value * face.scale);
@@ -323,7 +343,7 @@
     }
     sourceTime.hidden = !visible || !face;
   }
-  function applyFrame(frame, ast, code, seconds, loading, instant, view) {
+  function applyFrame(frame: Frame, ast: Expr | null, code: string, seconds: number, loading: boolean, instant: boolean, view: DisplayOptions) {
     const W = stage.clientWidth, H = stage.clientHeight, b = frame.viewBox;
     // Fit each side of a fixed axis independently. A tall numerator may shrink
     // the equation, but must never push the equal sign or normal digits down.
@@ -333,8 +353,8 @@
     // One clock for the entire frame keeps a radical and its rule joined, even
     // if DOM work between their updates takes a few milliseconds.
     const positionTime = performance.now();
-    const items = [];
-    function placeToken(token, el, morphFrom = null) {
+    const items: LayoutItem[] = [];
+    function placeToken(token: PlacedToken, el: MovingElement, morphFrom: PlacedToken | null = null) {
       if (morphFrom && animated && view.symbolMorph) startMorph(el,morphFrom,token,positionTime);
       else if (!animated || !view.symbolMorph || el._shapeKey !== token.shape.innerHTML || el.dataset.value !== token.text) finishMorph(el);
       // A preference change may interrupt an existing fade on a reused glyph.
@@ -342,7 +362,7 @@
       // Preserve the glyph's child nodes too until this clock position changes digit.
       if (el.dataset.value !== token.text || !el.firstChild || el._shapeKey !== token.shape.innerHTML) {
         el.replaceChildren(token.shape.cloneNode(true));
-        if (animated) fadeIn(el.firstChild, 350);
+        if (animated) fadeIn(el.firstElementChild!, 350);
         el.dataset.value = token.text;
         el._shapeKey = token.shape.innerHTML;
       }
@@ -359,7 +379,7 @@
     updateSymbols(frame.symbols,animated,placeToken,view.symbolMorph);
     const layer = document.createElementNS(mathNS, 'g');
     layer.classList.add('notation-layer');
-    const content = frame.decorations.cloneNode(true);
+    const content = frame.decorations.cloneNode(true) as SVGGElement;
     content.setAttribute('transform', matrixString([scale,0,0,scale,x,y]));
     layer.append(content); notationRoot.append(layer);
     if (notation) {
@@ -383,10 +403,10 @@
     stage.setAttribute('aria-label',ast ? t('clockEquation',{time,expression:FormulaExpression.plain(ast,code),seconds}) : time);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
     displayedFrame = {frame,ast,code,seconds,view};
-    shareButton.disabled = loading || !!engineError || !cache.has(code) || !!cache.get(code).error;
+    shareButton.disabled = loading || !!engineError || !cache.has(code) || !!cache.get(code)?.error;
     firstFrame = false;
   }
-  function renderExpression(ast, code, seconds, loading, instant = false) {
+  function renderExpression(ast: Expr | null, code: string, seconds: number, loading: boolean, instant = false) {
     if (loading) shareButton.disabled = true;
     const engine = typesetter, view = activeDisplay();
     const key = `${view.font}:${view.numerals}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
@@ -421,7 +441,7 @@
   }
   // Warm only the immediately upcoming frames; do not queue a minute of work
   // ahead of interactive previews. The LRU retains recent typesetting results.
-  function prepareNext(now) {
+  function prepareNext(now: Date) {
     if (!typesetter.ready || preview?.paused || document.hidden) return;
     for (const offset of [1, 2]) {
       const next = new Date(+now + offset * 1000), code = timeCode(next), result = cache.get(code);
@@ -429,12 +449,13 @@
     }
   }
   // Transport time is anchored to the wall clock (live) or a monotonic clock (preview).
-  let preview = sharedState ? {epoch:+FormulaShare.localDate(sharedState.t),started:performance.now(),speed:1,paused:true} : null;
-  let generation = 0, lastSecond = null, lastCode = null, tickTimer = null;
-  let nextPrefetch = null;
-  const eventHistory = [];
+  let preview: Preview | null = sharedState ? {epoch:+FormulaShare.localDate(sharedState.t),started:performance.now(),speed:1,paused:true} : null;
+  let generation = 0, lastSecond: number | null = null, lastCode: string | null = null;
+  let tickTimer: ReturnType<typeof setTimeout> | undefined;
+  let nextPrefetch: {code: string; at: number} | null = null;
+  const eventHistory: AudioEvent[] = [];
   function getNow() { return preview ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started) * preview.speed) : new Date(); }
-  function setPreview(date, paused = false) {
+  function setPreview(date: Date, paused = false) {
     if (!(date instanceof Date) || !Number.isFinite(+date)) return;
     preview = { epoch: +date, started: performance.now(), speed: 1, paused };
     resetTransport();
@@ -443,8 +464,8 @@
     generation++; lastSecond = null; sound.cancel();
     document.body.classList.toggle('preview-mode', !!preview);
     $('#transport').hidden = !preview;
-    $('#play-pause').textContent = t(preview?.paused ? 'play' : 'pause');
-    $('#slow').setAttribute('aria-pressed', String(!!preview && preview.speed < 1));
+    $<HTMLButtonElement>('#play-pause').textContent = t(preview?.paused ? 'play' : 'pause');
+    $<HTMLButtonElement>('#slow').setAttribute('aria-pressed', String(!!preview && preview.speed < 1));
     refresh(true); scheduleTick();
   }
   function goLive() { preview = null; resetTransport(); }
@@ -458,17 +479,17 @@
     preview = { ...preview, epoch: +getNow(), started: performance.now(), speed: preview.speed === 1 ? .5 : 1 };
     resetTransport();
   }
-  let noticeTimer;
-  function showNotice(text) {
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  function showNotice(text: string) {
     clearTimeout(noticeTimer);
     $('#share-status').textContent = text;
     noticeTimer = setTimeout(() => { $('#share-status').textContent = ''; },4000);
   }
-  function manualShare(url) {
-    const input = $('#share-url'); input.value = url;
+  function manualShare(url: string) {
+    const input = $<HTMLInputElement>('#share-url'); input.value = url;
     shareDialog.showModal(); input.focus(); input.select();
   }
-  async function copyShare(url) {
+  async function copyShare(url: string) {
     try {
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(url);
@@ -478,7 +499,7 @@
   shareButton.addEventListener('click', () => {
     if (shareButton.disabled || !displayedFrame) return;
     const snapshot = displayedFrame, {code,seconds,view} = snapshot;
-    const state = {v:1,t:code+pad(seconds),font:view.font,numerals:view.numerals,division:view.division};
+    const state: SharedClockState = {v:1,t:code+pad(seconds),font:view.font,numerals:view.numerals,division:view.division};
     const url = FormulaShare.url(location.origin,state).href;
     // Invalidate work for a newer second and settle the frame the user saw.
     // Everything before navigator.share is synchronous to retain user activation.
@@ -491,10 +512,10 @@
     if (typeof navigator.share !== 'function') { void copyShare(url); return; }
     try {
       navigator.share({title:FormulaShare.title(state),url}).catch(error => {
-        if (error?.name !== 'AbortError') void copyShare(url);
+        if (!(isRecord(error) || error instanceof Error) || error.name !== 'AbortError') void copyShare(url);
       });
     } catch (error) {
-      if (error?.name !== 'AbortError') void copyShare(url);
+      if (!(isRecord(error) || error instanceof Error) || error.name !== 'AbortError') void copyShare(url);
     }
   });
   function refresh(force = false) {
@@ -549,11 +570,19 @@
 
   // Audio is scheduled independently of layout. There is no replay of missed signals.
   class TimeSignal {
+    ctx: AudioContext | null = null;
+    master: GainNode | null = null;
+    enabled: boolean;
+    volume: number;
+    revision = 0;
+    error: string | null = null;
+    scheduled = new Map<string,number>();
+    voices = new Set<OscillatorNode>();
     constructor() {
-      let saved = {};
-      try { saved = JSON.parse(localStorage.getItem('formula-clock-audio-v1') || '{}') || {}; } catch {}
+      let saved: Record<string,unknown> = {};
+      try { const raw: unknown = JSON.parse(localStorage.getItem('formula-clock-audio-v1') || '{}'); saved = isRecord(raw) ? raw : {}; } catch {}
       this.ctx = null; this.master = null; this.enabled = saved.enabled === true;
-      this.volume = Number.isFinite(saved.volume) && saved.volume >= 0 && saved.volume <= 1 ? saved.volume : .25;
+      this.volume = typeof saved.volume === 'number' && Number.isFinite(saved.volume) && saved.volume >= 0 && saved.volume <= 1 ? saved.volume : .25;
       this.revision = 0; this.error = null; this.scheduled = new Map(); this.voices = new Set();
     }
     get ready() { return this.enabled && this.ctx?.state === 'running'; }
@@ -575,7 +604,7 @@
         if (!this.ctx) {
           this.ctx = new Audio(); this.master = this.ctx.createGain(); this.master.gain.value = this.volume * .32; this.master.connect(this.ctx.destination);
           this.ctx.addEventListener('statechange', () => {
-            if (this.ctx.state !== 'running') this.cancel();
+            if (this.ctx?.state !== 'running') this.cancel();
             this.paint();
           });
         }
@@ -592,14 +621,14 @@
     }
     paint() {
       const label = t(!this.enabled ? 'soundOff' : this.ready ? 'soundOn' : this.error ? 'soundError' : 'soundPending');
-      $('#sound').setAttribute('aria-pressed', String(this.enabled));
-      $('#sound').setAttribute('aria-label', label);
-      $('#sound').title = t('shortcut',{label,key:'M'});
-      $('#sound-waves').setAttribute('d', this.enabled ? 'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14' : 'm16 9 6 6m0-6-6 6');
+      $<HTMLButtonElement>('#sound').setAttribute('aria-pressed', String(this.enabled));
+      $<HTMLButtonElement>('#sound').setAttribute('aria-label', label);
+      $<HTMLButtonElement>('#sound').title = t('shortcut',{label,key:'M'});
+      $<SVGPathElement>('#sound-waves').setAttribute('d', this.enabled ? 'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14' : 'm16 9 6 6m0-6-6 6');
     }
-    setVolume(v) { this.volume = Math.max(0, Math.min(1, v)); this.save(); if (this.master) this.master.gain.setTargetAtTime(this.volume * .32, this.ctx.currentTime, .035); }
-    tone(frequency, when, duration, strength = 1) {
-      if (!this.ctx || !this.enabled) return;
+    setVolume(v: number) { this.volume = Math.max(0, Math.min(1, v)); this.save(); if (this.master && this.ctx) this.master.gain.setTargetAtTime(this.volume * .32, this.ctx.currentTime, .035); }
+    tone(frequency: number, when: number, duration: number, strength = 1) {
+      if (!this.ctx || !this.master || !this.enabled) return;
       const oscillator = this.ctx.createOscillator(), gain = this.ctx.createGain();
       oscillator.type = 'sine'; oscillator.frequency.value = frequency;
       // Short ticks need a nearly rectangular pulse; the longer signal has a
@@ -642,7 +671,7 @@
         if (this.scheduled.has(key)) continue;
         const when = this.ctx.currentTime + Math.max(0, delay);
         this.scheduled.set(key,when);
-        while (this.scheduled.size > 20) this.scheduled.delete(this.scheduled.keys().next().value);
+        while (this.scheduled.size > 20) this.scheduled.delete(this.scheduled.keys().next().value!);
         this.tone(frequency, when, duration, marker ? 1 : countdown ? .72 : .5);
         eventHistory.push({ type: sec === 0 ? 'minute' : marker ? 'ten-second' : countdown ? 'countdown' : 'second', time: boundary, frequency, duration });
         if (eventHistory.length > 30) eventHistory.shift();
@@ -650,21 +679,21 @@
     }
   }
   const sound = new TimeSignal();
-  $('#volume').value = String(sound.volume * 100);
+  $<HTMLInputElement>('#volume').value = String(sound.volume * 100);
   sound.paint();
   if (sound.enabled) sound.resume();
-  $('#sound').addEventListener('click', () => sound.toggle());
-  $('#volume').addEventListener('input', e => sound.setVolume(Number(e.target.value) / 100));
-  $('#go-live').addEventListener('click', goLive);
-  $('#play-pause').addEventListener('click', togglePlay);
-  $('#slow').addEventListener('click', toggleSlow);
-  $('#custom-go').addEventListener('click', () => {
-    const value = $('#custom-time').value;
+  $<HTMLButtonElement>('#sound').addEventListener('click', () => sound.toggle());
+  $<HTMLInputElement>('#volume').addEventListener('input', e => sound.setVolume(Number((e.target as HTMLInputElement).value) / 100));
+  $<HTMLButtonElement>('#go-live').addEventListener('click', goLive);
+  $<HTMLButtonElement>('#play-pause').addEventListener('click', togglePlay);
+  $<HTMLButtonElement>('#slow').addEventListener('click', toggleSlow);
+  $<HTMLButtonElement>('#custom-go').addEventListener('click', () => {
+    const value = $<HTMLInputElement>('#custom-time').value;
     if (!/^\d\d:\d\d(?::\d\d)?$/.test(value)) return;
     const [h,m,s = 0] = value.split(':').map(Number), d = new Date(); d.setHours(h,m,s,0);
     setPreview(d, true); settingsDialog.close();
   });
-  const fullscreenButton = $('#fullscreen');
+  const fullscreenButton = $<HTMLButtonElement>('#fullscreen');
   const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement;
   function fullscreenApi() {
     const element = document.documentElement;
@@ -672,7 +701,7 @@
       return {enter:() => element.requestFullscreen(),exit:() => document.exitFullscreen()};
     }
     if (document.webkitFullscreenEnabled && typeof element.webkitRequestFullscreen === 'function') {
-      return {enter:() => element.webkitRequestFullscreen(),exit:() => document.webkitExitFullscreen()};
+      return {enter:() => element.webkitRequestFullscreen!(),exit:() => document.webkitExitFullscreen!()};
     }
     return null;
   }
@@ -697,15 +726,15 @@
   }
   paintFullscreen();
   document.addEventListener('keydown', e => {
-    if (settingsDialog.open || licenseDialog.open || e.altKey || e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY)$/.test(e.target.tagName)) return;
+    if (settingsDialog.open || licenseDialog.open || e.altKey || e.ctrlKey || e.metaKey || (e.target instanceof Element && /^(INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY)$/.test(e.target.tagName))) return;
     if (e.key.toLowerCase() === 'm') sound.toggle();
     if (e.key.toLowerCase() === 'l') goLive();
     if (e.key.toLowerCase() === 'f') toggleFullscreen();
     if (e.code === 'Space' && preview) { e.preventDefault(); togglePlay(); }
   });
-  function resumeSavedSound(event) {
+  function resumeSavedSound(event: MouseEvent | KeyboardEvent) {
     if (!event.isTrusted || !sound.enabled || sound.ready) return;
-    const togglesSound = event.target.closest?.('#sound') && (event.type === 'click' || event.key === ' ' || event.key === 'Enter');
+    const togglesSound = event.target instanceof Element && event.target.closest('#sound') && (event.type === 'click' || ('key' in event && (event.key === ' ' || event.key === 'Enter')));
     if (!togglesSound) sound.resume();
   }
   document.addEventListener('click', resumeSavedSound);
@@ -726,7 +755,7 @@
   setInterval(() => sound.poll(), 60);
   // Read-only handles for tests, with explicit transport controls for reproducible previews.
   window.FormulaClock = Object.freeze({
-    preview: (time, paused = true) => { const d = time instanceof Date ? time : new Date(time); setPreview(d, paused); },
+    preview: (time: string | Date, paused = true) => { const d = time instanceof Date ? time : new Date(time); setPreview(d, paused); },
     live: goLive, pause: togglePlay, setDisplay, setDataProvider,
     get state() { return { display:{...displaySettings}, dataRevision, dataError:cache.get(timeCode(getNow()))?.error || null, now: getNow().toISOString(), preview: !!preview, paused: preview?.paused || false, layout: latestLayout, coverage: cache.get(timeCode(getNow()))?.count, audio: eventHistory.slice(), soundEnabled: sound.enabled, soundReady: sound.ready, soundVolume: sound.volume, engineReady: typesetter.ready, engineError, typesetCacheSize: typesetter.cache.size }; },
     get digits() { return [...digitsEls]; },

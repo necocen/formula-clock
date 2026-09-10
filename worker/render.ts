@@ -1,3 +1,13 @@
+import {LiteElement} from '@mathjax/src/js/adaptors/lite/Element.js';
+import type {LiteText} from '@mathjax/src/js/adaptors/lite/Text.js';
+import type {LiteDocument} from '@mathjax/src/js/adaptors/lite/Document.js';
+import type {MathDocument} from '@mathjax/src/js/core/MathDocument.js';
+import type {Bounds,DisplayOptions,Expr,Typography} from '../types.ts';
+import type {RenderInput} from './types.ts';
+interface Engine {
+  profile: ReturnType<typeof Display.typography>; queue: Promise<unknown>;
+  document: MathDocument<LiteElement,LiteText,LiteDocument>; typography: Typography;
+}
 import {mathjax} from '@mathjax/src/js/mathjax.js';
 import {TeX} from '@mathjax/src/js/input/tex.js';
 import {SVG} from '@mathjax/src/js/output/svg.js';
@@ -13,34 +23,34 @@ import {MathJaxFiraFont} from '@mathjax/mathjax-fira-font/js/svg.js';
 import {MathJaxModernFont} from '@mathjax/mathjax-modern-font/js/svg.js';
 import {MathJaxEulerFontExtension} from '@mathjax/mathjax-euler-font-extension/js/svg.js';
 import {Resvg,initWasm} from '@resvg/resvg-wasm';
-import Expression from '../expression.js';
-import Display from '../display.js';
-import Share from '../share.js';
-import {COLORS,canvas,DEFAULT_BRAND} from './brand.mjs';
+import Expression from '../expression.ts';
+import Display from '../display.ts';
+import Share from '../share.ts';
+import {COLORS,canvas,DEFAULT_BRAND} from './brand.ts';
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
 // Modern is used only as the base for Euler; other profiles have separate classes.
 MathJaxModernFont.addExtension(MathJaxEulerFontExtension);
 const fonts = {stix2:MathJaxStix2Font,termes:MathJaxTermesFont,fira:MathJaxFiraFont,euler:MathJaxModernFont};
-const engines = new Map();
+const engines = new Map<string,Promise<Engine>>();
 const rasterOptions = {font:{loadSystemFonts:false}};
-let wasmReady;
-export function initRenderer(wasm) {
+let wasmReady: Promise<void> | null;
+export function initRenderer(wasm: Parameters<typeof initWasm>[0]) {
   return wasmReady ??= initWasm(wasm).catch(error => { wasmReady = null; throw error; });
 }
-const attributes = (node,values) => Object.entries(values).forEach(([key,value]) => adaptor.setAttribute(node,key,String(value)));
-const byId = (svg,id) => adaptor.elementById(svg,id);
-const xml = node => adaptor.outerHTML(node);
-const box = svg => {
-  const [x,y,w,h] = adaptor.getAttribute(svg,'viewBox').trim().split(/\s+/).map(Number);
+const attributes = (node: LiteElement,values: Record<string,string | number>) => Object.entries(values).forEach(([key,value]) => adaptor.setAttribute(node,key,String(value)));
+const byId = (svg: LiteElement,id: string) => adaptor.elementById(svg,id);
+const xml = (node: LiteElement) => adaptor.outerHTML(node);
+const box = (svg: LiteElement): Bounds => {
+  const [x,y,w,h] = String(adaptor.getAttribute(svg,'viewBox')).trim().split(/\s+/).map(Number);
   if (![x,y,w,h].every(Number.isFinite) || w <= 0 || h <= 0) throw new Error('Invalid MathJax viewBox');
   return {x,y,w,h};
 };
 
 // resvg reports ink bounds in the root SVG coordinate system, before viewBox
 // scaling. Preserve the complete ancestor transforms when measuring one marker.
-function inkBounds(svg, target = svg) {
+function inkBounds(svg: LiteElement, target = svg) {
   let isolated;
   if (target === svg) isolated = adaptor.clone(svg);
   else {
@@ -66,8 +76,9 @@ function inkBounds(svg, target = svg) {
   } finally { result?.free(); raster.free(); }
 }
 
-async function convert(engine, tex) {
+async function convert(engine: Pick<Engine,'document'>, tex: string) {
   const node = await engine.document.convertPromise(tex,{display:true,em:16,ex:8,containerWidth:100000});
+  if (!(node instanceof LiteElement)) throw new Error('MathJax did not produce an SVG container');
   const svg = adaptor.tags(node,'svg')[0];
   // MathJax adds empty <text data-id-align> anchors inside fractions. They are
   // layout markers; only actual text content would require an unavailable font.
@@ -77,14 +88,14 @@ async function convert(engine, tex) {
   }
   return svg;
 }
-async function engineFor(font,numerals) {
+async function engineFor(font: DisplayOptions['font'],numerals: DisplayOptions['numerals']): Promise<Engine> {
   const key = `${font}:${numerals}`;
   if (!engines.has(key)) {
-    const task = (async () => {
+    const task = (async (): Promise<Engine> => {
       const profile = Display.typography(font,numerals);
-      const output = new SVG({fontData:fonts[font],fontCache:'none'});
+      const output = new SVG<LiteElement,LiteText,LiteDocument>({fontData:fonts[font],fontCache:'none'});
       const engine = {profile,queue:Promise.resolve(),document:mathjax.document('',{
-        InputJax:new TeX({packages:['base','ams','newcommand','html'],formatError(_jax,error) { throw error; }}),OutputJax:output})};
+        InputJax:new TeX({packages:['base','ams','newcommand','html'],formatError(_jax: unknown,error: Error) { throw error; }}),OutputJax:output})};
       const zero = await convert(engine,Expression.mark('probe','0',profile));
       const zeroBox = inkBounds(zero,byId(zero,'fc-probe'));
       const originalAxisEm = output.font.params.axis_height, numericAxisEm = -zeroBox.centerY / 1000;
@@ -92,23 +103,23 @@ async function engineFor(font,numerals) {
       if (profile.numericAxis) output.font.params.axis_height = numericAxisEm;
       const equal = await convert(engine,Expression.relation(profile));
       const equalBox = inkBounds(equal,byId(equal,'fc-eq'));
-      engine.typography = {profile:font,numerals,axisMode:profile.numericAxis ? 'numeric' : 'font',referenceDigit:'0',
+      const typography: Typography = {profile:font,numerals,axisMode:profile.numericAxis ? 'numeric' : 'font',referenceDigit:'0',
         originalAxisEm,numericAxisEm,axisEm:output.font.params.axis_height,zeroTop:zeroBox.y,zeroBottom:zeroBox.y + zeroBox.h,
         equalCenterY:equalBox.centerY};
-      return engine;
+      return {...engine,typography};
     })().catch(error => { engines.delete(key); throw error; });
     engines.set(key,task);
   }
-  return engines.get(key);
+  return engines.get(key)!;
 }
-function desaturate(hex) {
-  const rgb = hex.slice(1).match(/../g).map(value => parseInt(value,16));
+function desaturate(hex: string) {
+  const rgb = hex.slice(1).match(/../g)!.map(value => parseInt(value,16));
   const luma = rgb[0] * .213 + rgb[1] * .715 + rgb[2] * .072;
   // SVG 1.1/resvg accepts integer RGB components; fractional numbers can parse
   // as an invalid color and silently become black.
   return '#' + rgb.map(value => Math.round(luma + .38 * (value - luma)).toString(16).padStart(2,'0')).join('');
 }
-function paint(svg, ast) {
+function paint(svg: LiteElement, ast: Expr | null) {
   attributes(svg,{color:COLORS.symbols,fill:'currentColor',stroke:'currentColor','stroke-width':0});
   for (let i=0;i<6;i++) {
     const marker = byId(svg,`fc-${i < 4 ? 'd'+i : 's'+(i-4)}`);
@@ -125,7 +136,7 @@ function paint(svg, ast) {
     if (!marked) attributes(path,{opacity:.44});
   }
 }
-export async function renderSvg({state,ast}) {
+export async function renderSvg({state,ast}: RenderInput) {
   Share.params(state); // Public renderer accepts only the same finite state space as URLs.
   ast = Expression.validateAst(ast,state.t.slice(0,4));
   if (!wasmReady) throw new Error('OG renderer has not been initialized');
@@ -137,7 +148,7 @@ export async function renderSvg({state,ast}) {
     const viewBox = box(svg), ink = inkBounds(svg);
     const equal = ast ? byId(svg,'fc-eq') : null;
     const axisY = equal ? inkBounds(svg,equal).centerY : engine.typography.equalCenterY;
-    const bounds = {x:Math.min(viewBox.x,ink.x),y:Math.min(viewBox.y,ink.y)};
+    const bounds: Bounds = {x:Math.min(viewBox.x,ink.x),y:Math.min(viewBox.y,ink.y),w:0,h:0};
     bounds.w = Math.max(viewBox.x + viewBox.w,ink.x + ink.w) - bounds.x;
     bounds.h = Math.max(viewBox.y + viewBox.h,ink.y + ink.h) - bounds.y;
     const fit = Display.fitFrame(bounds,axisY,1100,370);
@@ -154,11 +165,11 @@ export async function renderSvg({state,ast}) {
   engine.queue = task.catch(() => {});
   return task;
 }
-export function pngFromSvg(svg) {
+export function pngFromSvg(svg: string): Uint8Array<ArrayBuffer> {
   const raster = new Resvg(svg,rasterOptions);
   let rendered;
   try { rendered = raster.render(); return rendered.asPng().slice(); }
   finally { rendered?.free(); raster.free(); }
 }
-export async function renderOg(input) { return pngFromSvg((await renderSvg(input)).svg); }
+export async function renderOg(input: RenderInput) { return pngFromSvg((await renderSvg(input)).svg); }
 export function renderDefaultOg() { return pngFromSvg(canvas('',DEFAULT_BRAND)); }

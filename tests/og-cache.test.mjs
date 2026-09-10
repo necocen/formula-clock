@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createHandler} from '../worker/handler.mjs';
+import {createHandler} from '../worker/handler.ts';
 
 const stateUrl = 'https://clock.example/og.png?v=1&t=000000&font=stix2&numerals=oldstyle&division=fraction';
 const key = 'og/revision-a/000000-stix2-oldstyle-fraction.png';

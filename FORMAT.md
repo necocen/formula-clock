@@ -143,7 +143,7 @@ FormulaClock.setDataProvider(
 
 ### 起動前に指定
 
-`data.js` の読み込み後、`app.js` の実行前に指定する。
+`browser.ts`から生成したスクリプトが`FormulaData`などの公開APIを用意した後、`app.ts`から生成したスクリプトの実行前に指定する。配信用ビルドはこの順序で挿入する。
 
 ```js
 window.FORMULA_CLOCK_CONFIG = {
@@ -157,7 +157,7 @@ window.FORMULA_CLOCK_CONFIG = {
 
 ## 5. 優先度と結合性
 
-TeX生成は `expression.js` に集約した。表示上の優先度は次のとおり。
+TeX生成は `expression.ts` に集約した。表示上の優先度は次のとおり。
 
 | 弱い → 強い | 表記 |
 |---|---|
@@ -198,13 +198,13 @@ await FormulaClock.setDisplay({ font: 'euler', numerals: 'lining', division: 'fr
 
 ## 7. 検証の境界
 
-`formula.schema.json` がJSON Schema、`api.d.ts` がTypeScript型定義。スキーマの配列サイズや演算の形に加えて、実行時に次を検証する。
+`formula.schema.json` がJSON Schema、`types.ts`が共通のTypeScript型、`api.d.ts`が公開型の入口。実装も同じ型を使う。スキーマの配列サイズや演算の形に加えて、実行時に次を検証する。
 
 - HHMMが有効な24時間制の時刻で、要求した分と一致すること。
 - 60秒分の要素があり、各構文木が4桁を順番に各1回参照すること。
 - リテラルの区間、演算名、フィールドが正しく、過大な深さや循環参照がないこと。
 
-**数式の計算結果が秒に一致することは、データ生成側の責任**。ブラウザには探索ソルバも計算結果の検証器も含めない。同梱データはオフラインの `tools/generate.cjs` と `tests/expression.test.cjs` で厳密計算により検証した。
+**数式の計算結果が秒に一致することは、データ生成側の責任**。ブラウザには探索ソルバも計算結果の検証器も含めない。同梱データはオフラインの `tools/generate.ts` と `tests/expression.test.cjs` で厳密計算により検証した。
 
 このデータを差し替える場合も、生成側で演算の定義域と計算結果を確認してから渡す。追加演算や桁の並べ替えを導入するときは、スキーマとTeX生成器の双方を更新する。
 
@@ -247,7 +247,7 @@ new FormulaData.FetchHourProvider('data/manifest.json')
 書体・数字スタイル・除算表示の欠落や不正値には、それぞれstix2・oldstyle・fractionを使う。
 未知のパラメータは無視し、生成URLには含めない。音とアニメーション設定も共有しない。
 
-`share.js` の `FormulaShare.parse(url)` と `FormulaShare.url(origin,state)` をブラウザとWorkerで共用する。
+`share.ts` の `FormulaShare.parse(url)` と `FormulaShare.url(origin,state)` をブラウザとWorkerで共用する。
 復元は保存設定を読み取った後、最初の組版エンジンを選ぶ前に行い、localStorageへ書き戻さない。
 プレビューは停止状態で始まり、日付は表示しない。共有時も端末の現在秒ではなく、最後に描画を適用した時刻・設定を使う。
 

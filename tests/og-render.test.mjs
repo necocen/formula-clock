@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {initRenderer,renderSvg,pngFromSvg,renderDefaultOg} from '../worker/render.mjs';
+import {initRenderer,renderSvg,pngFromSvg,renderDefaultOg} from '../worker/render.ts';
 import samples from './og-cases.cjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));

@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
 test('external build exactly partitions the canonical day and publishes only site assets',()=>{
-  execFileSync(process.execPath,['build.cjs','--external'],{cwd:root});
+  execFileSync(process.execPath,['--import','tsx','build.ts','--external'],{cwd:root});
   const dir=path.join(root,'dist-external');
   const read=name=>fs.readFileSync(path.join(dir,name),'utf8');
   const manifest=JSON.parse(read('data/manifest.json'));
@@ -32,7 +32,8 @@ test('external build exactly partitions the canonical day and publishes only sit
   assert.ok(read('licenses.html').includes('LaTeX Project Public License'));
   const png=fs.readFileSync(path.join(dir,'og-default.png'));
   assert.equal(png.readUInt32BE(16),1200);assert.equal(png.readUInt32BE(20),630);
-  assert.ok(read('index.html').includes('id="share-code"'));
-  assert.ok(read('index.html').includes('id="i18n-code"'));
+  assert.ok(read('index.html').includes('id="browser-code"'));
+  assert.ok(read('index.html').includes('FormulaShare'));
+  assert.ok(read('index.html').includes('FormulaI18n'));
   assert.ok(!read('index.html').includes('MathJaxEulerFontExtension'));
 });

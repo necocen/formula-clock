@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {execFileSync}=require('node:child_process');
-const Share=require('../share.js');
+const Share=require('../share.ts');
 
 test('every supported display choice and boundary time round-trips canonically',()=>{
   for(const t of ['000000','000059','005959','120000','235959'])
@@ -23,7 +23,7 @@ test('defaults are independent of local preferences; invalid time/version is not
   assert.equal(Share.title(Share.parse('https://clock.example/?t=235334')),'Formula Clock — 23:53:34');
 });
 test('shared readings do not shift with recipient timezone or DST',()=>{
-  const source=`const s=require('./share.js');for(const t of ['000000','023000','123430','235959']){const d=s.localDate(t);if([d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join('')!==t)throw Error(t);}`;
+  const source=`const s=require('./share.ts');for(const t of ['000000','023000','123430','235959']){const d=s.localDate(t);if([d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join('')!==t)throw Error(t);}`;
   for(const TZ of ['Asia/Tokyo','America/Los_Angeles','Europe/London','Pacific/Apia'])
-    execFileSync(process.execPath,['-e',source],{cwd:require('node:path').resolve(__dirname,'..'),env:{...process.env,TZ}});
+    execFileSync(process.execPath,['--import','tsx','-e',source],{cwd:require('node:path').resolve(__dirname,'..'),env:{...process.env,TZ}});
 });

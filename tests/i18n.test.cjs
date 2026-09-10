@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
-const I18n=require('../i18n.js');
+const I18n=require('../i18n.ts');
 
 test('Japanese language tags use Japanese; every other language falls back to English',()=>{
   for(const language of ['ja','ja-JP','JA-jp',' ja-JP ']) assert.equal(I18n.resolveLanguage(language),'ja');

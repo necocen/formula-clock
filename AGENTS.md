@@ -5,9 +5,11 @@
 
 ## 編集とビルド
 
-- ルートの `_head.html` / `i18n.js` / `display.js` / `share.js` / `expression.js` / `data.js` / `typesetter.js` / `symbols.js` / `app.js` が表示アプリの原本。共有画像と配信処理は `worker/`。
+- ルートの `_head.html` / `i18n.ts` / `display.ts` / `share.ts` / `expression.ts` / `data.ts` / `typesetter.ts` / `symbols.ts` / `app.ts` が表示アプリの原本。共有画像と配信処理は `worker/`。
+- アプリ・Worker・ビルドツールはTypeScriptのES Modules。共通の型は `types.ts`、ブラウザ固有の型は `browser-types.ts` / `globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
+- `browser.ts` が公開グローバルを準備した後にプロバイダー設定、`app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
 - `index.html` は生成物。直接編集せず、原本を変更して `npm run build` を実行する。
-- Node.js 22系。ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`npm test` / `npm run build` / `npm run build:external` が基本の確認コマンド。共有画像の変更時は `npm run test:og` も実行する。
+- Node.js 22系。ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`npm test` / `npm run build` / `npm run build:external` が基本の確認コマンド（いずれも型チェックを含む）。`npm run typecheck`でも単独で確認できる。共有画像の変更時は `npm run test:og` も実行する。
 - `npm run generate` は全日データの再探索。起動・表示変更だけなら実行しない。
 - 既にユーザーが評価しているUIを、依頼なしに全面改装しない。
 
@@ -30,15 +32,15 @@
 ## 設計の分離
 
 - データの正規形式は `formula-clock/1` のAST。TeX文字列には置き換えない。
-- 表示上の優先度と結合性は `expression.js` で処理する。文字列置換による分数→÷変換は行わない。
+- 表示上の優先度と結合性は `expression.ts` で処理する。文字列置換による分数→÷変換は行わない。
 - データ取得は `getMinute(hhmm, {signal})` で統一する。埋め込みと非同期の選択をアプリ全体に持ち込まない。
 - ブラウザ用コードにソルバを含めない。値と定義域の検証は生成・テスト側の責務。
 - 測定用SVGと数字パスには同じ基準の `getScreenCTM()` を使う。過去の数字消失を再発させない。
 - 書体×数字スタイルごとのiframeと設定のrealmに関する処理を理解せず削除しない。
 - MathJaxの `charNode` で失われる前のサイズバリアントを記録する処理を保持する。内部APIが使えない互換エンジンでは該当字形をフェードに戻す。CDN更新時は構造記号のブラウザ検証も実行する。
 - 古い非同期応答を破棄するserial/revision確認と、失敗時の時刻表示を維持する。
-- 共有URLの解析・生成は `share.js` に集約し、復元でlocalStorageを書き換えない。共有時は描画済みの秒を同期的に停止し、ネイティブ共有の前に画像生成を待たない。
-- UI文言は `i18n.js` に集約する。ブラウザの最優先言語が日本語なら日本語、それ以外は英語。言語を共有URL・表示設定へ混ぜず、時計の数値・書体・ASTを変えない。
+- 共有URLの解析・生成は `share.ts` に集約し、復元でlocalStorageを書き換えない。共有時は描画済みの秒を同期的に停止し、ネイティブ共有の前に画像生成を待たない。
+- UI文言は `i18n.ts` に集約する。ブラウザの最優先言語が日本語なら日本語、それ以外は英語。言語を共有URL・表示設定へ混ぜず、時計の数値・書体・ASTを変えない。
 - 日本語UIでも一般的なWeb表記は自然に英語を使う。「字体」は「フォント」、ライセンスの見出しは「LICENSE」、読み込み表示は「Loading」。短い再生ボタンはPlay / Pauseを使い、説明文やエラーの理由は分かりやすい日本語にする。現在時刻への復帰は「現在時刻へ」とし、Liveと略さない。ショートカットの説明も「Space 再生・一時停止」のように意味を明記する。
 - ライセンス画面の説明は日本語版だけを保ち、英訳しない。ライセンス原文はそのまま掲載し、見出し・閉じる操作だけ共通UIとして扱う。
 - アプリ名は読み上げ用も含めて「Formula Clock」とし、「計算時計」と訳さない。文字列リソースは実際の表示・読み上げ・通知で使うものを保ち、起動直後に置換されるだけの初期値を別リソースとして増やさない。

@@ -5,7 +5,7 @@
 
 ## 起動
 
-Node.js 22系を使用します。
+Node.js 22系を使用します。アプリ・Worker・ビルドツールのソースはTypeScriptです。
 
 ```sh
 npm ci
@@ -55,7 +55,7 @@ Cloudflareへのプレビュー・公開・R2設定は[共有機能の運用](do
 
 ## UIの言語
 
-ブラウザの最優先言語が日本語なら日本語、それ以外は英語になります。文言は`i18n.js`で管理しています。
+ブラウザの最優先言語が日本語なら日本語、それ以外は英語になります。文言は`i18n.ts`で管理しています。
 日本語UIでも「フォント」「LICENSE」「Loading」やPlay / Pauseなど、一般的な表記を使います。
 現在時刻への復帰やショートカットの説明は、意味が伝わる日本語にしています。
 言語によって時計の数値・フォント・共有URL・保存設定は変わりません。
@@ -66,14 +66,19 @@ Cloudflareへのプレビュー・公開・R2設定は[共有機能の運用](do
 
 | ファイル | 役割 |
 |---|---|
-| `_head.html` / `app.js` | 画面・操作・時計・アニメーション・時報 |
-| `i18n.js` | 日英のUI文言 |
-| `expression.js` / `data.js` | ASTからのTeX生成、式データの取得 |
-| `display.js` / `typesetter.js` / `symbols.js` | 表示設定、組版、数字と記号の配置・同一性 |
-| `share.js` / `worker/` | 共有URL、HTMLメタデータ、OG画像の描画・キャッシュ |
-| `build.cjs` / `tools/build-worker.mjs` | 単体HTML・配信用アセット・Workerのビルド |
+| `_head.html` / `app.ts` | 画面・操作・時計・アニメーション・時報 |
+| `i18n.ts` | 日英のUI文言 |
+| `expression.ts` / `data.ts` | ASTからのTeX生成、式データの取得 |
+| `display.ts` / `typesetter.ts` / `symbols.ts` | 表示設定、組版、数字と記号の配置・同一性 |
+| `share.ts` / `worker/` | 共有URL、HTMLメタデータ、OG画像の描画・キャッシュ |
+| `build.ts` / `tools/build-worker.ts` | 単体HTML・配信用アセット・Workerのビルド |
+| `types.ts` / `api.d.ts` / `browser-types.ts` | 共通・公開API・SVGレイアウトの型 |
+| `browser.ts` / `globals.d.ts` | ブラウザの公開APIと起動順序 |
+| `tools/solver.ts` / `tools/generate.ts` | オフラインの式探索・データ生成 |
 | `data/expressions.json` | 事前生成した1日分の式データ |
 | `tests/` | Nodeとブラウザのテスト |
+
+`tsconfig.json`の`strict`でソースを型チェックし、esbuildでブラウザ用JavaScriptをHTMLへ埋め込みます。Nodeのツールと既存のJavaScriptテストはtsxでTypeScriptソースを読み込みます。ブラウザにTypeScriptの実行環境やnpmライブラリを追加する必要はありません。
 
 `index.html`は生成物です。原本を編集して`npm run build`で更新してください。
 `npm run generate`は全日の式を再探索する処理で、通常の表示変更やビルドには不要です。
@@ -81,12 +86,14 @@ Cloudflareへのプレビュー・公開・R2設定は[共有機能の運用](do
 ## 検証
 
 ```sh
+npm run typecheck
 npm test
 npm run build
 npm run build:external
 npm run test:og
 ```
 
+`npm run typecheck`はTypeScriptの型チェックだけを実行します。`npm test`と両ビルドにも型チェックを含めています。
 `npm test`は式・データ・URL・ビルド・キャッシュなどを検証します。配布フォントの実際の読み込みはブラウザで確認します。
 
 ```sh
