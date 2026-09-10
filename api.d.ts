@@ -23,6 +23,8 @@ export interface HourManifest {
 export interface FormulaProvider {
   getMinute(hhmm: string, options?: { signal?: AbortSignal }): Promise<MinuteRecord>;
 }
+/** Optional second argument to FormulaData.FetchHourProvider; default is browser fetch. */
+export interface FetchHourOptions { fetch?: typeof fetch; }
 export interface DisplayOptions {
   font: 'stix2' | 'termes' | 'fira' | 'euler';
   /** Lining centers mathematical signs on the digits; oldstyle uses the native font axis. */
@@ -46,9 +48,23 @@ export interface FormulaClockAPI {
   readonly state: Readonly<Record<string, unknown>>;
   diagnostics(): Record<string, unknown>;
 }
+export interface SharedClockState extends Pick<DisplayOptions, 'font' | 'numerals' | 'division'> {
+  readonly v: 1;
+  /** Six ASCII HHMMSS digits, interpreted as a wall-clock reading, without date/timezone. */
+  readonly t: string;
+}
+export interface FormulaShareAPI {
+  parse(url: string | URL): Readonly<SharedClockState> | null;
+  params(state: SharedClockState): URLSearchParams;
+  url(origin: string, state: SharedClockState): URL;
+  timeLabel(state: SharedClockState): string;
+  title(state: SharedClockState | null): string;
+  localDate(time: string): Date;
+}
 declare global {
   interface Window {
     FormulaClock: FormulaClockAPI;
+    FormulaShare: FormulaShareAPI;
     FORMULA_CLOCK_CONFIG?: { provider?: FormulaProvider };
   }
 }

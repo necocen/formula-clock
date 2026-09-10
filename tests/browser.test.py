@@ -29,7 +29,7 @@ errors=[]; warnings=[]; requests=[]
 with sync_playwright() as p:
     browser=getattr(p,args.browser).launch(headless=True)
     report['browserVersion']=browser.version
-    ctx=browser.new_context(viewport={'width':1440,'height':1000},timezone_id='Asia/Tokyo')
+    ctx=browser.new_context(locale='ja-JP', viewport={'width':1440,'height':1000},timezone_id='Asia/Tokyo')
     if args.symbol_motion or args.structure_motion or args.symbol_morph:
         saved=json.dumps({'symbolMotion':args.symbol_motion,'structureMotion':args.structure_motion,'symbolMorph':args.symbol_morph})
         ctx.add_init_script("localStorage.setItem('formula-clock-display-v2',"+json.dumps(saved)+")")
@@ -345,11 +345,17 @@ with sync_playwright() as p:
     if args.screenshots:page.screenshot(path=str(out/'stix2-163919.png'),full_page=True)
     page.evaluate('FormulaClock.live()');page.wait_for_timeout(1000)
     if args.screenshots:page.screenshot(path=str(out/'live.png'),full_page=True)
-    page.click('#fullscreen');page.wait_for_timeout(300)
-    assert page.evaluate("document.body.classList.contains('fullscreen')")
-    page.click('#fullscreen');page.wait_for_timeout(300)
-    assert not page.evaluate("document.body.classList.contains('fullscreen')")
-    report['checks'].append('Fullscreen enters and exits without losing controls')
+    if page.locator('#fullscreen').is_visible():
+        page.click('#fullscreen')
+        page.wait_for_function('document.fullscreenElement || document.webkitFullscreenElement')
+        assert page.locator('#fullscreen').get_attribute('aria-pressed') == 'true'
+        page.click('#fullscreen')
+        page.wait_for_function('!document.fullscreenElement && !document.webkitFullscreenElement')
+        assert page.locator('#fullscreen').get_attribute('aria-pressed') == 'false'
+        report['checks'].append('Native fullscreen enters and exits without losing controls')
+    else:
+        assert not page.evaluate("document.body.classList.contains('fullscreen')")
+        report['checks'].append('Unsupported fullscreen control is hidden')
 
     page.click('#sound');page.evaluate("FormulaClock.preview('2026-09-08T23:59:56.700+09:00',false)");page.wait_for_timeout(4750)
     audio=page.evaluate('FormulaClock.state.audio')
@@ -410,7 +416,7 @@ with sync_playwright() as p:
     report['checks'].append('Live hour prefetch is jittered once within :59:00–30; midnight, immediate current/preview/late-entry requests and skipped-minute/provider cleanup')
     migrations=[({'font':'stix2'},'stix2','oldstyle'),({'font':'euler'},'euler','lining'),({'font':'oldstyle'},'stix2','oldstyle'),({'font':'termes','numerals':'lining'},'termes','lining'),({'font':'euler','numerals':'oldstyle'},'euler','oldstyle')]
     for saved,font,numerals in migrations:
-        migration_ctx=browser.new_context(timezone_id='Asia/Tokyo')
+        migration_ctx=browser.new_context(locale='ja-JP', timezone_id='Asia/Tokyo')
         if args.local_mathjax:migration_ctx.route('https://cdn.jsdelivr.net/**',route_local)
         migration=migration_ctx.new_page()
         # A session flag applies the input once, allowing reload to read the

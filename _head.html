@@ -4,8 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#111311">
-<meta name="description" content="時刻の4桁が、秒を表す数式に変わる。数字の同一性を保って変形する、小さな計算時計。">
+<meta name="description" content="時刻の4桁が、秒を表す数式に変わる。数字の同一性を保って変形する、小さな時計。">
 <meta name="formula-clock-build" content="r6-minimal">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Formula Clock">
+<meta property="og:description" content="時刻の4桁が、秒を表す数式に変わる。">
+<meta property="og:image" content="/og-default.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Formula Clock">
+<meta name="twitter:image" content="/og-default.png">
 <title>Formula Clock</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111311'/%3E%3Ccircle cx='10' cy='10' r='4' fill='%23eea28c'/%3E%3Ccircle cx='22' cy='10' r='4' fill='%23e4c782'/%3E%3Ccircle cx='10' cy='22' r='4' fill='%239acbbb'/%3E%3Ccircle cx='22' cy='22' r='4' fill='%23b8ace1'/%3E%3C/svg%3E">
 <style>
@@ -24,6 +34,10 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
 @media(max-width:760px){.shell{padding:22px}.brand{font-size:10px;letter-spacing:1.8px}.tools{gap:6px}main{padding:40px 0 48px}.minute{width:100%;margin-top:22px}.ruler{gap:2px}.source-time{font-size:22px}.settings-dialog{right:16px;top:76px;max-height:calc(100svh - 92px)}}
 @media(max-width:480px){.shell{padding:18px 16px}.brand{font-size:9px;letter-spacing:1.4px;gap:8px}.tool{padding:10px;min-width:40px}.tools{gap:5px}.stage{height:226px}.transport{gap:2px}.transport button{padding:10px 7px}.transport .playback{min-width:60px;font-size:9px}.transport #play-pause{min-width:55px}.transport .live-return{white-space:nowrap}.setting-row select{max-width:165px}.segmented-control{width:165px}.settings-dialog{padding:20px}}
 @media(prefers-reduced-motion:reduce){*,*:before{scroll-behavior:auto!important}.source-time,.math-scene .digit,.answer-digit,#equal-sign,#notation-root{transition:none!important}}
+.tool:disabled{opacity:.4;cursor:default}.tool[hidden]{display:none}.share-status{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);margin:0;padding:10px 16px;border:1px solid var(--line);border-radius:7px;background:#181d17;color:var(--fg);font-size:12px;z-index:2;white-space:nowrap}.share-status:empty{display:none}.share-dialog{inset:0;margin:auto;width:460px}.share-dialog p{color:var(--muted);line-height:1.8}.share-url{width:100%;padding:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:5px;font:12px var(--mono)}
+@media(max-width:480px){.topbar{gap:8px}.tools{gap:4px}.tool.icon-only{width:36px;min-width:36px;padding:8px}}
+.advanced .state-label{height:auto;min-height:26px;text-align:center}
+@media(max-width:360px){.segmented-control{width:144px}}
 </style>
 </head>
 <body>
@@ -31,15 +45,16 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
 <header class="topbar">
   <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>FORMULA CLOCK</div>
   <div class="tools">
-    <button class="tool icon-only" id="sound" aria-pressed="false" aria-label="時報のオン／オフ" title="時報のオン／オフ（M）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path id="sound-waves" d="m16 9 6 6m0-6-6 6"/></svg></button>
-    <button class="tool icon-only" id="fullscreen" aria-label="全画面表示" title="全画面表示（F）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
-    <button class="tool icon-only" id="settings-open" aria-label="設定" aria-haspopup="dialog" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
+    <button class="tool icon-only" id="share" data-i18n-aria-label="share" data-i18n-title="share" disabled aria-label="現在の表示を共有" title="現在の表示を共有"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M7 11H4v10h16V11h-3"/></svg></button>
+    <button class="tool icon-only" id="sound" data-i18n-aria-label="soundOff" aria-pressed="false" aria-label="時報 OFF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path id="sound-waves" d="m16 9 6 6m0-6-6 6"/></svg></button>
+    <button class="tool icon-only" id="fullscreen" data-i18n-aria-label="fullscreen" hidden aria-pressed="false" aria-label="全画面表示"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+    <button class="tool icon-only" id="settings-open" data-i18n-aria-label="settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
   </div>
 </header>
 <main>
   <h1 class="a11y">Formula Clock</h1>
   <div class="clock-top">
-    <div class="source-time" id="source-time" hidden role="img" aria-label="現在時刻">
+    <div class="source-time" id="source-time" hidden role="img">
       <svg class="source-clock" viewBox="0 0 4200 1100" aria-hidden="true">
         <g class="source-digit" data-digit="0"></g><g class="source-digit" data-digit="1"></g><g class="colon"></g>
         <g class="source-digit" data-digit="2"></g><g class="source-digit" data-digit="3"></g><g class="colon"></g>
@@ -48,7 +63,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
     </div>
   </div>
   <div class="stage-wrap">
-    <div class="stage" id="stage" role="img" aria-label="計算時計">
+    <div class="stage" id="stage" role="img" aria-label="Formula Clock">
       <div class="flash" id="flash"></div>
       <svg id="math-scene" class="math-scene" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <g id="notation-root"></g>
@@ -61,34 +76,40 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
     </div>
   </div>
   <div class="minute">
-    <div class="ruler" id="ruler" aria-label="秒を選んでプレビュー"></div>
+    <div class="ruler" id="ruler" data-i18n-aria-label="chooseSecond" aria-label="秒を選んでプレビュー"></div>
     <div class="ruler-labels" aria-hidden="true"><span>00</span><span>15</span><span>30</span><span>45</span><span>59</span></div>
   </div>
   <div class="transport" id="transport" hidden>
-    <button id="play-pause" title="再生／一時停止（Space）">一時停止</button><button id="slow" aria-pressed="false">0.5×</button><span class="divider"></span><span class="playback" id="playback">プレビュー</span><button class="live-return" id="go-live" title="現在時刻に戻る（L）">現在時刻へ</button>
+    <button id="play-pause" data-i18n-title="playShortcut" title="再生／一時停止（Space）"><span data-i18n="pause">Pause</span></button><button id="slow" aria-pressed="false">0.5×</button><span class="divider"></span><span class="playback" id="playback"></span><button class="live-return" id="go-live" data-i18n-title="goLiveShortcut" title="現在時刻に戻る（L）"><span data-i18n="goLive">現在時刻へ</span></button>
   </div>
 </main>
 </div>
+<p id="share-status" class="share-status" role="status" aria-live="polite"></p>
+<dialog class="settings-dialog share-dialog" id="share-dialog" aria-labelledby="share-title">
+  <div class="settings-header"><h2 id="share-title"><span data-i18n="shareTitle">Share</span></h2><button class="settings-close" id="share-close" data-i18n-aria-label="close" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+  <p><span data-i18n="shareHelp">このURLをコピーして共有できます。</span></p>
+  <input id="share-url" data-i18n-aria-label="shareUrl" class="share-url" type="url" readonly aria-label="共有URL">
+</dialog>
 <dialog class="settings-dialog" id="settings" aria-labelledby="settings-title">
-  <div class="settings-header"><h2 id="settings-title">設定</h2><button class="settings-close" id="settings-close" aria-label="設定を閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-  <label class="setting-row">字体<select id="font-choice" aria-label="数式の字体"><option value="stix2" selected>STIX Two</option><option value="termes">Termes</option><option value="fira">Fira</option><option value="euler">Euler</option></select></label>
-  <div class="setting-row"><span id="numeral-label">数字</span><div class="segmented-control" id="numeral-choice" role="radiogroup" aria-labelledby="numeral-label"><label><input type="radio" name="numerals" value="lining"><span>Lining</span></label><label><input type="radio" name="numerals" value="oldstyle" checked><span>Oldstyle</span></label></div></div>
-  <div class="setting-row"><span id="division-label">除算</span><div class="segmented-control" id="division-choice" role="radiogroup" aria-labelledby="division-label"><label><input type="radio" name="division" value="fraction" checked><span>分数</span></label><label><input type="radio" name="division" value="inline"><span>÷</span></label></div></div>
-  <label class="setting-row">音量<input id="volume" type="range" min="0" max="100" value="25" aria-label="時報の音量"></label>
-  <label class="custom-time-label" for="custom-time">時刻を指定</label>
-  <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go">表示</button></div>
-  <details class="advanced" id="advanced-settings"><summary>詳細</summary>
-    <label class="setting-row experimental-option"><span>記号も動かす</span><input id="symbol-motion" type="checkbox"></label>
-    <label class="setting-row experimental-option"><span>分数・√・括弧も動かす</span><input id="structure-motion" type="checkbox"></label>
-    <label class="setting-row experimental-option"><span>四則記号を変形する</span><input id="symbol-morph" type="checkbox"></label>
+  <div class="settings-header"><h2 id="settings-title"><span data-i18n="settings">設定</span></h2><button class="settings-close" id="settings-close" data-i18n-aria-label="closeSettings" aria-label="設定を閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+  <label class="setting-row"><span data-i18n="font">フォント</span><select id="font-choice" data-i18n-aria-label="mathFont" aria-label="数式のフォント"><option value="stix2" selected>STIX Two</option><option value="termes">Termes</option><option value="fira">Fira</option><option value="euler">Euler</option></select></label>
+  <div class="setting-row"><span id="numeral-label" data-i18n="numerals">数字のスタイル</span><div class="segmented-control" id="numeral-choice" role="radiogroup" aria-labelledby="numeral-label"><label><input type="radio" name="numerals" value="lining"><span>Lining</span></label><label><input type="radio" name="numerals" value="oldstyle" checked><span>Oldstyle</span></label></div></div>
+  <div class="setting-row"><span id="division-label" data-i18n="division">除算のスタイル</span><div class="segmented-control" id="division-choice" role="radiogroup" aria-labelledby="division-label"><label><input type="radio" name="division" value="fraction" checked><span data-i18n="fraction">分数</span></label><label><input type="radio" name="division" value="inline"><span>÷</span></label></div></div>
+  <label class="setting-row"><span data-i18n="volume">音量</span><input id="volume" data-i18n-aria-label="signalVolume" type="range" min="0" max="100" value="25" aria-label="時報の音量"></label>
+  <label class="custom-time-label" for="custom-time"><span data-i18n="setTime">時刻を指定</span></label>
+  <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go"><span data-i18n="show">表示</span></button></div>
+  <details class="advanced" id="advanced-settings"><summary><span data-i18n="advanced">詳細</span></summary>
+    <label class="setting-row experimental-option"><span data-i18n="symbolMotion">記号をなめらかに動かす</span><input id="symbol-motion" type="checkbox"></label>
+    <label class="setting-row experimental-option"><span data-i18n="structureMotion">分数・√・括弧も動かす</span><input id="structure-motion" type="checkbox"></label>
+    <label class="setting-row experimental-option"><span data-i18n="symbolMorph">四則記号を変形する</span><input id="symbol-morph" type="checkbox"></label>
     <p id="render-status" role="status" hidden></p>
     <p id="state-label" role="status"></p>
-    <p>M 時報 / F 全画面 / L 現在時刻 / Space プレビューの再生と停止</p>
+    <p><span data-i18n="shortcuts">M 時報 / F 全画面 / L 現在時刻へ / Space 再生・一時停止</span></p>
   </details>
-  <div class="settings-links"><button class="license-link" id="licenses-open" aria-haspopup="dialog" aria-controls="licenses">ライセンス</button><a href="https://github.com/necocen/formula-clock" target="_blank" rel="noopener">GitHub ↗</a></div>
+  <div class="settings-links"><button class="license-link" id="licenses-open" aria-haspopup="dialog" aria-controls="licenses"><span data-i18n="licenses">LICENSE</span></button><a href="https://github.com/necocen/formula-clock" target="_blank" rel="noopener">GitHub ↗</a></div>
 </dialog>
 <dialog class="settings-dialog license-dialog" id="licenses" aria-labelledby="licenses-title">
-  <div class="settings-header"><h2 id="licenses-title">ライセンス</h2><button class="settings-close" id="licenses-close" aria-label="ライセンスを閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-  <div class="license-content"><!-- licenses-content --></div>
+  <div class="settings-header"><h2 id="licenses-title"><span data-i18n="licenses">LICENSE</span></h2><button class="settings-close" id="licenses-close" data-i18n-aria-label="closeLicenses" aria-label="ライセンスを閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+  <div class="license-content" lang="ja"><!-- licenses-content --></div>
 </dialog>
-<noscript><p style="padding:30px;text-align:center">この時計の表示にはJavaScriptが必要。</p></noscript>
+<noscript><p style="padding:30px;text-align:center">JavaScript is required to display this clock. / この時計の表示にはJavaScriptが必要。</p></noscript>

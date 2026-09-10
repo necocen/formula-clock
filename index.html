@@ -4,8 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#111311">
-<meta name="description" content="時刻の4桁が、秒を表す数式に変わる。数字の同一性を保って変形する、小さな計算時計。">
+<meta name="description" content="時刻の4桁が、秒を表す数式に変わる。数字の同一性を保って変形する、小さな時計。">
 <meta name="formula-clock-build" content="r6-minimal">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Formula Clock">
+<meta property="og:description" content="時刻の4桁が、秒を表す数式に変わる。">
+<meta property="og:image" content="/og-default.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Formula Clock">
+<meta name="twitter:image" content="/og-default.png">
 <title>Formula Clock</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111311'/%3E%3Ccircle cx='10' cy='10' r='4' fill='%23eea28c'/%3E%3Ccircle cx='22' cy='10' r='4' fill='%23e4c782'/%3E%3Ccircle cx='10' cy='22' r='4' fill='%239acbbb'/%3E%3Ccircle cx='22' cy='22' r='4' fill='%23b8ace1'/%3E%3C/svg%3E">
 <style>
@@ -24,6 +34,10 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
 @media(max-width:760px){.shell{padding:22px}.brand{font-size:10px;letter-spacing:1.8px}.tools{gap:6px}main{padding:40px 0 48px}.minute{width:100%;margin-top:22px}.ruler{gap:2px}.source-time{font-size:22px}.settings-dialog{right:16px;top:76px;max-height:calc(100svh - 92px)}}
 @media(max-width:480px){.shell{padding:18px 16px}.brand{font-size:9px;letter-spacing:1.4px;gap:8px}.tool{padding:10px;min-width:40px}.tools{gap:5px}.stage{height:226px}.transport{gap:2px}.transport button{padding:10px 7px}.transport .playback{min-width:60px;font-size:9px}.transport #play-pause{min-width:55px}.transport .live-return{white-space:nowrap}.setting-row select{max-width:165px}.segmented-control{width:165px}.settings-dialog{padding:20px}}
 @media(prefers-reduced-motion:reduce){*,*:before{scroll-behavior:auto!important}.source-time,.math-scene .digit,.answer-digit,#equal-sign,#notation-root{transition:none!important}}
+.tool:disabled{opacity:.4;cursor:default}.tool[hidden]{display:none}.share-status{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);margin:0;padding:10px 16px;border:1px solid var(--line);border-radius:7px;background:#181d17;color:var(--fg);font-size:12px;z-index:2;white-space:nowrap}.share-status:empty{display:none}.share-dialog{inset:0;margin:auto;width:460px}.share-dialog p{color:var(--muted);line-height:1.8}.share-url{width:100%;padding:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:5px;font:12px var(--mono)}
+@media(max-width:480px){.topbar{gap:8px}.tools{gap:4px}.tool.icon-only{width:36px;min-width:36px;padding:8px}}
+.advanced .state-label{height:auto;min-height:26px;text-align:center}
+@media(max-width:360px){.segmented-control{width:144px}}
 </style>
 </head>
 <body>
@@ -31,15 +45,16 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
 <header class="topbar">
   <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>FORMULA CLOCK</div>
   <div class="tools">
-    <button class="tool icon-only" id="sound" aria-pressed="false" aria-label="時報のオン／オフ" title="時報のオン／オフ（M）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path id="sound-waves" d="m16 9 6 6m0-6-6 6"/></svg></button>
-    <button class="tool icon-only" id="fullscreen" aria-label="全画面表示" title="全画面表示（F）"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
-    <button class="tool icon-only" id="settings-open" aria-label="設定" aria-haspopup="dialog" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
+    <button class="tool icon-only" id="share" data-i18n-aria-label="share" data-i18n-title="share" disabled aria-label="現在の表示を共有" title="現在の表示を共有"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M7 11H4v10h16V11h-3"/></svg></button>
+    <button class="tool icon-only" id="sound" data-i18n-aria-label="soundOff" aria-pressed="false" aria-label="時報 OFF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path id="sound-waves" d="m16 9 6 6m0-6-6 6"/></svg></button>
+    <button class="tool icon-only" id="fullscreen" data-i18n-aria-label="fullscreen" hidden aria-pressed="false" aria-label="全画面表示"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
+    <button class="tool icon-only" id="settings-open" data-i18n-aria-label="settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
   </div>
 </header>
 <main>
   <h1 class="a11y">Formula Clock</h1>
   <div class="clock-top">
-    <div class="source-time" id="source-time" hidden role="img" aria-label="現在時刻">
+    <div class="source-time" id="source-time" hidden role="img">
       <svg class="source-clock" viewBox="0 0 4200 1100" aria-hidden="true">
         <g class="source-digit" data-digit="0"></g><g class="source-digit" data-digit="1"></g><g class="colon"></g>
         <g class="source-digit" data-digit="2"></g><g class="source-digit" data-digit="3"></g><g class="colon"></g>
@@ -48,7 +63,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
     </div>
   </div>
   <div class="stage-wrap">
-    <div class="stage" id="stage" role="img" aria-label="計算時計">
+    <div class="stage" id="stage" role="img" aria-label="Formula Clock">
       <div class="flash" id="flash"></div>
       <svg id="math-scene" class="math-scene" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <g id="notation-root"></g>
@@ -61,42 +76,48 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
     </div>
   </div>
   <div class="minute">
-    <div class="ruler" id="ruler" aria-label="秒を選んでプレビュー"></div>
+    <div class="ruler" id="ruler" data-i18n-aria-label="chooseSecond" aria-label="秒を選んでプレビュー"></div>
     <div class="ruler-labels" aria-hidden="true"><span>00</span><span>15</span><span>30</span><span>45</span><span>59</span></div>
   </div>
   <div class="transport" id="transport" hidden>
-    <button id="play-pause" title="再生／一時停止（Space）">一時停止</button><button id="slow" aria-pressed="false">0.5×</button><span class="divider"></span><span class="playback" id="playback">プレビュー</span><button class="live-return" id="go-live" title="現在時刻に戻る（L）">現在時刻へ</button>
+    <button id="play-pause" data-i18n-title="playShortcut" title="再生／一時停止（Space）"><span data-i18n="pause">Pause</span></button><button id="slow" aria-pressed="false">0.5×</button><span class="divider"></span><span class="playback" id="playback"></span><button class="live-return" id="go-live" data-i18n-title="goLiveShortcut" title="現在時刻に戻る（L）"><span data-i18n="goLive">現在時刻へ</span></button>
   </div>
 </main>
 </div>
+<p id="share-status" class="share-status" role="status" aria-live="polite"></p>
+<dialog class="settings-dialog share-dialog" id="share-dialog" aria-labelledby="share-title">
+  <div class="settings-header"><h2 id="share-title"><span data-i18n="shareTitle">Share</span></h2><button class="settings-close" id="share-close" data-i18n-aria-label="close" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+  <p><span data-i18n="shareHelp">このURLをコピーして共有できます。</span></p>
+  <input id="share-url" data-i18n-aria-label="shareUrl" class="share-url" type="url" readonly aria-label="共有URL">
+</dialog>
 <dialog class="settings-dialog" id="settings" aria-labelledby="settings-title">
-  <div class="settings-header"><h2 id="settings-title">設定</h2><button class="settings-close" id="settings-close" aria-label="設定を閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-  <label class="setting-row">字体<select id="font-choice" aria-label="数式の字体"><option value="stix2" selected>STIX Two</option><option value="termes">Termes</option><option value="fira">Fira</option><option value="euler">Euler</option></select></label>
-  <div class="setting-row"><span id="numeral-label">数字</span><div class="segmented-control" id="numeral-choice" role="radiogroup" aria-labelledby="numeral-label"><label><input type="radio" name="numerals" value="lining"><span>Lining</span></label><label><input type="radio" name="numerals" value="oldstyle" checked><span>Oldstyle</span></label></div></div>
-  <div class="setting-row"><span id="division-label">除算</span><div class="segmented-control" id="division-choice" role="radiogroup" aria-labelledby="division-label"><label><input type="radio" name="division" value="fraction" checked><span>分数</span></label><label><input type="radio" name="division" value="inline"><span>÷</span></label></div></div>
-  <label class="setting-row">音量<input id="volume" type="range" min="0" max="100" value="25" aria-label="時報の音量"></label>
-  <label class="custom-time-label" for="custom-time">時刻を指定</label>
-  <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go">表示</button></div>
-  <details class="advanced" id="advanced-settings"><summary>詳細</summary>
-    <label class="setting-row experimental-option"><span>記号も動かす</span><input id="symbol-motion" type="checkbox"></label>
-    <label class="setting-row experimental-option"><span>分数・√・括弧も動かす</span><input id="structure-motion" type="checkbox"></label>
-    <label class="setting-row experimental-option"><span>四則記号を変形する</span><input id="symbol-morph" type="checkbox"></label>
+  <div class="settings-header"><h2 id="settings-title"><span data-i18n="settings">設定</span></h2><button class="settings-close" id="settings-close" data-i18n-aria-label="closeSettings" aria-label="設定を閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+  <label class="setting-row"><span data-i18n="font">フォント</span><select id="font-choice" data-i18n-aria-label="mathFont" aria-label="数式のフォント"><option value="stix2" selected>STIX Two</option><option value="termes">Termes</option><option value="fira">Fira</option><option value="euler">Euler</option></select></label>
+  <div class="setting-row"><span id="numeral-label" data-i18n="numerals">数字のスタイル</span><div class="segmented-control" id="numeral-choice" role="radiogroup" aria-labelledby="numeral-label"><label><input type="radio" name="numerals" value="lining"><span>Lining</span></label><label><input type="radio" name="numerals" value="oldstyle" checked><span>Oldstyle</span></label></div></div>
+  <div class="setting-row"><span id="division-label" data-i18n="division">除算のスタイル</span><div class="segmented-control" id="division-choice" role="radiogroup" aria-labelledby="division-label"><label><input type="radio" name="division" value="fraction" checked><span data-i18n="fraction">分数</span></label><label><input type="radio" name="division" value="inline"><span>÷</span></label></div></div>
+  <label class="setting-row"><span data-i18n="volume">音量</span><input id="volume" data-i18n-aria-label="signalVolume" type="range" min="0" max="100" value="25" aria-label="時報の音量"></label>
+  <label class="custom-time-label" for="custom-time"><span data-i18n="setTime">時刻を指定</span></label>
+  <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go"><span data-i18n="show">表示</span></button></div>
+  <details class="advanced" id="advanced-settings"><summary><span data-i18n="advanced">詳細</span></summary>
+    <label class="setting-row experimental-option"><span data-i18n="symbolMotion">記号をなめらかに動かす</span><input id="symbol-motion" type="checkbox"></label>
+    <label class="setting-row experimental-option"><span data-i18n="structureMotion">分数・√・括弧も動かす</span><input id="structure-motion" type="checkbox"></label>
+    <label class="setting-row experimental-option"><span data-i18n="symbolMorph">四則記号を変形する</span><input id="symbol-morph" type="checkbox"></label>
     <p id="render-status" role="status" hidden></p>
     <p id="state-label" role="status"></p>
-    <p>M 時報 / F 全画面 / L 現在時刻 / Space プレビューの再生と停止</p>
+    <p><span data-i18n="shortcuts">M 時報 / F 全画面 / L 現在時刻へ / Space 再生・一時停止</span></p>
   </details>
-  <div class="settings-links"><button class="license-link" id="licenses-open" aria-haspopup="dialog" aria-controls="licenses">ライセンス</button><a href="https://github.com/necocen/formula-clock" target="_blank" rel="noopener">GitHub ↗</a></div>
+  <div class="settings-links"><button class="license-link" id="licenses-open" aria-haspopup="dialog" aria-controls="licenses"><span data-i18n="licenses">LICENSE</span></button><a href="https://github.com/necocen/formula-clock" target="_blank" rel="noopener">GitHub ↗</a></div>
 </dialog>
 <dialog class="settings-dialog license-dialog" id="licenses" aria-labelledby="licenses-title">
-  <div class="settings-header"><h2 id="licenses-title">ライセンス</h2><button class="settings-close" id="licenses-close" aria-label="ライセンスを閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-  <div class="license-content"><h1>ライセンス</h1>
-<p>Formula ClockはMathJax 4.1.3で数式を表示します。使用する書体はSTIX Two、Termes、Fira、Eulerで、Eulerの基盤にはLatin Modernを使用しています。ライブラリとフォントデータはCDNから取得します。</p>
+  <div class="settings-header"><h2 id="licenses-title"><span data-i18n="licenses">LICENSE</span></h2><button class="settings-close" id="licenses-close" data-i18n-aria-label="closeLicenses" aria-label="ライセンスを閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+  <div class="license-content" lang="ja"><h1>LICENSE</h1>
+<p>Formula ClockはMathJax 4.1.3で数式を表示します。使用する書体はSTIX Two、Termes、Fira、Eulerで、Eulerの基盤にはLatin Modernを使用しています。ブラウザ用のライブラリとフォントデータはCDNから取得します。共有画像の生成用Workerには、同じ版のMathJaxとフォントデータを同梱しています。</p>
 <p>CDNパッケージはすべて4.1.3です。以下は実際の配布物のライセンスと、フォント内の著作権表示を照合した記録です。</p>
 <h2>MathJax / フォントパッケージ</h2>
-<p>mathjax 4.1.3、@mathjax/mathjax-stix2-font 4.1.3、@mathjax/mathjax-termes-font 4.1.3、@mathjax/mathjax-fira-font 4.1.3、@mathjax/mathjax-euler-font-extension 4.1.3、@mathjax/mathjax-modern-font 4.1.3</p>
+<p>mathjax / @mathjax/src 4.1.3、@mathjax/mathjax-stix2-font 4.1.3、@mathjax/mathjax-termes-font 4.1.3、@mathjax/mathjax-fira-font 4.1.3、@mathjax/mathjax-euler-font-extension 4.1.3、@mathjax/mathjax-modern-font 4.1.3</p>
 <p>Copyright (c) 2017–2026 The MathJax Consortium<br>パッケージのソフトウェア：Apache License 2.0。原書体には下記のライセンスが適用されます。</p>
 <p><a href="https://github.com/mathjax/MathJax-src/blob/4.1.3/ts/mathjax.ts">MathJax著作権表示</a> · <a href="https://docs.mathjax.org/en/v4.1/output/fonts.html">書体構成</a></p>
-<details><summary>Apache License 2.0 — 全文</summary><pre>
+<details><summary>Apache License 2.0 — 全文</summary><pre lang="en">
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -299,7 +320,7 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
    See the License for the specific language governing permissions and
    limitations under the License.
 </pre></details>
-<h2>STIX Two</h2><p>CDNパッケージ：@mathjax/mathjax-stix2-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre>Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts)</pre><p>デザイン：Ross Mills, John Hudson &amp; Paul Hanslow, Tiro Typeworks Ltd; with prior portions MicroPress Inc., and Coen Hoffman.</p><p><a href="https://github.com/stipub/stixfonts/blob/master/OFL.txt">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre>Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts), with Reserved Font Name &quot;TM Math&quot;. STIX Fonts™ is a trademark of The Institute of Electrical and Electronics Engineers, Inc.
+<h2>STIX Two</h2><p>CDNパッケージ：@mathjax/mathjax-stix2-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts)</pre><p>デザイン：Ross Mills, John Hudson &amp; Paul Hanslow, Tiro Typeworks Ltd; with prior portions MicroPress Inc., and Coen Hoffman.</p><p><a href="https://github.com/stipub/stixfonts/blob/master/OFL.txt">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts), with Reserved Font Name &quot;TM Math&quot;. STIX Fonts™ is a trademark of The Institute of Electrical and Electronics Engineers, Inc.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
@@ -392,9 +413,9 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 </pre></details>
-<h2>Termes / TeX Gyre Termes Math</h2><p>CDNパッケージ：@mathjax/mathjax-termes-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre>Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
+<h2>Termes / TeX Gyre Termes Math</h2><p>CDNパッケージ：@mathjax/mathjax-termes-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
 Original copyright:
-Copyright 2012--2014 for Tex Gyre Termes Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre><p><a href="https://www.gust.org.pl/projects/e-foundry/tg-math">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre>% This is version 1.0, dated 22 June 2009, of the GUST Font License.
+Copyright 2012--2014 for Tex Gyre Termes Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre><p><a href="https://www.gust.org.pl/projects/e-foundry/tg-math">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">% This is version 1.0, dated 22 June 2009, of the GUST Font License.
 % (GUST is the Polish TeX Users Group, http://www.gust.org.pl)
 %
 % For the most recent version of this license see
@@ -423,9 +444,9 @@ Copyright 2012--2014 for Tex Gyre Termes Math OTF by B. Jackowski, P. Strzelczyk
 % http://www.latex-project.org/lppl.txt and version 1.3c or later
 % is part of all distributions of LaTeX version 2006/05/20 or later.
 </pre></details>
-<h2>Fira Math</h2><p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre>Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
+<h2>Fira Math</h2><p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
 Original copyright:
-Copyright (C) 2018, 2019 Xiangdong Zeng</pre><p><a href="https://github.com/firamath/firamath/blob/main/LICENSE">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre>Copyright (C) 2018--2023 by Xiangdong Zeng &lt;xdzeng96@gmail.com&gt;
+Copyright (C) 2018, 2019 Xiangdong Zeng</pre><p><a href="https://github.com/firamath/firamath/blob/main/LICENSE">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">Copyright (C) 2018--2023 by Xiangdong Zeng &lt;xdzeng96@gmail.com&gt;
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
@@ -518,7 +539,7 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 </pre></details>
-<h2>Fira Sans（Oldstyle数字）</h2><p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre>Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.</pre><p><a href="https://github.com/mozilla/Fira/blob/master/LICENSE">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre>Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.
+<h2>Fira Sans（Oldstyle数字）</h2><p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.</pre><p><a href="https://github.com/mozilla/Fira/blob/master/LICENSE">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
@@ -612,10 +633,10 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 </pre></details>
-<h2>Euler / Neo Euler</h2><p>CDNパッケージ：@mathjax/mathjax-euler-font-extension 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre>Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
+<h2>Euler / Neo Euler</h2><p>CDNパッケージ：@mathjax/mathjax-euler-font-extension 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
 Original copyright:
 Copyright (c) 1997, 2009 American Mathematical Society (http://www.ams.org).
-Copyright (c) 2009, 2010 Khaled Hosny (khaledhosny@eglug.org).</pre><p>デザイン：Hermann Zapf</p><p><a href="https://github.com/aliftype/euler-otf">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre>Copyright (c) 1997, 2009 American Mathematical Society (http://www.ams.org),
+Copyright (c) 2009, 2010 Khaled Hosny (khaledhosny@eglug.org).</pre><p>デザイン：Hermann Zapf</p><p><a href="https://github.com/aliftype/euler-otf">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">Copyright (c) 1997, 2009 American Mathematical Society (http://www.ams.org),
 with Reserved Font Names EUEX10, EUEX7, EUEX8, EUEX9, EUFB10, EUFB5, EUFB7,
 EUFM10, EUFM5, EUFM7, EURB10, EURB5, EURB7, EURM10, EURM5, EURM7, EUSB10,
 EUSB5, EUSB7, EUSM10, EUSM5, EUSM7, CMEX10, CMSY5, CMSY7.
@@ -713,7 +734,7 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.</pre></details>
-<h2>Latin Modern Math</h2><p>CDNパッケージ：@mathjax/mathjax-modern-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre>Copyright 2012--2014 for Latin Modern Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre><p><a href="https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre>% This is version 1.0, dated 22 June 2009, of the GUST Font License.
+<h2>Latin Modern Math</h2><p>CDNパッケージ：@mathjax/mathjax-modern-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright 2012--2014 for Latin Modern Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre><p><a href="https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">% This is version 1.0, dated 22 June 2009, of the GUST Font License.
 % (GUST is the Polish TeX Users Group, http://www.gust.org.pl)
 %
 % For the most recent version of this license see
@@ -742,7 +763,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.</pre></details>
 % http://www.latex-project.org/lppl.txt and version 1.3c or later
 % is part of all distributions of LaTeX version 2006/05/20 or later.
 </pre></details>
-<details><summary>GUSTから参照されるLaTeX Project Public License 1.3c — 全文</summary><pre>The LaTeX Project Public License
+<details><summary>GUSTから参照されるLaTeX Project Public License 1.3c — 全文</summary><pre lang="en">The LaTeX Project Public License
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 LPPL Version 1.3c  2008-05-04
@@ -1159,9 +1180,546 @@ Important Recommendations
    the Work.
 
 </pre></details>
-<p><small>配布物照合日：2026-09-09。フォント本体はこのサイトに同梱していません。</small></p></div>
+<h2>resvg-js / 共有画像の生成</h2><p>@resvg/resvg-wasm 2.6.2を改変せず使用しています（Mozilla Public License 2.0）。PNG化はWorkerとビルド時に行い、ブラウザにはWASMを配信しません。OG画像のロゴ文字は、上記ライセンスのFira Mathからアウトライン化しています。</p><p><a href="https://github.com/thx/resvg-js/tree/v2.6.2">使用版のソースコード</a> · <a href="https://github.com/thx/resvg-js/blob/v2.6.2/LICENSE">ライセンス原文</a></p><details><summary>Mozilla Public License 2.0 — 全文</summary><pre lang="en">Mozilla Public License Version 2.0
+==================================
+
+1. Definitions
+--------------
+
+1.1. "Contributor"
+    means each individual or legal entity that creates, contributes to
+    the creation of, or owns Covered Software.
+
+1.2. "Contributor Version"
+    means the combination of the Contributions of others (if any) used
+    by a Contributor and that particular Contributor's Contribution.
+
+1.3. "Contribution"
+    means Covered Software of a particular Contributor.
+
+1.4. "Covered Software"
+    means Source Code Form to which the initial Contributor has attached
+    the notice in Exhibit A, the Executable Form of such Source Code
+    Form, and Modifications of such Source Code Form, in each case
+    including portions thereof.
+
+1.5. "Incompatible With Secondary Licenses"
+    means
+
+    (a) that the initial Contributor has attached the notice described
+        in Exhibit B to the Covered Software; or
+
+    (b) that the Covered Software was made available under the terms of
+        version 1.1 or earlier of the License, but not also under the
+        terms of a Secondary License.
+
+1.6. "Executable Form"
+    means any form of the work other than Source Code Form.
+
+1.7. "Larger Work"
+    means a work that combines Covered Software with other material, in
+    a separate file or files, that is not Covered Software.
+
+1.8. "License"
+    means this document.
+
+1.9. "Licensable"
+    means having the right to grant, to the maximum extent possible,
+    whether at the time of the initial grant or subsequently, any and
+    all of the rights conveyed by this License.
+
+1.10. "Modifications"
+    means any of the following:
+
+    (a) any file in Source Code Form that results from an addition to,
+        deletion from, or modification of the contents of Covered
+        Software; or
+
+    (b) any new file in Source Code Form that contains any Covered
+        Software.
+
+1.11. "Patent Claims" of a Contributor
+    means any patent claim(s), including without limitation, method,
+    process, and apparatus claims, in any patent Licensable by such
+    Contributor that would be infringed, but for the grant of the
+    License, by the making, using, selling, offering for sale, having
+    made, import, or transfer of either its Contributions or its
+    Contributor Version.
+
+1.12. "Secondary License"
+    means either the GNU General Public License, Version 2.0, the GNU
+    Lesser General Public License, Version 2.1, the GNU Affero General
+    Public License, Version 3.0, or any later versions of those
+    licenses.
+
+1.13. "Source Code Form"
+    means the form of the work preferred for making modifications.
+
+1.14. "You" (or "Your")
+    means an individual or a legal entity exercising rights under this
+    License. For legal entities, "You" includes any entity that
+    controls, is controlled by, or is under common control with You. For
+    purposes of this definition, "control" means (a) the power, direct
+    or indirect, to cause the direction or management of such entity,
+    whether by contract or otherwise, or (b) ownership of more than
+    fifty percent (50%) of the outstanding shares or beneficial
+    ownership of such entity.
+
+2. License Grants and Conditions
+--------------------------------
+
+2.1. Grants
+
+Each Contributor hereby grants You a world-wide, royalty-free,
+non-exclusive license:
+
+(a) under intellectual property rights (other than patent or trademark)
+    Licensable by such Contributor to use, reproduce, make available,
+    modify, display, perform, distribute, and otherwise exploit its
+    Contributions, either on an unmodified basis, with Modifications, or
+    as part of a Larger Work; and
+
+(b) under Patent Claims of such Contributor to make, use, sell, offer
+    for sale, have made, import, and otherwise transfer either its
+    Contributions or its Contributor Version.
+
+2.2. Effective Date
+
+The licenses granted in Section 2.1 with respect to any Contribution
+become effective for each Contribution on the date the Contributor first
+distributes such Contribution.
+
+2.3. Limitations on Grant Scope
+
+The licenses granted in this Section 2 are the only rights granted under
+this License. No additional rights or licenses will be implied from the
+distribution or licensing of Covered Software under this License.
+Notwithstanding Section 2.1(b) above, no patent license is granted by a
+Contributor:
+
+(a) for any code that a Contributor has removed from Covered Software;
+    or
+
+(b) for infringements caused by: (i) Your and any other third party's
+    modifications of Covered Software, or (ii) the combination of its
+    Contributions with other software (except as part of its Contributor
+    Version); or
+
+(c) under Patent Claims infringed by Covered Software in the absence of
+    its Contributions.
+
+This License does not grant any rights in the trademarks, service marks,
+or logos of any Contributor (except as may be necessary to comply with
+the notice requirements in Section 3.4).
+
+2.4. Subsequent Licenses
+
+No Contributor makes additional grants as a result of Your choice to
+distribute the Covered Software under a subsequent version of this
+License (see Section 10.2) or under the terms of a Secondary License (if
+permitted under the terms of Section 3.3).
+
+2.5. Representation
+
+Each Contributor represents that the Contributor believes its
+Contributions are its original creation(s) or it has sufficient rights
+to grant the rights to its Contributions conveyed by this License.
+
+2.6. Fair Use
+
+This License is not intended to limit any rights You have under
+applicable copyright doctrines of fair use, fair dealing, or other
+equivalents.
+
+2.7. Conditions
+
+Sections 3.1, 3.2, 3.3, and 3.4 are conditions of the licenses granted
+in Section 2.1.
+
+3. Responsibilities
+-------------------
+
+3.1. Distribution of Source Form
+
+All distribution of Covered Software in Source Code Form, including any
+Modifications that You create or to which You contribute, must be under
+the terms of this License. You must inform recipients that the Source
+Code Form of the Covered Software is governed by the terms of this
+License, and how they can obtain a copy of this License. You may not
+attempt to alter or restrict the recipients' rights in the Source Code
+Form.
+
+3.2. Distribution of Executable Form
+
+If You distribute Covered Software in Executable Form then:
+
+(a) such Covered Software must also be made available in Source Code
+    Form, as described in Section 3.1, and You must inform recipients of
+    the Executable Form how they can obtain a copy of such Source Code
+    Form by reasonable means in a timely manner, at a charge no more
+    than the cost of distribution to the recipient; and
+
+(b) You may distribute such Executable Form under the terms of this
+    License, or sublicense it under different terms, provided that the
+    license for the Executable Form does not attempt to limit or alter
+    the recipients' rights in the Source Code Form under this License.
+
+3.3. Distribution of a Larger Work
+
+You may create and distribute a Larger Work under terms of Your choice,
+provided that You also comply with the requirements of this License for
+the Covered Software. If the Larger Work is a combination of Covered
+Software with a work governed by one or more Secondary Licenses, and the
+Covered Software is not Incompatible With Secondary Licenses, this
+License permits You to additionally distribute such Covered Software
+under the terms of such Secondary License(s), so that the recipient of
+the Larger Work may, at their option, further distribute the Covered
+Software under the terms of either this License or such Secondary
+License(s).
+
+3.4. Notices
+
+You may not remove or alter the substance of any license notices
+(including copyright notices, patent notices, disclaimers of warranty,
+or limitations of liability) contained within the Source Code Form of
+the Covered Software, except that You may alter any license notices to
+the extent required to remedy known factual inaccuracies.
+
+3.5. Application of Additional Terms
+
+You may choose to offer, and to charge a fee for, warranty, support,
+indemnity or liability obligations to one or more recipients of Covered
+Software. However, You may do so only on Your own behalf, and not on
+behalf of any Contributor. You must make it absolutely clear that any
+such warranty, support, indemnity, or liability obligation is offered by
+You alone, and You hereby agree to indemnify every Contributor for any
+liability incurred by such Contributor as a result of warranty, support,
+indemnity or liability terms You offer. You may include additional
+disclaimers of warranty and limitations of liability specific to any
+jurisdiction.
+
+4. Inability to Comply Due to Statute or Regulation
+---------------------------------------------------
+
+If it is impossible for You to comply with any of the terms of this
+License with respect to some or all of the Covered Software due to
+statute, judicial order, or regulation then You must: (a) comply with
+the terms of this License to the maximum extent possible; and (b)
+describe the limitations and the code they affect. Such description must
+be placed in a text file included with all distributions of the Covered
+Software under this License. Except to the extent prohibited by statute
+or regulation, such description must be sufficiently detailed for a
+recipient of ordinary skill to be able to understand it.
+
+5. Termination
+--------------
+
+5.1. The rights granted under this License will terminate automatically
+if You fail to comply with any of its terms. However, if You become
+compliant, then the rights granted under this License from a particular
+Contributor are reinstated (a) provisionally, unless and until such
+Contributor explicitly and finally terminates Your grants, and (b) on an
+ongoing basis, if such Contributor fails to notify You of the
+non-compliance by some reasonable means prior to 60 days after You have
+come back into compliance. Moreover, Your grants from a particular
+Contributor are reinstated on an ongoing basis if such Contributor
+notifies You of the non-compliance by some reasonable means, this is the
+first time You have received notice of non-compliance with this License
+from such Contributor, and You become compliant prior to 30 days after
+Your receipt of the notice.
+
+5.2. If You initiate litigation against any entity by asserting a patent
+infringement claim (excluding declaratory judgment actions,
+counter-claims, and cross-claims) alleging that a Contributor Version
+directly or indirectly infringes any patent, then the rights granted to
+You by any and all Contributors for the Covered Software under Section
+2.1 of this License shall terminate.
+
+5.3. In the event of termination under Sections 5.1 or 5.2 above, all
+end user license agreements (excluding distributors and resellers) which
+have been validly granted by You or Your distributors under this License
+prior to termination shall survive termination.
+
+************************************************************************
+*                                                                      *
+*  6. Disclaimer of Warranty                                           *
+*  -------------------------                                           *
+*                                                                      *
+*  Covered Software is provided under this License on an "as is"       *
+*  basis, without warranty of any kind, either expressed, implied, or  *
+*  statutory, including, without limitation, warranties that the       *
+*  Covered Software is free of defects, merchantable, fit for a        *
+*  particular purpose or non-infringing. The entire risk as to the     *
+*  quality and performance of the Covered Software is with You.        *
+*  Should any Covered Software prove defective in any respect, You     *
+*  (not any Contributor) assume the cost of any necessary servicing,   *
+*  repair, or correction. This disclaimer of warranty constitutes an   *
+*  essential part of this License. No use of any Covered Software is   *
+*  authorized under this License except under this disclaimer.         *
+*                                                                      *
+************************************************************************
+
+************************************************************************
+*                                                                      *
+*  7. Limitation of Liability                                          *
+*  --------------------------                                          *
+*                                                                      *
+*  Under no circumstances and under no legal theory, whether tort      *
+*  (including negligence), contract, or otherwise, shall any           *
+*  Contributor, or anyone who distributes Covered Software as          *
+*  permitted above, be liable to You for any direct, indirect,         *
+*  special, incidental, or consequential damages of any character      *
+*  including, without limitation, damages for lost profits, loss of    *
+*  goodwill, work stoppage, computer failure or malfunction, or any    *
+*  and all other commercial damages or losses, even if such party      *
+*  shall have been informed of the possibility of such damages. This   *
+*  limitation of liability shall not apply to liability for death or   *
+*  personal injury resulting from such party's negligence to the       *
+*  extent applicable law prohibits such limitation. Some               *
+*  jurisdictions do not allow the exclusion or limitation of           *
+*  incidental or consequential damages, so this exclusion and          *
+*  limitation may not apply to You.                                    *
+*                                                                      *
+************************************************************************
+
+8. Litigation
+-------------
+
+Any litigation relating to this License may be brought only in the
+courts of a jurisdiction where the defendant maintains its principal
+place of business and such litigation shall be governed by laws of that
+jurisdiction, without reference to its conflict-of-law provisions.
+Nothing in this Section shall prevent a party's ability to bring
+cross-claims or counter-claims.
+
+9. Miscellaneous
+----------------
+
+This License represents the complete agreement concerning the subject
+matter hereof. If any provision of this License is held to be
+unenforceable, such provision shall be reformed only to the extent
+necessary to make it enforceable. Any law or regulation which provides
+that the language of a contract shall be construed against the drafter
+shall not be used to construe this License against a Contributor.
+
+10. Versions of the License
+---------------------------
+
+10.1. New Versions
+
+Mozilla Foundation is the license steward. Except as provided in Section
+10.3, no one other than the license steward has the right to modify or
+publish new versions of this License. Each version will be given a
+distinguishing version number.
+
+10.2. Effect of New Versions
+
+You may distribute the Covered Software under the terms of the version
+of the License under which You originally received the Covered Software,
+or under the terms of any subsequent version published by the license
+steward.
+
+10.3. Modified Versions
+
+If you create software not governed by this License, and you want to
+create a new license for such software, you may create and use a
+modified version of this License if you rename the license and remove
+any references to the name of the license steward (except to note that
+such modified license differs from this License).
+
+10.4. Distributing Source Code Form that is Incompatible With Secondary
+Licenses
+
+If You choose to distribute Source Code Form that is Incompatible With
+Secondary Licenses under the terms of this version of the License, the
+notice described in Exhibit B of this License must be attached.
+
+Exhibit A - Source Code Form License Notice
+-------------------------------------------
+
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+If it is not possible or desirable to put the notice in a particular
+file, then You may include the notice in a location (such as a LICENSE
+file in a relevant directory) where a recipient would be likely to look
+for such a notice.
+
+You may add additional accurate notices of copyright ownership.
+
+Exhibit B - "Incompatible With Secondary Licenses" Notice
+---------------------------------------------------------
+
+  This Source Code Form is "Incompatible With Secondary Licenses", as
+  defined by the Mozilla Public License, v. 2.0.</pre></details><p><small>配布物照合日：2026-09-10。ブラウザはCDNから書体を取得し、サーバー描画用の依存はWorkerに同梱しています。</small></p></div>
 </dialog>
-<noscript><p style="padding:30px;text-align:center">この時計の表示にはJavaScriptが必要。</p></noscript>
+<noscript><p style="padding:30px;text-align:center">JavaScript is required to display this clock. / この時計の表示にはJavaScriptが必要。</p></noscript>
+
+<script id="i18n-code">
+/* UI language is a browser preference, independent of shared clock state. */
+(function (root) {
+  'use strict';
+  const messages = {
+    // Settings and dialog controls, including accessible names for icon buttons.
+    settings: {ja:'設定',en:'Settings'},
+    close: {ja:'閉じる',en:'Close'},
+    closeSettings: {ja:'設定を閉じる',en:'Close settings'},
+    font: {ja:'フォント',en:'Font'},
+    mathFont: {ja:'数式のフォント',en:'Formula font'},
+    numerals: {ja:'数字のスタイル',en:'Numeral style'},
+    division: {ja:'除算のスタイル',en:'Division style'},
+    fraction: {ja:'分数',en:'Fraction'},
+    volume: {ja:'音量',en:'Volume'},
+    signalVolume: {ja:'時報の音量',en:'Time signal volume'},
+    setTime: {ja:'時刻を指定',en:'Set time'},
+    show: {ja:'表示',en:'Show'},
+    advanced: {ja:'詳細',en:'Advanced'},
+    symbolMotion: {ja:'記号をなめらかに動かす',en:'Move symbols smoothly'},
+    structureMotion: {ja:'分数・√・括弧も動かす',en:'Move fractions, roots & brackets'},
+    symbolMorph: {ja:'四則記号を変形する',en:'Morph arithmetic symbols'},
+    shortcuts: {ja:'M 時報 / F 全画面 / L 現在時刻へ / Space 再生・一時停止',en:'M Sound / F Fullscreen / L Current time / Space Play or pause preview'},
+    shortcut: {ja:'{label}（{key}）',en:'{label} ({key})'},
+    licenses: {ja:'LICENSE',en:'LICENSE'},
+    closeLicenses: {ja:'ライセンスを閉じる',en:'Close licenses'},
+    // Sharing: button/dialog labels and the copy notification.
+    share: {ja:'現在の表示を共有',en:'Share this view'},
+    shareTitle: {ja:'Share',en:'Share this view'},
+    shareHelp: {ja:'このURLをコピーして共有できます。',en:'Copy this link to share the current view.'},
+    shareUrl: {ja:'共有URL',en:'Share link'},
+    shareCopied: {ja:'共有URLをコピーしました',en:'Share link copied'},
+    // Sound/fullscreen icon labels and hover titles; failure is a visible notice.
+    soundOff: {ja:'時報 OFF',en:'Time signals off'},
+    soundOn: {ja:'時報 ON',en:'Time signals on'},
+    soundError: {ja:'時報 ON（再生できません）',en:'Time signals on (audio unavailable)'},
+    soundPending: {ja:'時報 ON（画面を操作すると再開）',en:'Time signals on (tap to start)'},
+    fullscreen: {ja:'全画面表示',en:'Fullscreen'},
+    exitFullscreen: {ja:'全画面表示を終了',en:'Exit fullscreen'},
+    fullscreenFailed: {ja:'全画面表示に切り替えられませんでした',en:'Could not switch fullscreen mode'},
+    // Second ruler: accessible names and per-second hover titles.
+    chooseSecond: {ja:'秒を選んでプレビュー',en:'Choose a second to preview'},
+    previewSecond: {ja:'{seconds}秒をプレビュー',en:'Preview second {seconds}'},
+    secondStatus: {ja:'{seconds}秒 · {status}',en:'{seconds}s · {status}'},
+    formulaAvailable: {ja:'式あり',en:'Formula available'},
+    noFormula: {ja:'式なし',en:'No formula'},
+    loading: {ja:'Loading',en:'Loading'},
+    dataFailed: {ja:'データ取得失敗',en:'Data unavailable'},
+    // Visible preview controls and their hover titles.
+    play: {ja:'Play',en:'Play'},
+    pause: {ja:'Pause',en:'Pause'},
+    playShortcut: {ja:'再生／一時停止（Space）',en:'Play or pause (Space)'},
+    goLive: {ja:'現在時刻へ',en:'Current time'},
+    goLiveShortcut: {ja:'現在時刻に戻る（L）',en:'Return to current time (L)'},
+    // Accessible descriptions of the SVG clocks; never drawn as visual text.
+    clockTime: {ja:'{hours}時{minutes}分{seconds}秒',en:'{hours} hours, {minutes} minutes, {seconds} seconds'},
+    clockEquation: {ja:'{time}。{expression} = {seconds}',en:'{time}. {expression} = {seconds}'},
+    // Status text inside Settings > Advanced: loading, failures, and midnight.
+    preparing: {ja:'Loading',en:'Preparing the clock.'},
+    typesettingFailed: {ja:'組版を読み込めなかった。通常の時計を表示中。',en:'Could not load the formula display. Showing the clock.'},
+    formulaFailed: {ja:'この式を組版できなかった。通常の時計を表示中。',en:'Could not display this formula. Showing the clock.'},
+    loadingData: {ja:'Loading',en:'Loading formula data.'},
+    dataClockFallback: {ja:'式データを読み込めなかった。通常の時計を表示中。',en:'Could not load formula data. Showing the clock.'},
+    newDayIn: {ja:'新しい一日まで、{seconds}',en:'A new day in {seconds}'},
+    newDay: {ja:'新しい一日。',en:'A new day.'}
+  };
+  Object.values(messages).forEach(Object.freeze);
+  Object.freeze(messages);
+  function resolveLanguage(language) {
+    return typeof language === 'string' && /^ja(?:-|$)/i.test(language.trim()) ? 'ja' : 'en';
+  }
+  function create(language) {
+    const locale = resolveLanguage(language);
+    function t(key, values = {}) {
+      const message = messages[key]?.[locale] ?? messages[key]?.en ?? key;
+      return message.replace(/\{(\w+)\}/g,(placeholder,name) => Object.hasOwn(values,name) ? String(values[name]) : placeholder);
+    }
+    function apply(document) {
+      document.documentElement.lang = locale;
+      for (const element of document.querySelectorAll('[data-i18n]')) element.textContent = t(element.dataset.i18n);
+      for (const attribute of ['title','aria-label']) {
+        for (const element of document.querySelectorAll(`[data-i18n-${attribute}]`)) {
+          element.setAttribute(attribute,t(element.getAttribute(`data-i18n-${attribute}`)));
+        }
+      }
+    }
+    return Object.freeze({locale,t,apply});
+  }
+  const api = Object.freeze({resolveLanguage,create,messages});
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.FormulaI18n = api;
+})(typeof window === 'undefined' ? globalThis : window);
+
+</script>
+
+<script id="display-code">
+/* Typography choices shared by the interactive clock and the OG renderer. */
+(function (root) {
+  'use strict';
+  const PROFILES = Object.freeze({
+    stix2: Object.freeze({id:'stix2', label:'STIX Two', font:'mathjax-stix2', extensions:[]}),
+    termes: Object.freeze({id:'termes', label:'Termes', font:'mathjax-termes', extensions:[]}),
+    fira: Object.freeze({id:'fira', label:'Fira', font:'mathjax-fira', extensions:[]}),
+    euler: Object.freeze({id:'euler', label:'Euler', font:'mathjax-modern', extensions:['mathjax-euler']})
+  });
+  const NUMERALS = Object.freeze({lining:'Lining',oldstyle:'Oldstyle'});
+  const DEFAULTS = Object.freeze({font:'stix2',numerals:'oldstyle',division:'fraction'});
+  function typography(font, numerals) {
+    if (!Object.hasOwn(PROFILES,font) || !Object.hasOwn(NUMERALS,numerals)) throw new TypeError('Invalid typography');
+    return Object.freeze({...PROFILES[font],numerals,oldstyle:numerals === 'oldstyle',
+      centerOperators:numerals === 'lining',numericAxis:numerals === 'lining'});
+  }
+  function fitFrame(bounds, axisY, width, height) {
+    const axis = height / 2, margin = 15;
+    const above = Math.max(1,axisY - bounds.y), below = Math.max(1,bounds.y + bounds.h - axisY);
+    const scale = Math.min(112 / 1000,(width - 24) / bounds.w,(axis - margin) / above,(height - margin - axis) / below);
+    return {scale,x:(width - bounds.w * scale) / 2 - bounds.x * scale,y:axis - axisY * scale,axis};
+  }
+  const api = {PROFILES,NUMERALS,DEFAULTS,typography,fitFrame};
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.FormulaDisplay = Object.freeze(api);
+})(typeof window === 'undefined' ? globalThis : window);
+
+</script>
+
+<script id="share-code">
+/* A shared link identifies a wall-clock reading, never a date or an instant. */
+(function (root) {
+  'use strict';
+  const Display = typeof module !== 'undefined' && module.exports ? require('./display.js') : root.FormulaDisplay;
+  const validTime = value => typeof value === 'string' && /^(?:[01][0-9]|2[0-3])[0-5][0-9][0-5][0-9]$/.test(value);
+  function parse(url) {
+    const p = (url instanceof URL ? url : new URL(url)).searchParams;
+    if (!validTime(p.get('t')) || (p.has('v') && p.get('v') !== '1')) return null;
+    return Object.freeze({v:1,t:p.get('t'),
+      font:Object.hasOwn(Display.PROFILES,p.get('font')) ? p.get('font') : Display.DEFAULTS.font,
+      numerals:Object.hasOwn(Display.NUMERALS,p.get('numerals')) ? p.get('numerals') : Display.DEFAULTS.numerals,
+      division:['fraction','inline'].includes(p.get('division')) ? p.get('division') : Display.DEFAULTS.division});
+  }
+  function params(state) {
+    if (!state || !validTime(state.t) || state.v !== 1 || !Object.hasOwn(Display.PROFILES,state.font) ||
+        !Object.hasOwn(Display.NUMERALS,state.numerals) || !['fraction','inline'].includes(state.division)) {
+      throw new TypeError('Invalid shared clock state');
+    }
+    return new URLSearchParams({v:'1',t:state.t,font:state.font,numerals:state.numerals,division:state.division});
+  }
+  function url(origin, state) {
+    const result = new URL('/',origin);
+    result.search = params(state).toString();
+    return result;
+  }
+  function timeLabel(state) { return state.t.match(/../g).join(':'); }
+  function title(state) { return state ? `Formula Clock — ${timeLabel(state)}` : 'Formula Clock'; }
+  function localDate(time) {
+    if (!validTime(time)) throw new TypeError('Invalid shared time');
+    // A fixed calendar day avoids a spring-forward gap on the day the URL opens.
+    return new Date(2000,0,15,Number(time.slice(0,2)),Number(time.slice(2,4)),Number(time.slice(4)),0);
+  }
+  const api = {parse,params,url,timeLabel,title,localDate};
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.FormulaShare = Object.freeze(api);
+})(typeof window === 'undefined' ? globalThis : window);
+
+</script>
 
 <script id="expression-code">
 /* The public expression format and its presentation-independent serializer.
@@ -1383,7 +1941,9 @@ Important Recommendations
   }
   class StaleManifestError extends Error {}
   class FetchHourProvider {
-    constructor(manifestUrl) {
+    constructor(manifestUrl, {fetch: fetcher = (...args) => fetch(...args)} = {}) {
+      if (typeof fetcher !== 'function') throw new TypeError('Expected a fetch function');
+      this.fetch = fetcher;
       this.url = new URL(manifestUrl,root.document?.baseURI).href;
       this.manifest = null;
       this.manifestTask = null;
@@ -1394,7 +1954,7 @@ Important Recommendations
       if (this.manifest && this.manifest !== previous) return this.manifest;
       if (this.manifestTask) return this.manifestTask;
       const task = (async () => {
-        const response = await fetch(this.url,{credentials:'same-origin',cache:'no-cache'});
+        const response = await this.fetch(this.url,{credentials:'same-origin',cache:'no-cache'});
         if (!response.ok) throw new DataHTTPError(response.status,this.url);
         const raw = await response.json();
         if (raw?.schema !== 'formula-clock-hours/1' || !/^[a-f0-9]{64}$/.test(raw.version) ||
@@ -1429,7 +1989,7 @@ Important Recommendations
       if (this.pending.has(key)) return this.pending.get(key);
       const task = (async () => {
         const url = manifest.urls[hour];
-        const response = await fetch(url,{credentials:'same-origin'});
+        const response = await this.fetch(url,{credentials:'same-origin'});
         if (!response.ok) throw new DataHTTPError(response.status,url);
         const table = await response.json();
         tableHeader(table);
@@ -1554,13 +2114,8 @@ Important Recommendations
   const NS = 'http://www.w3.org/2000/svg';
   const Expression = typeof module !== 'undefined' && module.exports ? require('./expression.js') : root.FormulaExpression;
   const { expressionTex, frameTex, mark, relation } = Expression;
-  const PROFILES = Object.freeze({
-    stix2: Object.freeze({id:'stix2', label:'STIX Two', font:'mathjax-stix2', extensions:[]}),
-    termes: Object.freeze({id:'termes', label:'Termes', font:'mathjax-termes', extensions:[]}),
-    fira: Object.freeze({id:'fira', label:'Fira', font:'mathjax-fira', extensions:[]}),
-    euler: Object.freeze({id:'euler', label:'Euler', font:'mathjax-modern', extensions:['mathjax-euler']})
-  });
-  const NUMERALS = Object.freeze({lining:'Lining',oldstyle:'Oldstyle'});
+  const Display = typeof module !== 'undefined' && module.exports ? require('./display.js') : root.FormulaDisplay;
+  const {PROFILES,NUMERALS} = Display;
   const matrixArray = m => [m.a, m.b, m.c, m.d, m.e, m.f];
   function finiteMatrix(m) { return matrixArray(m).every(Number.isFinite); }
 
@@ -1589,9 +2144,8 @@ Important Recommendations
     constructor(profile = 'stix2', numerals = 'oldstyle') {
       if (!Object.hasOwn(PROFILES,profile)) throw new TypeError('Unknown font profile');
       if (!Object.hasOwn(NUMERALS,numerals)) throw new TypeError('Unknown numeral style');
-      this.profile = Object.freeze({...PROFILES[profile], numerals,
-        label:`${PROFILES[profile].label} · ${NUMERALS[numerals]}`,
-        oldstyle:numerals === 'oldstyle', centerOperators:numerals === 'lining', numericAxis:numerals === 'lining'});
+      this.profile = Object.freeze({...Display.typography(profile,numerals),
+        label:`${PROFILES[profile].label} · ${NUMERALS[numerals]}`});
       this.mathjax = null;
       // Separate contexts for each font/style keep extensions and lining-axis
       // calibration out of other fonts and native oldstyle axes. Engines are lazy
@@ -1922,6 +2476,8 @@ Important Recommendations
 /* Formula Clock: persistent digit objects, separate typography and data delivery. */
 (() => {
   'use strict';
+  const ui = FormulaI18n.create(navigator.languages?.[0] || navigator.language), t = ui.t;
+  ui.apply(document);
   const $ = s => document.querySelector(s);
   const stage = $('#stage'), digitsEls = [...stage.querySelectorAll('.digit')];
   const sourceTime = $('#source-time'), sourceEls = [...sourceTime.querySelectorAll('.source-digit')];
@@ -1929,8 +2485,10 @@ Important Recommendations
   const cache = new Map(), pending = new Map();
   const settingsDialog = $('#settings'), settingsButton = $('#settings-open');
   const licenseDialog = $('#licenses');
-  function setupDialog(dialog, opener, closeButton) {
-    opener.addEventListener('click', () => {
+  const shareButton = $('#share'), shareDialog = $('#share-dialog');
+  const sharedState = FormulaShare.parse(new URL(location.href));
+  function setupDialog(dialog, opener, closeButton, openOnClick = true) {
+    if (openOnClick) opener.addEventListener('click', () => {
       dialog.showModal(); closeButton.focus({preventScroll:true}); dialog.scrollTop = 0;
     });
     closeButton.addEventListener('click', () => dialog.close());
@@ -1957,6 +2515,8 @@ Important Recommendations
   }
   setupDialog(settingsDialog,settingsButton,$('#settings-close'));
   setupDialog(licenseDialog,$('#licenses-open'),$('#licenses-close'));
+  setupDialog(shareDialog,shareButton,$('#share-close'),false);
+  shareButton.hidden = !['http:','https:'].includes(location.protocol);
   const {normalizeMinute, TableProvider} = FormulaData;
   const defaultProvider = () => new TableProvider(async () => {
     const embedded = document.querySelector('#clock-data');
@@ -1982,12 +2542,18 @@ Important Recommendations
     structureMotion: saved.structureMotion === true,
     symbolMorph: saved.symbolMorph === true
   };
+  // Restore before selecting an engine; opening a link never saves preferences.
+  if (sharedState) {
+    const {font,numerals,division} = sharedState;
+    Object.assign(displaySettings,{font,numerals,division});
+    document.title = FormulaShare.title(sharedState);
+  }
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
   const timeCode = d => pad(d.getHours()) + pad(d.getMinutes());
   const ticks = Array.from({ length: 60 }, (_, i) => {
     const b = document.createElement('button'); b.className = 'tick' + (i % 5 === 0 ? ' major' : '');
-    b.title = `${pad(i)}秒を表示`; b.setAttribute('aria-label', `${i}秒をプレビュー`);
+    b.setAttribute('aria-label',t('previewSecond',{seconds:i}));
     b.addEventListener('click', () => { const d = getNow(); d.setSeconds(i, 0); setPreview(d, true); });
     $('#ruler').append(b); return b;
   });
@@ -2054,6 +2620,7 @@ Important Recommendations
     const next = {...displaySettings,...changes};
     if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
     displaySettings = {font:next.font,numerals:next.numerals,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
+    shareButton.disabled = true;
     syncMotionControls();
     $('#font-choice').value = next.font;
     segmentedChoices.forEach(input => { input.checked = input.value === next[input.name]; });
@@ -2078,7 +2645,7 @@ Important Recommendations
   const plainTime = $('#plain-time');
   const movement = new Map();
   const morphs = new Map();
-  let notation = null, lastVisual = '', firstFrame = true, latestLayout = null;
+  let notation = null, lastVisual = '', firstFrame = true, latestLayout = null, displayedFrame = null;
   let requestSerial = 0, animationId = 0, engineError = null;
   const reportedRenderErrors = new Set();
   const mathNS = 'http://www.w3.org/2000/svg';
@@ -2196,6 +2763,7 @@ Important Recommendations
     status.textContent = message; status.hidden = !message;
   }
   function plainFallback(code, seconds, reason) {
+    shareButton.disabled = true;
     const full = `${code.slice(0,2)}:${code.slice(2)}:${pad(seconds)}`;
     [...plainTime.querySelectorAll('span')].forEach((el, i) => { el.textContent = full[i]; });
     plainTime.hidden = false; scene.style.visibility = 'hidden';
@@ -2232,15 +2800,9 @@ Important Recommendations
   }
   function applyFrame(frame, ast, code, seconds, loading, instant, view) {
     const W = stage.clientWidth, H = stage.clientHeight, b = frame.viewBox;
-    const axis = H / 2, margin = 15;
-    const above = Math.max(1, frame.axisY - b.y);
-    const below = Math.max(1, b.y + b.h - frame.axisY);
     // Fit each side of a fixed axis independently. A tall numerator may shrink
     // the equation, but must never push the equal sign or normal digits down.
-    const scale = Math.min(112 / 1000, (W - 24) / b.w,
-      (axis - margin) / above, (H - margin - axis) / below);
-    const x = (W - b.w * scale) / 2 - b.x * scale;
-    const y = axis - frame.axisY * scale;
+    const {axis,scale,x,y} = FormulaDisplay.fitFrame(b,frame.axisY,W,H);
     const fit = new DOMMatrix([scale, 0, 0, scale, x, y]);
     const animated = !instant && !firstFrame && !reducedMotion.matches;
     // One clock for the entire frame keeps a radical and its rule joined, even
@@ -2292,17 +2854,21 @@ Important Recommendations
     plainTime.hidden = true; scene.style.visibility = 'visible';
     renderSourceTime(frame.font,frame.numerals,code,seconds,!!ast && !loading);
     renderStatus();
-    stage.setAttribute('aria-label', ast ? `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒。${FormulaExpression.plain(ast, code)} = ${seconds}` : `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒`);
+    const time = t('clockTime',{hours:code.slice(0,2),minutes:code.slice(2),seconds});
+    stage.setAttribute('aria-label',ast ? t('clockEquation',{time,expression:FormulaExpression.plain(ast,code),seconds}) : time);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
+    displayedFrame = {frame,ast,code,seconds,view};
+    shareButton.disabled = loading || !!engineError || !cache.has(code) || !!cache.get(code).error;
     firstFrame = false;
   }
   function renderExpression(ast, code, seconds, loading, instant = false) {
+    if (loading) shareButton.disabled = true;
     const engine = typesetter, view = activeDisplay();
     const key = `${view.font}:${view.numerals}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;
-    if (!engine.ready) plainFallback(code,seconds,engine.error ? '組版を読み込めなかった。通常の時計を表示中。' : '時計を準備中。');
+    if (!engine.ready) plainFallback(code,seconds,t(engine.error ? 'typesettingFailed' : 'preparing'));
     if (engine.error) return;
     engine.frame(ast, code, seconds, view).then(frame => {
       if (serial !== requestSerial) return; // Discard any stale async result.
@@ -2321,11 +2887,11 @@ Important Recommendations
           const clockFrame = await engine.frame(null, code, seconds, view);
           if (serial !== requestSerial) return;
           applyFrame(clockFrame, null, code, seconds, false, instant, view);
-          renderStatus('この式を組版できなかった。通常の時計を表示中。');
+          renderStatus(t('formulaFailed'));
           return;
         } catch { /* Ordinary text fallback below. */ }
       }
-      plainFallback(code, seconds, '組版を読み込めなかった。通常の時計を表示中。');
+      plainFallback(code,seconds,t('typesettingFailed'));
     });
   }
   // Warm only the immediately upcoming frames; do not queue a minute of work
@@ -2338,7 +2904,8 @@ Important Recommendations
     }
   }
   // Transport time is anchored to the wall clock (live) or a monotonic clock (preview).
-  let preview = null, generation = 0, lastSecond = null, lastCode = null, tickTimer = null;
+  let preview = sharedState ? {epoch:+FormulaShare.localDate(sharedState.t),started:performance.now(),speed:1,paused:true} : null;
+  let generation = 0, lastSecond = null, lastCode = null, tickTimer = null;
   let nextPrefetch = null;
   const eventHistory = [];
   function getNow() { return preview ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started) * preview.speed) : new Date(); }
@@ -2351,7 +2918,7 @@ Important Recommendations
     generation++; lastSecond = null; sound.cancel();
     document.body.classList.toggle('preview-mode', !!preview);
     $('#transport').hidden = !preview;
-    $('#play-pause').textContent = preview?.paused ? '再生' : '一時停止';
+    $('#play-pause').textContent = t(preview?.paused ? 'play' : 'pause');
     $('#slow').setAttribute('aria-pressed', String(!!preview && preview.speed < 1));
     refresh(true); scheduleTick();
   }
@@ -2366,6 +2933,45 @@ Important Recommendations
     preview = { ...preview, epoch: +getNow(), started: performance.now(), speed: preview.speed === 1 ? .5 : 1 };
     resetTransport();
   }
+  let noticeTimer;
+  function showNotice(text) {
+    clearTimeout(noticeTimer);
+    $('#share-status').textContent = text;
+    noticeTimer = setTimeout(() => { $('#share-status').textContent = ''; },4000);
+  }
+  function manualShare(url) {
+    const input = $('#share-url'); input.value = url;
+    shareDialog.showModal(); input.focus(); input.select();
+  }
+  async function copyShare(url) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(url);
+      showNotice(t('shareCopied'));
+    } catch { manualShare(url); }
+  }
+  shareButton.addEventListener('click', () => {
+    if (shareButton.disabled || !displayedFrame) return;
+    const snapshot = displayedFrame, {code,seconds,view} = snapshot;
+    const state = {v:1,t:code+pad(seconds),font:view.font,numerals:view.numerals,division:view.division};
+    const url = FormulaShare.url(location.origin,state).href;
+    // Invalidate work for a newer second and settle the frame the user saw.
+    // Everything before navigator.share is synchronous to retain user activation.
+    Object.assign(displaySettings,{font:state.font,numerals:state.numerals,division:state.division});
+    setPreview(FormulaShare.localDate(state.t),true);
+    ++requestSerial;
+    scene.getAnimations({subtree:true}).forEach(animation => animation.finish());
+    applyFrame(snapshot.frame,snapshot.ast,code,seconds,false,true,view);
+    showNotice('');
+    if (typeof navigator.share !== 'function') { void copyShare(url); return; }
+    try {
+      navigator.share({title:FormulaShare.title(state),url}).catch(error => {
+        if (error?.name !== 'AbortError') void copyShare(url);
+      });
+    } catch (error) {
+      if (error?.name !== 'AbortError') void copyShare(url);
+    }
+  });
   function refresh(force = false) {
     const now = getNow(), secondKey = Math.floor(+now / 1000), seconds = now.getSeconds(), code = timeCode(now);
     const changed = secondKey !== lastSecond;
@@ -2384,7 +2990,7 @@ Important Recommendations
       requestSolutions(nextPrefetch.code);
       nextPrefetch = null;
     }
-    sourceTime.setAttribute('aria-label', `${pad(now.getHours())}時${pad(now.getMinutes())}分${pad(seconds)}秒`);
+    sourceTime.setAttribute('aria-label',t('clockTime',{hours:pad(now.getHours()),minutes:pad(now.getMinutes()),seconds:pad(seconds)}));
     $('#playback').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(seconds)}`;
     const ast = result?.solutions[seconds] || null;
     renderExpression(ast, code, seconds, !result);
@@ -2392,15 +2998,16 @@ Important Recommendations
     ticks.forEach((el, i) => {
       el.classList.toggle('solved', !!result?.solutions[i]); el.classList.toggle('current', i === seconds); el.classList.toggle('past', i < seconds);
       if (i === seconds) el.setAttribute('aria-current', 'time'); else el.removeAttribute('aria-current');
-      el.title = `${pad(i)}秒 · ${result ? (result.error ? 'データ取得失敗' : result.solutions[i] ? '式あり' : '式なし') : '読込中'}`;
+      const status = t(result ? (result.error ? 'dataFailed' : result.solutions[i] ? 'formulaAvailable' : 'noFormula') : 'loading');
+      el.title = t('secondStatus',{seconds:pad(i),status});
     });
     const label = $('#state-label'); label.className = 'state-label';
     if (now.getHours() === 23 && now.getMinutes() === 59 && seconds >= 57) {
-      label.textContent = `新しい一日まで、${60 - seconds}`; label.classList.add('counting');
+      label.textContent = t('newDayIn',{seconds:60 - seconds}); label.classList.add('counting');
     } else if (now.getHours() === 0 && now.getMinutes() === 0 && seconds === 0) {
-      label.textContent = '新しい一日。'; label.classList.add('counting');
-    } else if (!result) label.textContent = '式データを読み込み中。';
-    else if (result.error) label.textContent = '式データを読み込めなかった。通常の時計を表示中。';
+      label.textContent = t('newDay'); label.classList.add('counting');
+    } else if (!result) label.textContent = t('loadingData');
+    else if (result.error) label.textContent = t('dataClockFallback');
     else if (!ast) { label.textContent = ''; label.classList.add('quiet'); }
     else label.textContent = '';
     if (changed && previousSecond !== null && seconds === 0 && !(preview?.paused)) {
@@ -2459,11 +3066,10 @@ Important Recommendations
       }
     }
     paint() {
-      const label = !this.enabled ? '時報 オフ' : this.ready ? '時報 オン' :
-        this.error ? '時報 オン（再生できません）' : '時報 オン（画面を操作すると再開）';
+      const label = t(!this.enabled ? 'soundOff' : this.ready ? 'soundOn' : this.error ? 'soundError' : 'soundPending');
       $('#sound').setAttribute('aria-pressed', String(this.enabled));
       $('#sound').setAttribute('aria-label', label);
-      $('#sound').title = `${label}（M）`;
+      $('#sound').title = t('shortcut',{label,key:'M'});
       $('#sound-waves').setAttribute('d', this.enabled ? 'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14' : 'm16 9 6 6m0-6-6 6');
     }
     setVolume(v) { this.volume = Math.max(0, Math.min(1, v)); this.save(); if (this.master) this.master.gain.setTargetAtTime(this.volume * .32, this.ctx.currentTime, .035); }
@@ -2533,15 +3139,38 @@ Important Recommendations
     const [h,m,s = 0] = value.split(':').map(Number), d = new Date(); d.setHours(h,m,s,0);
     setPreview(d, true); settingsDialog.close();
   });
-  async function toggleFullscreen() {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-      else { document.body.classList.toggle('fullscreen'); renderResize(); }
-    } catch { document.body.classList.toggle('fullscreen'); renderResize(); }
+  const fullscreenButton = $('#fullscreen');
+  const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+  function fullscreenApi() {
+    const element = document.documentElement;
+    if (document.fullscreenEnabled && typeof element.requestFullscreen === 'function') {
+      return {enter:() => element.requestFullscreen(),exit:() => document.exitFullscreen()};
+    }
+    if (document.webkitFullscreenEnabled && typeof element.webkitRequestFullscreen === 'function') {
+      return {enter:() => element.webkitRequestFullscreen(),exit:() => document.webkitExitFullscreen()};
+    }
+    return null;
   }
-  $('#fullscreen').addEventListener('click', toggleFullscreen);
-  document.addEventListener('fullscreenchange', () => { document.body.classList.toggle('fullscreen', !!document.fullscreenElement); renderResize(); });
+  function paintFullscreen() {
+    const active = !!fullscreenElement(), label = t(active ? 'exitFullscreen' : 'fullscreen');
+    fullscreenButton.hidden = !active && !fullscreenApi();
+    fullscreenButton.setAttribute('aria-pressed',String(active));
+    fullscreenButton.setAttribute('aria-label',label);
+    fullscreenButton.title = t('shortcut',{label,key:'F'});
+    document.body.classList.toggle('fullscreen',active);
+  }
+  async function toggleFullscreen() {
+    const api = fullscreenApi();
+    if (!api) return;
+    try { await (fullscreenElement() ? api.exit() : api.enter()); }
+    catch { showNotice(t('fullscreenFailed')); }
+    finally { paintFullscreen(); }
+  }
+  fullscreenButton.addEventListener('click', toggleFullscreen);
+  for (const event of ['fullscreenchange','webkitfullscreenchange']) {
+    document.addEventListener(event, () => { paintFullscreen(); renderResize(); });
+  }
+  paintFullscreen();
   document.addEventListener('keydown', e => {
     if (settingsDialog.open || licenseDialog.open || e.altKey || e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY)$/.test(e.target.tagName)) return;
     if (e.key.toLowerCase() === 'm') sound.toggle();
@@ -2567,7 +3196,8 @@ Important Recommendations
     if (document.hidden) clearTimeout(tickTimer);
     else { lastSecond = null; refresh(true); scheduleTick(); }
   });
-  refresh(true); scheduleTick();
+  if (sharedState) resetTransport();
+  else { refresh(true); scheduleTick(); }
   setInterval(() => sound.poll(), 60);
   // Read-only handles for tests, with explicit transport controls for reproducible previews.
   window.FormulaClock = Object.freeze({
@@ -2579,7 +3209,7 @@ Important Recommendations
       const host = stage.getBoundingClientRect();
       return {
         build: 'r6-minimal', mathjax: typesetter.mathjax?.version || null, display:{...displaySettings},
-        userAgent: navigator.userAgent, engineError,
+        userAgent: navigator.userAgent, locale:ui.locale, engineError,
         typography: typesetter.typography, axisY: latestLayout?.axisY, localAxisY: latestLayout?.localAxisY,
         time: latestLayout ? `${latestLayout.code}:${pad(latestLayout.seconds)}` : null,
         glyphs: movingEls.map(el => {

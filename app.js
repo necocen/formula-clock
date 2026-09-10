@@ -1,6 +1,8 @@
 /* Formula Clock: persistent digit objects, separate typography and data delivery. */
 (() => {
   'use strict';
+  const ui = FormulaI18n.create(navigator.languages?.[0] || navigator.language), t = ui.t;
+  ui.apply(document);
   const $ = s => document.querySelector(s);
   const stage = $('#stage'), digitsEls = [...stage.querySelectorAll('.digit')];
   const sourceTime = $('#source-time'), sourceEls = [...sourceTime.querySelectorAll('.source-digit')];
@@ -8,8 +10,10 @@
   const cache = new Map(), pending = new Map();
   const settingsDialog = $('#settings'), settingsButton = $('#settings-open');
   const licenseDialog = $('#licenses');
-  function setupDialog(dialog, opener, closeButton) {
-    opener.addEventListener('click', () => {
+  const shareButton = $('#share'), shareDialog = $('#share-dialog');
+  const sharedState = FormulaShare.parse(new URL(location.href));
+  function setupDialog(dialog, opener, closeButton, openOnClick = true) {
+    if (openOnClick) opener.addEventListener('click', () => {
       dialog.showModal(); closeButton.focus({preventScroll:true}); dialog.scrollTop = 0;
     });
     closeButton.addEventListener('click', () => dialog.close());
@@ -36,6 +40,8 @@
   }
   setupDialog(settingsDialog,settingsButton,$('#settings-close'));
   setupDialog(licenseDialog,$('#licenses-open'),$('#licenses-close'));
+  setupDialog(shareDialog,shareButton,$('#share-close'),false);
+  shareButton.hidden = !['http:','https:'].includes(location.protocol);
   const {normalizeMinute, TableProvider} = FormulaData;
   const defaultProvider = () => new TableProvider(async () => {
     const embedded = document.querySelector('#clock-data');
@@ -61,12 +67,18 @@
     structureMotion: saved.structureMotion === true,
     symbolMorph: saved.symbolMorph === true
   };
+  // Restore before selecting an engine; opening a link never saves preferences.
+  if (sharedState) {
+    const {font,numerals,division} = sharedState;
+    Object.assign(displaySettings,{font,numerals,division});
+    document.title = FormulaShare.title(sharedState);
+  }
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const pad = n => String(n).padStart(2, '0');
   const timeCode = d => pad(d.getHours()) + pad(d.getMinutes());
   const ticks = Array.from({ length: 60 }, (_, i) => {
     const b = document.createElement('button'); b.className = 'tick' + (i % 5 === 0 ? ' major' : '');
-    b.title = `${pad(i)}秒を表示`; b.setAttribute('aria-label', `${i}秒をプレビュー`);
+    b.setAttribute('aria-label',t('previewSecond',{seconds:i}));
     b.addEventListener('click', () => { const d = getNow(); d.setSeconds(i, 0); setPreview(d, true); });
     $('#ruler').append(b); return b;
   });
@@ -133,6 +145,7 @@
     const next = {...displaySettings,...changes};
     if (!Object.hasOwn(FormulaTypesetter.PROFILES,next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS,next.numerals) || !['fraction','inline'].includes(next.division) || ['symbolMotion','structureMotion','symbolMorph'].some(key=>typeof next[key] !== 'boolean')) throw new TypeError('Invalid display options');
     displaySettings = {font:next.font,numerals:next.numerals,division:next.division,symbolMotion:next.symbolMotion,structureMotion:next.structureMotion,symbolMorph:next.symbolMorph};
+    shareButton.disabled = true;
     syncMotionControls();
     $('#font-choice').value = next.font;
     segmentedChoices.forEach(input => { input.checked = input.value === next[input.name]; });
@@ -157,7 +170,7 @@
   const plainTime = $('#plain-time');
   const movement = new Map();
   const morphs = new Map();
-  let notation = null, lastVisual = '', firstFrame = true, latestLayout = null;
+  let notation = null, lastVisual = '', firstFrame = true, latestLayout = null, displayedFrame = null;
   let requestSerial = 0, animationId = 0, engineError = null;
   const reportedRenderErrors = new Set();
   const mathNS = 'http://www.w3.org/2000/svg';
@@ -275,6 +288,7 @@
     status.textContent = message; status.hidden = !message;
   }
   function plainFallback(code, seconds, reason) {
+    shareButton.disabled = true;
     const full = `${code.slice(0,2)}:${code.slice(2)}:${pad(seconds)}`;
     [...plainTime.querySelectorAll('span')].forEach((el, i) => { el.textContent = full[i]; });
     plainTime.hidden = false; scene.style.visibility = 'hidden';
@@ -311,15 +325,9 @@
   }
   function applyFrame(frame, ast, code, seconds, loading, instant, view) {
     const W = stage.clientWidth, H = stage.clientHeight, b = frame.viewBox;
-    const axis = H / 2, margin = 15;
-    const above = Math.max(1, frame.axisY - b.y);
-    const below = Math.max(1, b.y + b.h - frame.axisY);
     // Fit each side of a fixed axis independently. A tall numerator may shrink
     // the equation, but must never push the equal sign or normal digits down.
-    const scale = Math.min(112 / 1000, (W - 24) / b.w,
-      (axis - margin) / above, (H - margin - axis) / below);
-    const x = (W - b.w * scale) / 2 - b.x * scale;
-    const y = axis - frame.axisY * scale;
+    const {axis,scale,x,y} = FormulaDisplay.fitFrame(b,frame.axisY,W,H);
     const fit = new DOMMatrix([scale, 0, 0, scale, x, y]);
     const animated = !instant && !firstFrame && !reducedMotion.matches;
     // One clock for the entire frame keeps a radical and its rule joined, even
@@ -371,17 +379,21 @@
     plainTime.hidden = true; scene.style.visibility = 'visible';
     renderSourceTime(frame.font,frame.numerals,code,seconds,!!ast && !loading);
     renderStatus();
-    stage.setAttribute('aria-label', ast ? `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒。${FormulaExpression.plain(ast, code)} = ${seconds}` : `${code.slice(0,2)}時${code.slice(2)}分${seconds}秒`);
+    const time = t('clockTime',{hours:code.slice(0,2),minutes:code.slice(2),seconds});
+    stage.setAttribute('aria-label',ast ? t('clockEquation',{time,expression:FormulaExpression.plain(ast,code),seconds}) : time);
     latestLayout = { display:{...view}, ast, code, seconds, mode: ast ? 'formula' : 'time', tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1000, axisY: axis, localAxisY: frame.axisY, fit: [scale,0,0,scale,x,y], typography: frame.typography };
+    displayedFrame = {frame,ast,code,seconds,view};
+    shareButton.disabled = loading || !!engineError || !cache.has(code) || !!cache.get(code).error;
     firstFrame = false;
   }
   function renderExpression(ast, code, seconds, loading, instant = false) {
+    if (loading) shareButton.disabled = true;
     const engine = typesetter, view = activeDisplay();
     const key = `${view.font}:${view.numerals}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;
-    if (!engine.ready) plainFallback(code,seconds,engine.error ? '組版を読み込めなかった。通常の時計を表示中。' : '時計を準備中。');
+    if (!engine.ready) plainFallback(code,seconds,t(engine.error ? 'typesettingFailed' : 'preparing'));
     if (engine.error) return;
     engine.frame(ast, code, seconds, view).then(frame => {
       if (serial !== requestSerial) return; // Discard any stale async result.
@@ -400,11 +412,11 @@
           const clockFrame = await engine.frame(null, code, seconds, view);
           if (serial !== requestSerial) return;
           applyFrame(clockFrame, null, code, seconds, false, instant, view);
-          renderStatus('この式を組版できなかった。通常の時計を表示中。');
+          renderStatus(t('formulaFailed'));
           return;
         } catch { /* Ordinary text fallback below. */ }
       }
-      plainFallback(code, seconds, '組版を読み込めなかった。通常の時計を表示中。');
+      plainFallback(code,seconds,t('typesettingFailed'));
     });
   }
   // Warm only the immediately upcoming frames; do not queue a minute of work
@@ -417,7 +429,8 @@
     }
   }
   // Transport time is anchored to the wall clock (live) or a monotonic clock (preview).
-  let preview = null, generation = 0, lastSecond = null, lastCode = null, tickTimer = null;
+  let preview = sharedState ? {epoch:+FormulaShare.localDate(sharedState.t),started:performance.now(),speed:1,paused:true} : null;
+  let generation = 0, lastSecond = null, lastCode = null, tickTimer = null;
   let nextPrefetch = null;
   const eventHistory = [];
   function getNow() { return preview ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started) * preview.speed) : new Date(); }
@@ -430,7 +443,7 @@
     generation++; lastSecond = null; sound.cancel();
     document.body.classList.toggle('preview-mode', !!preview);
     $('#transport').hidden = !preview;
-    $('#play-pause').textContent = preview?.paused ? '再生' : '一時停止';
+    $('#play-pause').textContent = t(preview?.paused ? 'play' : 'pause');
     $('#slow').setAttribute('aria-pressed', String(!!preview && preview.speed < 1));
     refresh(true); scheduleTick();
   }
@@ -445,6 +458,45 @@
     preview = { ...preview, epoch: +getNow(), started: performance.now(), speed: preview.speed === 1 ? .5 : 1 };
     resetTransport();
   }
+  let noticeTimer;
+  function showNotice(text) {
+    clearTimeout(noticeTimer);
+    $('#share-status').textContent = text;
+    noticeTimer = setTimeout(() => { $('#share-status').textContent = ''; },4000);
+  }
+  function manualShare(url) {
+    const input = $('#share-url'); input.value = url;
+    shareDialog.showModal(); input.focus(); input.select();
+  }
+  async function copyShare(url) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(url);
+      showNotice(t('shareCopied'));
+    } catch { manualShare(url); }
+  }
+  shareButton.addEventListener('click', () => {
+    if (shareButton.disabled || !displayedFrame) return;
+    const snapshot = displayedFrame, {code,seconds,view} = snapshot;
+    const state = {v:1,t:code+pad(seconds),font:view.font,numerals:view.numerals,division:view.division};
+    const url = FormulaShare.url(location.origin,state).href;
+    // Invalidate work for a newer second and settle the frame the user saw.
+    // Everything before navigator.share is synchronous to retain user activation.
+    Object.assign(displaySettings,{font:state.font,numerals:state.numerals,division:state.division});
+    setPreview(FormulaShare.localDate(state.t),true);
+    ++requestSerial;
+    scene.getAnimations({subtree:true}).forEach(animation => animation.finish());
+    applyFrame(snapshot.frame,snapshot.ast,code,seconds,false,true,view);
+    showNotice('');
+    if (typeof navigator.share !== 'function') { void copyShare(url); return; }
+    try {
+      navigator.share({title:FormulaShare.title(state),url}).catch(error => {
+        if (error?.name !== 'AbortError') void copyShare(url);
+      });
+    } catch (error) {
+      if (error?.name !== 'AbortError') void copyShare(url);
+    }
+  });
   function refresh(force = false) {
     const now = getNow(), secondKey = Math.floor(+now / 1000), seconds = now.getSeconds(), code = timeCode(now);
     const changed = secondKey !== lastSecond;
@@ -463,7 +515,7 @@
       requestSolutions(nextPrefetch.code);
       nextPrefetch = null;
     }
-    sourceTime.setAttribute('aria-label', `${pad(now.getHours())}時${pad(now.getMinutes())}分${pad(seconds)}秒`);
+    sourceTime.setAttribute('aria-label',t('clockTime',{hours:pad(now.getHours()),minutes:pad(now.getMinutes()),seconds:pad(seconds)}));
     $('#playback').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(seconds)}`;
     const ast = result?.solutions[seconds] || null;
     renderExpression(ast, code, seconds, !result);
@@ -471,15 +523,16 @@
     ticks.forEach((el, i) => {
       el.classList.toggle('solved', !!result?.solutions[i]); el.classList.toggle('current', i === seconds); el.classList.toggle('past', i < seconds);
       if (i === seconds) el.setAttribute('aria-current', 'time'); else el.removeAttribute('aria-current');
-      el.title = `${pad(i)}秒 · ${result ? (result.error ? 'データ取得失敗' : result.solutions[i] ? '式あり' : '式なし') : '読込中'}`;
+      const status = t(result ? (result.error ? 'dataFailed' : result.solutions[i] ? 'formulaAvailable' : 'noFormula') : 'loading');
+      el.title = t('secondStatus',{seconds:pad(i),status});
     });
     const label = $('#state-label'); label.className = 'state-label';
     if (now.getHours() === 23 && now.getMinutes() === 59 && seconds >= 57) {
-      label.textContent = `新しい一日まで、${60 - seconds}`; label.classList.add('counting');
+      label.textContent = t('newDayIn',{seconds:60 - seconds}); label.classList.add('counting');
     } else if (now.getHours() === 0 && now.getMinutes() === 0 && seconds === 0) {
-      label.textContent = '新しい一日。'; label.classList.add('counting');
-    } else if (!result) label.textContent = '式データを読み込み中。';
-    else if (result.error) label.textContent = '式データを読み込めなかった。通常の時計を表示中。';
+      label.textContent = t('newDay'); label.classList.add('counting');
+    } else if (!result) label.textContent = t('loadingData');
+    else if (result.error) label.textContent = t('dataClockFallback');
     else if (!ast) { label.textContent = ''; label.classList.add('quiet'); }
     else label.textContent = '';
     if (changed && previousSecond !== null && seconds === 0 && !(preview?.paused)) {
@@ -538,11 +591,10 @@
       }
     }
     paint() {
-      const label = !this.enabled ? '時報 オフ' : this.ready ? '時報 オン' :
-        this.error ? '時報 オン（再生できません）' : '時報 オン（画面を操作すると再開）';
+      const label = t(!this.enabled ? 'soundOff' : this.ready ? 'soundOn' : this.error ? 'soundError' : 'soundPending');
       $('#sound').setAttribute('aria-pressed', String(this.enabled));
       $('#sound').setAttribute('aria-label', label);
-      $('#sound').title = `${label}（M）`;
+      $('#sound').title = t('shortcut',{label,key:'M'});
       $('#sound-waves').setAttribute('d', this.enabled ? 'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14' : 'm16 9 6 6m0-6-6 6');
     }
     setVolume(v) { this.volume = Math.max(0, Math.min(1, v)); this.save(); if (this.master) this.master.gain.setTargetAtTime(this.volume * .32, this.ctx.currentTime, .035); }
@@ -612,15 +664,38 @@
     const [h,m,s = 0] = value.split(':').map(Number), d = new Date(); d.setHours(h,m,s,0);
     setPreview(d, true); settingsDialog.close();
   });
-  async function toggleFullscreen() {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
-      else { document.body.classList.toggle('fullscreen'); renderResize(); }
-    } catch { document.body.classList.toggle('fullscreen'); renderResize(); }
+  const fullscreenButton = $('#fullscreen');
+  const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+  function fullscreenApi() {
+    const element = document.documentElement;
+    if (document.fullscreenEnabled && typeof element.requestFullscreen === 'function') {
+      return {enter:() => element.requestFullscreen(),exit:() => document.exitFullscreen()};
+    }
+    if (document.webkitFullscreenEnabled && typeof element.webkitRequestFullscreen === 'function') {
+      return {enter:() => element.webkitRequestFullscreen(),exit:() => document.webkitExitFullscreen()};
+    }
+    return null;
   }
-  $('#fullscreen').addEventListener('click', toggleFullscreen);
-  document.addEventListener('fullscreenchange', () => { document.body.classList.toggle('fullscreen', !!document.fullscreenElement); renderResize(); });
+  function paintFullscreen() {
+    const active = !!fullscreenElement(), label = t(active ? 'exitFullscreen' : 'fullscreen');
+    fullscreenButton.hidden = !active && !fullscreenApi();
+    fullscreenButton.setAttribute('aria-pressed',String(active));
+    fullscreenButton.setAttribute('aria-label',label);
+    fullscreenButton.title = t('shortcut',{label,key:'F'});
+    document.body.classList.toggle('fullscreen',active);
+  }
+  async function toggleFullscreen() {
+    const api = fullscreenApi();
+    if (!api) return;
+    try { await (fullscreenElement() ? api.exit() : api.enter()); }
+    catch { showNotice(t('fullscreenFailed')); }
+    finally { paintFullscreen(); }
+  }
+  fullscreenButton.addEventListener('click', toggleFullscreen);
+  for (const event of ['fullscreenchange','webkitfullscreenchange']) {
+    document.addEventListener(event, () => { paintFullscreen(); renderResize(); });
+  }
+  paintFullscreen();
   document.addEventListener('keydown', e => {
     if (settingsDialog.open || licenseDialog.open || e.altKey || e.ctrlKey || e.metaKey || /^(INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY)$/.test(e.target.tagName)) return;
     if (e.key.toLowerCase() === 'm') sound.toggle();
@@ -646,7 +721,8 @@
     if (document.hidden) clearTimeout(tickTimer);
     else { lastSecond = null; refresh(true); scheduleTick(); }
   });
-  refresh(true); scheduleTick();
+  if (sharedState) resetTransport();
+  else { refresh(true); scheduleTick(); }
   setInterval(() => sound.poll(), 60);
   // Read-only handles for tests, with explicit transport controls for reproducible previews.
   window.FormulaClock = Object.freeze({
@@ -658,7 +734,7 @@
       const host = stage.getBoundingClientRect();
       return {
         build: 'r6-minimal', mathjax: typesetter.mathjax?.version || null, display:{...displaySettings},
-        userAgent: navigator.userAgent, engineError,
+        userAgent: navigator.userAgent, locale:ui.locale, engineError,
         typography: typesetter.typography, axisY: latestLayout?.axisY, localAxisY: latestLayout?.localAxisY,
         time: latestLayout ? `${latestLayout.code}:${pad(latestLayout.seconds)}` : null,
         glyphs: movingEls.map(el => {

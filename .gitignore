@@ -163,6 +163,7 @@ dist
 
 # Local development and generated deployment artifacts.
 /dist-external/
+/dist-worker/
 /.wrangler/
 /.venv/
 /test-results/

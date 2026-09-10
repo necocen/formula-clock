@@ -1,7 +1,8 @@
 // Build a standalone HTML, or an HTTP site with one content-addressed JSON per hour.
-// Font libraries remain CDN dependencies. No fonts are bundled.
+// Browser fonts stay on the CDN; the Worker renderer is bundled separately.
 'use strict';
 const fs=require('node:fs'), path=require('node:path'), zlib=require('node:zlib'), crypto=require('node:crypto');
+const {execFileSync}=require('node:child_process');
 const read=name=>fs.readFileSync(path.join(__dirname,name),'utf8');
 const external=process.argv.includes('--external'), raw=process.argv.includes('--raw-json');
 const outDir=external ? path.join(__dirname,'dist-external') : __dirname;
@@ -11,7 +12,7 @@ fs.mkdirSync(outDir,{recursive:true});
 const licenseContent=read('licenses.html').match(/<!-- licenses-content:start -->([\s\S]*?)<!-- licenses-content:end -->/);
 if(!licenseContent) throw new Error('License content markers are missing');
 let html=read('_head.html').replace('<!-- licenses-content -->',()=>licenseContent[1]);
-for(const name of ['expression','data','symbols','typesetter']) html+=`\n<script id="${name}-code">\n${read(name+'.js')}\n</script>\n`;
+for(const name of ['i18n','display','share','expression','data','symbols','typesetter']) html+=`\n<script id="${name}-code">\n${read(name+'.js')}\n</script>\n`;
 const data=read('data/expressions.json');
 if(external) {
   const table=JSON.parse(data), folder=path.join(outDir,'data','hours');fs.mkdirSync(folder,{recursive:true});
@@ -40,4 +41,5 @@ if(external) {
 html+=`<script id="app-code">\n${read('app.js')}\n</script>\n</body>\n</html>\n`;
 fs.writeFileSync(path.join(outDir,'index.html'),html);
 if(external) fs.copyFileSync(path.join(__dirname,'licenses.html'),path.join(outDir,'licenses.html'));
+if(external) execFileSync(process.execPath,[path.join(__dirname,'tools/build-worker.mjs')],{cwd:__dirname,stdio:'inherit'});
 console.log(`${outDir}/index.html: ${Buffer.byteLength(html)} bytes (${external?'async hourly JSON':raw?'embedded JSON':'embedded gzip JSON'})`);

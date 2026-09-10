@@ -58,7 +58,9 @@
   }
   class StaleManifestError extends Error {}
   class FetchHourProvider {
-    constructor(manifestUrl) {
+    constructor(manifestUrl, {fetch: fetcher = (...args) => fetch(...args)} = {}) {
+      if (typeof fetcher !== 'function') throw new TypeError('Expected a fetch function');
+      this.fetch = fetcher;
       this.url = new URL(manifestUrl,root.document?.baseURI).href;
       this.manifest = null;
       this.manifestTask = null;
@@ -69,7 +71,7 @@
       if (this.manifest && this.manifest !== previous) return this.manifest;
       if (this.manifestTask) return this.manifestTask;
       const task = (async () => {
-        const response = await fetch(this.url,{credentials:'same-origin',cache:'no-cache'});
+        const response = await this.fetch(this.url,{credentials:'same-origin',cache:'no-cache'});
         if (!response.ok) throw new DataHTTPError(response.status,this.url);
         const raw = await response.json();
         if (raw?.schema !== 'formula-clock-hours/1' || !/^[a-f0-9]{64}$/.test(raw.version) ||
@@ -104,7 +106,7 @@
       if (this.pending.has(key)) return this.pending.get(key);
       const task = (async () => {
         const url = manifest.urls[hour];
-        const response = await fetch(url,{credentials:'same-origin'});
+        const response = await this.fetch(url,{credentials:'same-origin'});
         if (!response.ok) throw new DataHTTPError(response.status,url);
         const table = await response.json();
         tableHeader(table);

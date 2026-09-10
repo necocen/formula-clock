@@ -6,13 +6,8 @@
   const NS = 'http://www.w3.org/2000/svg';
   const Expression = typeof module !== 'undefined' && module.exports ? require('./expression.js') : root.FormulaExpression;
   const { expressionTex, frameTex, mark, relation } = Expression;
-  const PROFILES = Object.freeze({
-    stix2: Object.freeze({id:'stix2', label:'STIX Two', font:'mathjax-stix2', extensions:[]}),
-    termes: Object.freeze({id:'termes', label:'Termes', font:'mathjax-termes', extensions:[]}),
-    fira: Object.freeze({id:'fira', label:'Fira', font:'mathjax-fira', extensions:[]}),
-    euler: Object.freeze({id:'euler', label:'Euler', font:'mathjax-modern', extensions:['mathjax-euler']})
-  });
-  const NUMERALS = Object.freeze({lining:'Lining',oldstyle:'Oldstyle'});
+  const Display = typeof module !== 'undefined' && module.exports ? require('./display.js') : root.FormulaDisplay;
+  const {PROFILES,NUMERALS} = Display;
   const matrixArray = m => [m.a, m.b, m.c, m.d, m.e, m.f];
   function finiteMatrix(m) { return matrixArray(m).every(Number.isFinite); }
 
@@ -41,9 +36,8 @@
     constructor(profile = 'stix2', numerals = 'oldstyle') {
       if (!Object.hasOwn(PROFILES,profile)) throw new TypeError('Unknown font profile');
       if (!Object.hasOwn(NUMERALS,numerals)) throw new TypeError('Unknown numeral style');
-      this.profile = Object.freeze({...PROFILES[profile], numerals,
-        label:`${PROFILES[profile].label} · ${NUMERALS[numerals]}`,
-        oldstyle:numerals === 'oldstyle', centerOperators:numerals === 'lining', numericAxis:numerals === 'lining'});
+      this.profile = Object.freeze({...Display.typography(profile,numerals),
+        label:`${PROFILES[profile].label} · ${NUMERALS[numerals]}`});
       this.mathjax = null;
       // Separate contexts for each font/style keep extensions and lining-axis
       // calibration out of other fonts and native oldstyle axes. Engines are lazy

@@ -50,7 +50,7 @@ with sync_playwright() as p:
     report['browserVersion'] = browser.version
 
     def new_page(prefix='', suffix=''):
-        page = browser.new_page(viewport={'width': 1440, 'height': 1000}, timezone_id='Asia/Tokyo')
+        page = browser.new_page(locale='ja-JP', viewport={'width': 1440, 'height': 1000}, timezone_id='Asia/Tokyo')
         page.on('pageerror', lambda e: errors.append(str(e)))
         page.add_init_script(prefix + instrument + suffix)
         page.goto(args.url)
@@ -169,7 +169,7 @@ with sync_playwright() as p:
         return resume.call(this);
       };
     '''
-    page = browser.new_page(timezone_id='Asia/Tokyo')
+    page = browser.new_page(locale='ja-JP', timezone_id='Asia/Tokyo')
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.add_init_script(f'localStorage.setItem({json.dumps(key)},\'{json.dumps({"enabled":True,"volume":.4})}\');' + instrument + rejection)
     page.goto(args.url); ready(page); settings(page, True, .4)

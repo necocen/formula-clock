@@ -21,7 +21,7 @@ errors = []
 with sync_playwright() as p:
     browser = getattr(p, args.browser).launch()
     report['browserVersion'] = browser.version
-    page = browser.new_page(viewport={'width': 1440, 'height': 1000}, timezone_id='Asia/Tokyo')
+    page = browser.new_page(locale='ja-JP', viewport={'width': 1440, 'height': 1000}, timezone_id='Asia/Tokyo')
     page.on('pageerror', lambda e: errors.append(str(e)))
 
     def ready():
@@ -158,7 +158,7 @@ with sync_playwright() as p:
     page.wait_for_function('!FormulaClock.state.engineError && FormulaClock.state.layout.mode==="formula"')
     assert page.locator('#render-status').get_attribute('hidden') is not None
 
-    failed = browser.new_page(timezone_id='Asia/Tokyo')
+    failed = browser.new_page(locale='ja-JP', timezone_id='Asia/Tokyo')
     failed.on('pageerror', lambda e: errors.append(str(e)))
     failed.route('https://cdn.jsdelivr.net/**', lambda route: route.abort())
     failed.goto(args.url)
