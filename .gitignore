@@ -172,6 +172,3 @@ __pycache__/
 *.pyc
 .dev.vars*
 .env.*
-
-# Preserve the original handoff evidence.
-!docs/verification/*.log

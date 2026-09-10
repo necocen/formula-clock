@@ -233,3 +233,28 @@ new FormulaData.FetchHourProvider('data/manifest.json')
 
 公開書体IDは `stix2` / `termes` / `fira` / `euler` の4種類。旧 `oldstyle` 書体設定は初期値の `stix2` へ戻す。`numerals` が未保存なら旧Eulerはlining、それ以外はoldstyleへ移行する。
 独立iframe・数字スタイルごとの軸設定・各書体本来の数字の字形を維持する。
+
+## 9. 共有URLとOG画像
+
+共有状態の正規URLは `/` に次のクエリを付けたもの。
+
+```text
+?v=1&t=235334&font=stix2&numerals=oldstyle&division=fraction
+```
+
+`t` はASCIIのHHMMSS（00:00:00〜23:59:59）。日付やタイムゾーンを表さない。
+`v` 省略は1として扱う。時刻がない・不正・バージョン未対応なら通常起動する。
+書体・数字スタイル・除算表示の欠落や不正値には、それぞれstix2・oldstyle・fractionを使う。
+未知のパラメータは無視し、生成URLには含めない。音とアニメーション設定も共有しない。
+
+`share.js` の `FormulaShare.parse(url)` と `FormulaShare.url(origin,state)` をブラウザとWorkerで共用する。
+復元は保存設定を読み取った後、最初の組版エンジンを選ぶ前に行い、localStorageへ書き戻さない。
+プレビューは停止状態で始まり、日付は表示しない。共有時も端末の現在秒ではなく、最後に描画を適用した時刻・設定を使う。
+
+Workerは `/` のHTMLへOG・Twitter Card・canonicalを挿入し、`/og.png` で画像を配信する。
+画像URLは共有状態に描画版 `r` を加える。`r` はキャッシュの更新用であり、過去の描画版を指定するAPIではない。
+式データは現在の版を使い、入力として任意のTeX・AST・外部URL・画像は受け付けない。
+`renderOg({state,ast})` は正規ASTからPNGを返す、Cloudflareのストレージに依存しない処理。
+
+`FetchHourProvider(manifestUrl, {fetch})` の任意の第2引数で取得関数を差し替えられる。
+WorkerではASSETS bindingを使い、既存の `getMinute(hhmm, {signal})` 契約とキャッシュ・中止処理を維持する。
