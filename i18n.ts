@@ -27,7 +27,6 @@ const messages = {
   shareHelp: {ja:'このURLをコピーして共有できます。',en:'Copy this link to share the current view.'},
   shareUrl: {ja:'共有URL',en:'Share link'},
   shareCopied: {ja:'共有URLをコピーしました',en:'Share link copied'},
-  shareCreating: {ja:'共有リンクを作成中…',en:'Creating a share link…'},
   shareFailed: {ja:'共有リンクを作成できませんでした。もう一度お試しください。',en:'Could not create the share link. Please try again.'},
   shareNative: {ja:'共有する',en:'Share'},
   shareCopy: {ja:'リンクをコピー',en:'Copy link'},

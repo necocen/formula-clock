@@ -72,7 +72,7 @@ with sync_playwright() as p:
     page.click('#share')
     assert page.evaluate('nativeCalls.at(-1).url') == url
     assert page.evaluate('nativeCalls.at(-1).title') == 'Formula Clock - 12:34:21'
-    assert page.evaluate('nativeCalls.at(-1).text') == '(1+2)x(3+4)=21'
+    assert page.evaluate('!("text" in nativeCalls.at(-1))')
     assert page.evaluate('nativeCalls.at(-1).activation')
     assert page.evaluate('postBodies.length') == 0
     page.set_viewport_size({'width':390,'height':844})
@@ -108,7 +108,7 @@ with sync_playwright() as p:
     assert page.title() == 'Formula Clock — 12:34:30'
     page.click('#share')
     assert page.evaluate('nativeCalls.at(-1).title') == 'Formula Clock - 12:34:30'
-    assert page.evaluate('nativeCalls.at(-1).text') == '12:34:30'
+    assert page.evaluate('!("text" in nativeCalls.at(-1))')
     assert page.evaluate('async()=>!!(await FORMULA_CLOCK_CONFIG.provider.getMinute("1234")).seconds[30]')
     page.evaluate('FormulaClock.preview(FormulaShare.localDate("123430"),true)')
     ready(page,'123430')
@@ -135,6 +135,7 @@ with sync_playwright() as p:
     ready(page,'123431')
     page.click('#share')
     assert page.evaluate('FormulaClock.state.paused && document.querySelector("#share").disabled')
+    assert page.locator('#share-status').text_content() == ''
     page.wait_for_function('document.querySelector("#share-dialog").open',timeout=15000)
     assert page.evaluate('nativeCalls.length') == 0
     for width in [320,390,768]:
@@ -148,7 +149,7 @@ with sync_playwright() as p:
     assert re.search(r'/s/[A-Za-z0-9]{10}$',delayed_url)
     assert read_snapshot(ctx,delayed_url) == page.evaluate('postBodies.at(-1)')
     page.keyboard.press('Escape')
-    report['checks'].append('A slow ID request preserves the displayed AST and offers native sharing with fresh user activation at 320/390/768 px')
+    report['checks'].append('A slow ID request stays silent, preserves the displayed AST and offers native sharing with fresh user activation at 320/390/768 px')
 
     page.evaluate('window.shareMode="fail";FormulaClock.preview(FormulaShare.localDate("123432"),true)')
     ready(page,'123432'); page.click('#share')
@@ -181,9 +182,9 @@ with sync_playwright() as p:
         assert page.locator(selector).get_attribute('content') == '1+2^3/√4=5'
     page.click('#share')
     assert page.evaluate('nativeCalls.at(-1).title') == 'Formula Clock - 12:34:05'
-    assert page.evaluate('nativeCalls.at(-1).text') == '1+2^3/√4=5'
+    assert page.evaluate('!("text" in nativeCalls.at(-1))')
     assert page.evaluate('nativeCalls.at(-1).url') == args.url+'s/'+title_id
-    report['checks'].append('Native sharing uses the same title and description as OG/Twitter, in separate title/text fields, together with the saved URL')
+    report['checks'].append('Native sharing passes the card title and saved URL without text; OG/Twitter descriptions keep the compact equation')
     report['mathjax'] = page.evaluate('FormulaClock.diagnostics().mathjax')
     assert report['mathjax'] == '4.1.3'
     ctx.close();browser.close()

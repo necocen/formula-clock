@@ -1596,7 +1596,6 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     shareHelp: { ja: "\u3053\u306EURL\u3092\u30B3\u30D4\u30FC\u3057\u3066\u5171\u6709\u3067\u304D\u307E\u3059\u3002", en: "Copy this link to share the current view." },
     shareUrl: { ja: "\u5171\u6709URL", en: "Share link" },
     shareCopied: { ja: "\u5171\u6709URL\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F", en: "Share link copied" },
-    shareCreating: { ja: "\u5171\u6709\u30EA\u30F3\u30AF\u3092\u4F5C\u6210\u4E2D\u2026", en: "Creating a share link\u2026" },
     shareFailed: { ja: "\u5171\u6709\u30EA\u30F3\u30AF\u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002", en: "Could not create the share link. Please try again." },
     shareNative: { ja: "\u5171\u6709\u3059\u308B", en: "Share" },
     shareCopy: { ja: "\u30EA\u30F3\u30AF\u3092\u30B3\u30D4\u30FC", en: "Copy link" },
@@ -3286,7 +3285,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       };
       const card = FormulaShare.card(state);
       try {
-        void navigator.share({ title: card.title, text: card.description ?? void 0, url }).catch(failed);
+        void navigator.share({ title: card.title, url }).catch(failed);
       } catch (error) {
         failed(error);
       }
@@ -3362,7 +3361,6 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       shareBusy = true;
       shareButton.disabled = true;
       shareButton.setAttribute("aria-busy", "true");
-      showNotice(t("shareCreating"));
       try {
         const id = await shareLinks.prepare(state), url = FormulaShare.shortUrl(location.origin, id).href;
         if (serial !== shareSerial) return;

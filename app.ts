@@ -541,7 +541,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
       manualShare(url);
     };
     const card = FormulaShare.card(state);
-    try { void navigator.share({title:card.title,text:card.description ?? undefined,url}).catch(failed); } catch (error) { failed(error); }
+    try { void navigator.share({title:card.title,url}).catch(failed); } catch (error) { failed(error); }
   }
   function displayedSnapshot(): SharedSnapshot | null {
     if (!displayedFrame || shareButton.disabled || shareButton.hidden || document.hidden) return null;
@@ -601,7 +601,6 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     const serial = ++shareSerial, preparedId = shareLinks.peek(state);
     if (preparedId) { deliverShare(FormulaShare.shortUrl(location.origin,preparedId).href,state,serial); return; }
     shareBusy = true; shareButton.disabled = true; shareButton.setAttribute('aria-busy','true');
-    showNotice(t('shareCreating'));
     try {
       const id = await shareLinks.prepare(state), url = FormulaShare.shortUrl(location.origin,id).href;
       if (serial !== shareSerial) return;
