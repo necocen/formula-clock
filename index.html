@@ -1709,6 +1709,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   var expression_exports = {};
   __export(expression_exports, {
     assertCode: () => assertCode,
+    compact: () => compact,
     default: () => expression_default,
     expressionTex: () => expressionTex,
     frameTex: () => frameTex,
@@ -1856,7 +1857,28 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     if (ast.op === "fact") return `(${a})!`;
     return `(${a} ${{ add: "+", sub: "\u2212", mul: "\xD7", div: options2.division || "\xF7", pow: "^" }[ast.op]} ${plain(ast.b, code, options2)})`;
   }
-  var api3 = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain };
+  function compact(ast, code) {
+    const opt = options({ division: "inline" }), group = (text) => `(${text})`;
+    function write(a) {
+      if (a.op === "lit") return code.slice(a.i, a.j);
+      const left = write(a.a);
+      if (a.op === "sqrt") return `\u221A(${left})`;
+      if (a.op === "neg") return "-" + (precedence(a.a, opt) <= 30 ? group(left) : left);
+      if (a.op === "fact") return (["lit", "sqrt"].includes(a.a.op) ? left : group(left)) + "!";
+      const right = write(a.b);
+      if (a.op === "pow") return (precedence(a.a, opt) <= 40 ? group(left) : left) + "^" + (precedence(a.b, opt) <= 40 ? group(right) : right);
+      const p = precedence(a, opt);
+      function child(node, text, isRight) {
+        const q = precedence(node, opt);
+        const homogeneous = (n) => precedence(n, opt) !== p || n.op === a.op && "b" in n && homogeneous(n.a) && homogeneous(n.b);
+        const associative = (a.op === "add" || a.op === "mul") && node.op === a.op && homogeneous(node);
+        return q < p || isRight && (q === p && !associative || node.op === "neg") ? group(text) : text;
+      }
+      return child(a.a, left, false) + { add: "+", sub: "-", mul: "x", div: "/" }[a.op] + child(a.b, right, true);
+    }
+    return write(ast);
+  }
+  var api3 = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain, compact };
   var expression_default = Object.freeze(api3);
 
   // share.ts
@@ -1917,11 +1939,17 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     if (!state) return "Formula Clock";
     return state.ast ? `${plain(state.ast, state.t.slice(0, 4), { division: "/" })} = ${Number(state.t.slice(4))}` : `Formula Clock \u2014 ${timeLabel(state)}`;
   }
+  function card(state) {
+    return {
+      title: state ? `Formula Clock - ${timeLabel(state)}` : "Formula Clock",
+      description: state ? state.ast ? `${compact(state.ast, state.t.slice(0, 4))}=${Number(state.t.slice(4))}` : timeLabel(state) : null
+    };
+  }
   function localDate(time) {
     if (!validTime(time)) throw new TypeError("Invalid shared time");
     return new Date(2e3, 0, 15, Number(time.slice(0, 2)), Number(time.slice(2, 4)), Number(time.slice(4)), 0);
   }
-  var api4 = { parse, params, url, snapshot, id, shortUrl, view, timeLabel, title, localDate };
+  var api4 = { parse, params, url, snapshot, id, shortUrl, view, timeLabel, title, card, localDate };
   var share_default = Object.freeze(api4);
 
   // data.ts

@@ -92,12 +92,13 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
     imageUrl.searchParams.set('r',revision);
     let ast = shared?.snapshot.ast;
     if (state && !shared) {
-      try { ast = (await deadline(signal => providerFor(env.ASSETS).getMinute(state.t.slice(0,4),{signal}),timeoutMs,'Shared title')).seconds[Number(state.t.slice(4))]; }
+      try { ast = (await deadline(signal => providerFor(env.ASSETS).getMinute(state.t.slice(0,4),{signal}),timeoutMs,'Shared metadata')).seconds[Number(state.t.slice(4))]; }
       catch { /* Legacy links retain the time title when the dataset is unavailable. */ }
     }
-    const title = Share.title(state ? {...state,ast} : null), description = state ? `${Share.timeLabel(state)}のFormula Clock。` : normalDescription;
-    const metadata: Record<string,string> = {'description':description,'og:title':title,'og:description':description,'og:image':imageUrl.href,
-      'twitter:title':title,'twitter:image':imageUrl.href};
+    const reading = state ? {...state,ast} : null, title = Share.title(reading), card = Share.card(reading);
+    const description = card.description || normalDescription;
+    const metadata: Record<string,string> = {'description':description,'og:title':card.title,'og:description':description,'og:image':imageUrl.href,
+      'twitter:title':card.title,'twitter:image':imageUrl.href};
     // Clear query and conditional headers: the source asset's ETag cannot stand
     // for the dynamically rewritten representation of every shared state.
     const source = await env.ASSETS.fetch(new Request(new URL('/',url.origin),{method:request.method}));

@@ -148,6 +148,30 @@ function plain(ast: Expr, code: string, options: {division?: '÷' | '/'} = {}): 
   if (ast.op === 'fact') return `(${a})!`;
   return `(${a} ${{add:'+',sub:'−',mul:'×',div:options.division || '÷',pow:'^'}[ast.op]} ${plain(ast.b,code,options)})`;
 }
-const api = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain };
-export {assertCode,validateAst,expressionTex,frameTex,mark,relation,options,plain};
+/** Compact text for link cards; grouping follows the AST, never TeX replacement. */
+function compact(ast: Expr, code: string): string {
+  const opt = options({division:'inline'}), group = (text: string) => `(${text})`;
+  function write(a: Expr): string {
+    if (a.op === 'lit') return code.slice(a.i,a.j);
+    const left = write(a.a);
+    if (a.op === 'sqrt') return `√(${left})`;
+    if (a.op === 'neg') return '-' + (precedence(a.a,opt) <= 30 ? group(left) : left);
+    if (a.op === 'fact') return (['lit','sqrt'].includes(a.a.op) ? left : group(left)) + '!';
+    const right = write(a.b);
+    if (a.op === 'pow') return (precedence(a.a,opt) <= 40 ? group(left) : left) + '^' +
+      (precedence(a.b,opt) <= 40 ? group(right) : right);
+    const p = precedence(a,opt);
+    function child(node: Expr,text: string,isRight: boolean) {
+      const q = precedence(node,opt);
+      const homogeneous = (n: Expr): boolean => precedence(n,opt) !== p ||
+        (n.op === a.op && 'b' in n && homogeneous(n.a) && homogeneous(n.b));
+      const associative = (a.op === 'add' || a.op === 'mul') && node.op === a.op && homogeneous(node);
+      return q < p || (isRight && ((q === p && !associative) || node.op === 'neg')) ? group(text) : text;
+    }
+    return child(a.a,left,false) + {add:'+',sub:'-',mul:'x',div:'/'}[a.op] + child(a.b,right,true);
+  }
+  return write(ast);
+}
+const api = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain, compact };
+export {assertCode,validateAst,expressionTex,frameTex,mark,relation,options,plain,compact};
 export default Object.freeze(api);

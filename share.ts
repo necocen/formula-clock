@@ -1,7 +1,7 @@
 import {isRecord, type SharedClockState, type SharedSnapshot, type SharedView, type Expr} from './types.ts';
 /* A shared link identifies a wall-clock reading, never a date or an instant. */
 import * as Display from './display.ts';
-import {validateAst,plain} from './expression.ts';
+import {validateAst,plain,compact} from './expression.ts';
 const validTime = (value: unknown): value is string => typeof value === 'string' && /^(?:[01][0-9]|2[0-3])[0-5][0-9][0-5][0-9]$/.test(value);
 function parse(url: string | URL): Readonly<SharedClockState> | null {
   const p = (url instanceof URL ? url : new URL(url)).searchParams;
@@ -51,11 +51,15 @@ function title(state: (SharedClockState & {readonly ast?: Expr | null}) | null) 
   if (!state) return 'Formula Clock';
   return state.ast ? `${plain(state.ast,state.t.slice(0,4),{division:'/'})} = ${Number(state.t.slice(4))}` : `Formula Clock — ${timeLabel(state)}`;
 }
+function card(state: (SharedClockState & {readonly ast?: Expr | null}) | null) {
+  return {title:state ? `Formula Clock - ${timeLabel(state)}` : 'Formula Clock',
+    description:state ? (state.ast ? `${compact(state.ast,state.t.slice(0,4))}=${Number(state.t.slice(4))}` : timeLabel(state)) : null};
+}
 function localDate(time: string) {
   if (!validTime(time)) throw new TypeError('Invalid shared time');
   // A fixed calendar day avoids a spring-forward gap on the day the URL opens.
   return new Date(2000,0,15,Number(time.slice(0,2)),Number(time.slice(2,4)),Number(time.slice(4)),0);
 }
-const api = {parse,params,url,snapshot,id,shortUrl,view,timeLabel,title,localDate};
-export {parse,params,url,snapshot,id,shortUrl,view,timeLabel,title,localDate};
+const api = {parse,params,url,snapshot,id,shortUrl,view,timeLabel,title,card,localDate};
+export {parse,params,url,snapshot,id,shortUrl,view,timeLabel,title,card,localDate};
 export default Object.freeze(api);

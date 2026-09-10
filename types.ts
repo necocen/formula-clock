@@ -66,6 +66,7 @@ export interface FormulaShareAPI {
   view(value: unknown): Readonly<SharedView>;
   timeLabel(state: SharedClockState): string;
   title(state: (SharedClockState & {readonly ast?: Expr | null}) | null): string;
+  card(state: (SharedClockState & {readonly ast?: Expr | null}) | null): {title: string; description: string | null};
   localDate(time: string): Date;
 }
 
