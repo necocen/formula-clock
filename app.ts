@@ -375,7 +375,8 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     const W = stage.clientWidth, H = stage.clientHeight, b = frame.viewBox;
     // Fit each side of a fixed axis independently. A tall numerator may shrink
     // the equation, but must never push the equal sign or normal digits down.
-    const {axis,scale,x,y} = FormulaDisplay.fitFrame(b,frame.axisY,W,H);
+    const maxFontSize = document.body.classList.contains('fullscreen') ? H * .7 : 112;
+    const {axis,scale,x,y} = FormulaDisplay.fitFrame(b,frame.axisY,W,H,maxFontSize);
     const fit = new DOMMatrix([scale, 0, 0, scale, x, y]);
     const animated = !instant && !firstFrame && !reducedMotion.matches;
     // One clock for the entire frame keeps a radical and its rule joined, even

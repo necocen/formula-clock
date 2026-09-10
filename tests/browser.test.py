@@ -345,13 +345,18 @@ with sync_playwright() as p:
     page.evaluate('FormulaClock.live()');page.wait_for_timeout(1000)
     if args.screenshots:page.screenshot(path=str(out/'live.png'),full_page=True)
     if page.locator('#fullscreen').is_visible():
+        preview('12:34:30')
+        normal_size = page.evaluate('FormulaClock.state.layout.fontSize')
         page.click('#fullscreen')
         page.wait_for_function('document.fullscreenElement || document.webkitFullscreenElement')
         assert page.locator('#fullscreen').get_attribute('aria-pressed') == 'true'
+        page.wait_for_function('size=>FormulaClock.state.layout.fontSize>size*1.4',arg=normal_size)
+        assert page.evaluate('FormulaClock.digits.every((el,i)=>el===originalDigits[i])')
         page.click('#fullscreen')
         page.wait_for_function('!document.fullscreenElement && !document.webkitFullscreenElement')
         assert page.locator('#fullscreen').get_attribute('aria-pressed') == 'false'
-        report['checks'].append('Native fullscreen enters and exits without losing controls')
+        page.wait_for_function('size=>Math.abs(FormulaClock.state.layout.fontSize-size)<.01',arg=normal_size)
+        report['checks'].append('Native fullscreen enlarges the clock, preserves digit elements and restores the normal size on exit')
     else:
         assert not page.evaluate("document.body.classList.contains('fullscreen')")
         report['checks'].append('Unsupported fullscreen control is hidden')

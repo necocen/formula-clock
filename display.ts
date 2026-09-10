@@ -13,10 +13,10 @@ function typography(font: DisplayOptions['font'], numerals: DisplayOptions['nume
   return Object.freeze({...PROFILES[font],numerals,oldstyle:numerals === 'oldstyle',
     centerOperators:numerals === 'lining',numericAxis:numerals === 'lining'});
 }
-function fitFrame(bounds: Bounds, axisY: number, width: number, height: number) {
+function fitFrame(bounds: Bounds, axisY: number, width: number, height: number, maxFontSize = 112) {
   const axis = height / 2, margin = 15;
   const above = Math.max(1,axisY - bounds.y), below = Math.max(1,bounds.y + bounds.h - axisY);
-  const scale = Math.min(112 / 1000,(width - 24) / bounds.w,(axis - margin) / above,(height - margin - axis) / below);
+  const scale = Math.min(maxFontSize / 1000,(width - 24) / bounds.w,(axis - margin) / above,(height - margin - axis) / below);
   return {scale,x:(width - bounds.w * scale) / 2 - bounds.x * scale,y:axis - axisY * scale,axis};
 }
 const api = {PROFILES,NUMERALS,DEFAULTS,typography,fitFrame};
