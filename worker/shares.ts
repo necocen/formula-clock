@@ -44,8 +44,9 @@ export async function createShare(request: Request,env: Env): Promise<Response> 
       if (id.length === 10) break;
     }
   }
+  const started = Date.now();
   await env.SHARES.put(shareKey(id),JSON.stringify(snapshot)); // Deliberately no expiration.
-  return json({id},201,{Location:`/s/${id}`});
+  return json({id},201,{Location:`/s/${id}`,'Server-Timing':`kv;dur=${Date.now()-started}`});
 }
 
 export async function readShare(id: string,env: Env): Promise<SharedView> {

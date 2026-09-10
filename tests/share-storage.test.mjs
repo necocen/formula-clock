@@ -19,6 +19,11 @@ test('creation waits for durable KV write; snapshots never expire and ids cannot
   const response=await pending;assert.equal(response.status,201);const {id}=await response.json();
   assert.match(id,/^[A-Za-z0-9]{10}$/);assert.equal(response.headers.get('Location'),`/s/${id}`);
   assert.equal(response.headers.get('Cache-Control'),'no-store');assert.deepEqual(JSON.parse(f.records.get('share/'+id)),snapshot);
+  const timing=response.headers.get('Server-Timing');
+  assert.match(timing,/kv;dur=\d+, share;dur=\d+/);
+  const [kv,total]=[...timing.matchAll(/dur=(\d+)/g)].map(match=>Number(match[1]));
+  assert.ok(kv>=5 && total>=kv,'Server timing includes the awaited KV write');
+  assert.equal(f.rendered.length,0);assert.equal(f.images.size,0);
   assert.deepEqual(f.writes,[[]]);assert.equal((await f.create({...snapshot,id})).status,400);
 });
 test('separate snapshots at the same time have distinct image caches; eviction regenerates their saved ASTs',async()=>{

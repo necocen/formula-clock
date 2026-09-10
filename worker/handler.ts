@@ -127,8 +127,12 @@ export function createHandler({renderOg,revision,timeoutMs = 8000,writeTimeoutMs
     const url = new URL(request.url);
     if (url.pathname === '/api/shares') {
       if (request.method !== 'POST') return json({error:'method-not-allowed'},405,{Allow:'POST'});
-      try { return await deadline(() => createShare(request,env),timeoutMs,'Share creation'); }
-      catch (error) { return json({error:error instanceof ShareError ? error.message : 'share-storage-unavailable'},error instanceof ShareError ? error.status : 503); }
+      const started = Date.now();
+      let response: Response;
+      try { response = await deadline(() => createShare(request,env),timeoutMs,'Share creation'); }
+      catch (error) { response = json({error:error instanceof ShareError ? error.message : 'share-storage-unavailable'},error instanceof ShareError ? error.status : 503); }
+      response.headers.append('Server-Timing',`share;dur=${Date.now()-started}`);
+      return response;
     }
     const imagePath = url.pathname.endsWith('/og.png'), id = Share.id(imagePath ? url.pathname.slice(0,-7) : url.pathname);
     if (!['/','/og.png'].includes(url.pathname) && !url.pathname.startsWith('/s/')) return env.ASSETS.fetch(request);

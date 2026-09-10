@@ -39,6 +39,8 @@ npx wrangler kv namespace create formula-clock-shares-preview
 保存容量だけでなく書き込み・読み取り数も[KVの料金](https://developers.cloudflare.com/kv/platform/pricing/)の対象となる。
 
 `POST /api/shares`はKV書き込みの完了後にIDを返す。IDの事前検索はせず、存在しないキーのキャッシュを作らない。
+保存APIの処理は入力検証・ID生成・KVへの1回の書き込みだけで、画像生成・R2操作・現在の式データの読み出しは行わない。
+応答の`Server-Timing`には`kv`（`KV.put()`の待ち時間）と`share`（保存ハンドラー全体）をミリ秒で出す。ブラウザのNetwork／Resource Timingで通信全体と比較できる。KVへ到達しない入力エラーには`kv`を含めない。Workersの[タイマーはI/O時にだけ進む](https://developers.cloudflare.com/workers/runtime-apis/performance/)ため、CPU処理の精密な計測値としては使わない。
 KVには[結果整合性と存在しないキーのキャッシュ](https://developers.cloudflare.com/kv/concepts/how-kv-works/)があり、
 別の地域では作成直後の共有リンクが一時的に見えない場合がある。書き込み完了は全地域での即時可視性を保証しない。
 未検出は404、KVの読み取り失敗は503とし、保存済みの式を現在データで置き換えない。
