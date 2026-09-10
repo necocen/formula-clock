@@ -540,7 +540,8 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
       if (serial !== shareSerial || ((isRecord(error) || error instanceof Error) && error.name === 'AbortError')) return;
       manualShare(url);
     };
-    try { void navigator.share({title:FormulaShare.title(state),url}).catch(failed); } catch (error) { failed(error); }
+    const card = FormulaShare.card(state);
+    try { void navigator.share({title:card.title,text:card.description ?? undefined,url}).catch(failed); } catch (error) { failed(error); }
   }
   function displayedSnapshot(): SharedSnapshot | null {
     if (!displayedFrame || shareButton.disabled || shareButton.hidden || document.hidden) return null;

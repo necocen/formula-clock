@@ -71,7 +71,8 @@ with sync_playwright() as p:
     page.evaluate('window.sameDocument=true;window.initialHistoryLength=history.length;window.originalDigits=FormulaClock.digits')
     page.click('#share')
     assert page.evaluate('nativeCalls.at(-1).url') == url
-    assert page.evaluate('nativeCalls.at(-1).title') == page.title()
+    assert page.evaluate('nativeCalls.at(-1).title') == 'Formula Clock - 12:34:21'
+    assert page.evaluate('nativeCalls.at(-1).text') == '(1+2)x(3+4)=21'
     assert page.evaluate('nativeCalls.at(-1).activation')
     assert page.evaluate('postBodies.length') == 0
     page.set_viewport_size({'width':390,'height':844})
@@ -105,6 +106,9 @@ with sync_playwright() as p:
     ready(page,'123430')
     assert page.evaluate('FormulaClock.state.layout.mode') == 'time'
     assert page.title() == 'Formula Clock — 12:34:30'
+    page.click('#share')
+    assert page.evaluate('nativeCalls.at(-1).title') == 'Formula Clock - 12:34:30'
+    assert page.evaluate('nativeCalls.at(-1).text') == '12:34:30'
     assert page.evaluate('async()=>!!(await FORMULA_CLOCK_CONFIG.provider.getMinute("1234")).seconds[30]')
     page.evaluate('FormulaClock.preview(FormulaShare.localDate("123430"),true)')
     ready(page,'123430')
@@ -127,7 +131,7 @@ with sync_playwright() as p:
     report['checks'].append('Saved formula loads with the current dataset offline and preserves wall-clock time across timezones')
 
     # The network can outlast transient activation: offer a fresh native click.
-    page.evaluate('window.shareMode="slow";FormulaClock.preview(FormulaShare.localDate("123431"),true)')
+    page.evaluate('window.nativeCalls=[];window.shareMode="slow";FormulaClock.preview(FormulaShare.localDate("123431"),true)')
     ready(page,'123431')
     page.click('#share')
     assert page.evaluate('FormulaClock.state.paused && document.querySelector("#share").disabled')
@@ -176,8 +180,10 @@ with sync_playwright() as p:
     for selector in ['meta[property="og:description"]','meta[name="twitter:description"]','meta[name="description"]']:
         assert page.locator(selector).get_attribute('content') == '1+2^3/√4=5'
     page.click('#share')
-    assert page.evaluate('nativeCalls.at(-1).title') == page.title()
-    report['checks'].append('OG/Twitter cards use time titles and compact equation descriptions; page/native titles retain the equation')
+    assert page.evaluate('nativeCalls.at(-1).title') == 'Formula Clock - 12:34:05'
+    assert page.evaluate('nativeCalls.at(-1).text') == '1+2^3/√4=5'
+    assert page.evaluate('nativeCalls.at(-1).url') == args.url+'s/'+title_id
+    report['checks'].append('Native sharing uses the same title and description as OG/Twitter, in separate title/text fields, together with the saved URL')
     report['mathjax'] = page.evaluate('FormulaClock.diagnostics().mathjax')
     assert report['mathjax'] == '4.1.3'
     ctx.close();browser.close()

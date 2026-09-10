@@ -3284,8 +3284,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         if (serial !== shareSerial || (isRecord(error) || error instanceof Error) && error.name === "AbortError") return;
         manualShare(url);
       };
+      const card = FormulaShare.card(state);
       try {
-        void navigator.share({ title: FormulaShare.title(state), url }).catch(failed);
+        void navigator.share({ title: card.title, text: card.description ?? void 0, url }).catch(failed);
       } catch (error) {
         failed(error);
       }
