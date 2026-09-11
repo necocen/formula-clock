@@ -6,6 +6,7 @@
 # Reproducible build output (including the former root build)
 /dist/
 /index.html
+/public/data/
 
 # Verified license texts downloaded from pinned upstream sources
 /licenses/texts/
@@ -13,7 +14,7 @@
 # Test runs, diagnostics, and local tool state
 /test-results/
 /coverage/
-/.wrangler/
+.wrangler/
 /.playwright-cli/
 /.cache/
 /.vitest/

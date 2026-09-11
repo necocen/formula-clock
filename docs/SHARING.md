@@ -9,21 +9,22 @@ pnpm 12.4.1とPython 3.11以上を用意し、`pnpm install`を実行する。No
 
 - `pnpm run build`：単体HTMLの`dist/standalone/index.html`を生成する。画像生成コードやWASMは含めない。
 - `pnpm run build:external`：静的サイトの`dist/site/`とWorkerの`dist/worker/`を生成する。
-- `pnpm run dev`：ローカルのWorker、ASSETS、KV、R2を起動する。
+- `pnpm run dev`：ViteでローカルのWorker、ASSETS、KV、R2を起動する。開発中の画面はViteのHMRで更新する。
+- `pnpm run preview:local`：ビルド済みのサイトとWorkerをローカルで確認する。
 - `pnpm run preview`：Cloudflareへプレビュー可能なWorkerバージョンをアップロードする。本番の配信バージョンは切り替えない。
-- `pnpm run deploy`：既存Workerへ公開する。Wranglerのビルド設定が配信用ビルドを実行する。
+- `pnpm run deploy`：既存Workerへ公開する。配信用ビルド後、生成された`dist/worker/wrangler.json`をWranglerへ渡す。
 
-Wranglerの`main`はビルド済みWorker、`ASSETS`は`dist/site/`。
+入力の`wrangler.jsonc`の`main`は`src/worker/index.ts`。ViteとCloudflare公式プラグインがWorker・WASM・静的アセットをビルドし、`dist/worker/wrangler.json`に配布用`main`と`assets.directory`を設定する。アップロード・公開にはこの生成済み設定を使う。
 Workerを先に呼ぶパスは`/`・`/og.png`・`/s/*`・`/api/shares`。時間別JSONなどは従来の静的配信を使う。
 `dist/worker/`、ソース、検証記録は公開アセットに含めない。フォントデータとWASMはWorker内部の依存になる。
 MathJax本体・4書体とEuler拡張は4.1.3、resvg WASMは2.6.2に固定する。
 
-ローカルサーバーの実行中に別プロセスで`dist/site/`を再生成した場合は、検証前にサーバーを再起動してアセット目録を読み直す。
+`pnpm run dev`は原本を、`pnpm run preview:local`はビルド済み出力を使う。プレビューの実行中に再ビルドした場合は、検証前に再起動してアセット目録を読み直す。式データやライセンスの入力を変えた場合もViteを再起動する。`public/data/`はその起動・ビルド時に生成されるため手で編集しない。Viteの開発中はHMRでバージョンIDが変わらないため、OG画像のR2キャッシュを迂回して毎回描画する。キャッシュ動作は`preview:local`または`test:og`で確認する。
 
 ## KVと共有リンク
 
 `SHARES`に`formula-clock-shares`を割り当て、`share/<ID>`へ検証済みJSONを保存する。
-`wrangler dev --remote`は`preview_id`の`formula-clock-shares-preview`を使う。
+`pnpm exec wrangler dev --config dist/worker/wrangler.json --remote`は`preview_id`の`formula-clock-shares-preview`を使う。
 バージョンのプレビューURLは、そのバージョンの通常のbindingを使う。
 
 ```sh
@@ -57,7 +58,7 @@ ID発行中の通知は表示しない。発行の失敗では画面を停止し
 ## R2
 
 `OG_IMAGES`に非公開の`formula-clock-og`を割り当てる。
-`wrangler dev --remote`は`preview_bucket_name`の`formula-clock-og-preview`を使う。
+`pnpm exec wrangler dev --config dist/worker/wrangler.json --remote`は`preview_bucket_name`の`formula-clock-og-preview`を使う。
 アップロードしたバージョンのプレビューURLはそのバージョンの通常のbindingを使用する。
 
 新しいアカウントへ移す場合の作成手順：
@@ -72,7 +73,7 @@ pnpm exec wrangler r2 bucket lifecycle add formula-clock-og-preview og-30-days o
 公開R2 URLやカスタムドメインは設定しない。オブジェクトはWorkerが読む。
 新形式のキーは`og/<描画版>/shares/<ID>.png`。同じ時刻・設定でも式木が違う共有画像を混同しない。
 旧クエリURLは`og/<描画版>/<HHMMSS>-<書体>-<数字>-<除算>.png`を使う。
-描画版はレンダラー・共有設定・フォント依存・式データなどのビルド時ハッシュから求める。
+描画版はCloudflareの[Version metadata binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/version-metadata/)の`WORKER_VERSION.id`を使う。新しいWorkerバージョンのアップロードごとにキャッシュが分かれる。画像に無関係な変更でも新バージョンでは再生成されるが、依存ファイル一覧を手で維持する必要がない。
 ライフサイクルは保存から30日で期限切れにする。最終アクセス日時を延長する方式ではない。
 Cloudflareの非同期削除後、要求があれば現在の描画コードとKVに保存した式木で再生成する。
 旧クエリURLだけは現在の式データを使う。画像の期限切れで共有リンク自体は消えない。
@@ -81,6 +82,7 @@ Cloudflareの非同期削除後、要求があれば現在の描画コードとK
 
 R2ヒット時はそのPNGを返し、未保存時だけMathJax → SVG → resvg → PNGを実行する。
 字形の0と等号を測って軸補正し、書体・数字スタイルごとのエンジンを分ける。
+固定ロゴは`src/worker/assets/brand.svg`と`default.svg`、代替PNGは`public/og-default.png`。既存のFira Mathの字形を固定したアセットで、フォントライセンスは従来どおり掲載する。通常ビルドでロゴを組み直さない。
 同じエンジンの変換と同じ画像の生成要求はそれぞれ直列化・共有する。
 別のWorkerインスタンスで重複生成されても、同じキーへ同じ画像を保存できる。
 
@@ -106,13 +108,15 @@ pnpm test
 pnpm run build
 pnpm run build:external
 pnpm run test:og
+pnpm run test:browser --project og-snapshots
 pnpm run test:browser --grep '^share$' --project chromium
 pnpm run test:browser kv-share.test.ts --project chromium
 pnpm run test:browser og-parity.test.ts --project chromium
 FORMULA_CLOCK_TEST_URL=http://127.0.0.1:8787/ FORMULA_CLOCK_SCREENSHOTS=1 pnpm run test:browser clock.test.ts --project chromium
 ```
 
-`test:og`の描画テストは240ケースのPNG・測定値を`test-results/og/`へ保存する。
+`test:og`の描画テストは240ケースのPNG・測定値を`test-results/og/`へ保存する。Worker統合テストはWranglerの`createTestHarness`で実際の配布設定を読み、WASM・ASSETS・KV・R2を確認する。
+`og-snapshots`はworkerdのHTTP応答をPlaywrightの`toMatchSnapshot`で変更前の固定PNGと比較する。基準は`tests/fixtures/og-snapshots/`、失敗時の実際の画像・差分は`test-results/`に残る。更新方法は[テストの説明](../tests/README.md)を参照。
 `og-parity`も実行ごとの出力先に同じ240ケースを生成し、実際にCDNから取得したMathJaxの字形パス・軸・viewBoxと照合する。別の測定値を使う場合だけ`FORMULA_CLOCK_RENDER_RESULTS`でJSONを指定する。
 ブラウザ検証はChromium / Firefox / WebKitを選択でき、実行コマンド・ブラウザとMathJaxの版・取得URLを記録する。
 CDN検証にローカル互換フォントを代用しない。ログ・実行結果・確認用画像はGit対象外の`test-results/`に保存する。

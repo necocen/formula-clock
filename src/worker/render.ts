@@ -28,7 +28,7 @@ import { Resvg, initWasm } from '@resvg/resvg-wasm';
 import Expression from '../shared/expression.ts';
 import Display from '../shared/display.ts';
 import Share from '../shared/share.ts';
-import { COLORS, canvas, DEFAULT_BRAND } from './brand.ts';
+import { COLORS, canvas, DEFAULT_IMAGE } from './brand.ts';
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
@@ -291,5 +291,5 @@ export async function renderOg(input: RenderInput) {
   return pngFromSvg((await renderSvg(input)).svg);
 }
 export function renderDefaultOg() {
-  return pngFromSvg(canvas('', DEFAULT_BRAND));
+  return pngFromSvg(DEFAULT_IMAGE);
 }

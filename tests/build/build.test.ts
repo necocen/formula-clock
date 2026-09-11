@@ -10,7 +10,11 @@ import { isRecord } from '../../src/shared/types.ts';
 import { renderLicenses } from '../../tools/licenses.ts';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 test('standalone build embeds the canonical day and licenses without including the solver', async () => {
-  execFileSync(process.execPath, ['--import', 'tsx', 'tools/build.ts'], { cwd: root });
+  execFileSync(
+    process.execPath,
+    ['node_modules/vite/bin/vite.js', 'build', '--mode', 'standalone'],
+    { cwd: root, env: { ...process.env, NODE_ENV: 'production' } },
+  );
   const html = fs.readFileSync(path.join(root, 'dist/standalone/index.html'), 'utf8');
   const source: unknown = JSON.parse(
     fs.readFileSync(path.join(root, 'data/expressions.json'), 'utf8'),
@@ -33,11 +37,13 @@ test('standalone build embeds the canonical day and licenses without including t
   assert.ok(html.includes('Mozilla Public License Version 2.0'));
   assert.ok(!(await renderLicenses()).includes('{{'));
   assert.ok(!html.includes('<!-- clock-licenses -->'));
-  assert.ok(!html.includes('<!-- clock-scripts -->'));
+  assert.ok(!html.includes('<!-- clock-data -->'));
+  assert.ok(!/<script[^>]+src=/.test(html), 'Standalone JavaScript is entirely inline');
 });
 test('external build exactly partitions the canonical day and publishes only site assets', async () => {
-  execFileSync(process.execPath, ['--import', 'tsx', 'tools/build.ts', '--external'], {
+  execFileSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], {
     cwd: root,
+    env: { ...process.env, NODE_ENV: 'production' },
   });
   const dir = path.join(root, 'dist/site');
   const read = (name: string) => fs.readFileSync(path.join(dir, name), 'utf8');
@@ -67,13 +73,14 @@ test('external build exactly partitions the canonical day and publishes only sit
   }
   assert.deepEqual(combined, source.minutes);
   assert.deepEqual(fs.readdirSync(dir).sort(), [
+    '.assetsignore',
     '_headers',
+    'assets',
     'data',
     'index.html',
     'og-default.png',
   ]);
   assert.equal(fs.readdirSync(path.join(dir, 'data/hours')).length, 24);
-  assert.ok(read('index.html').includes("new FormulaData.FetchHourProvider('data/manifest.json')"));
   assert.ok(!read('index.html').includes('id="clock-data"'));
   assert.ok(read('_headers').includes('max-age=31536000, immutable'));
   assert.ok(read('index.html').includes(await renderLicenses()));
@@ -81,14 +88,13 @@ test('external build exactly partitions the canonical day and publishes only sit
   const png = fs.readFileSync(path.join(dir, 'og-default.png'));
   assert.equal(png.readUInt32BE(16), 1200);
   assert.equal(png.readUInt32BE(20), 630);
-  assert.ok(read('index.html').includes('id="browser-code"'));
   const html = read('index.html');
-  const bootstrap = html.indexOf('<script id="browser-code">');
-  const provider = html.indexOf('<script>window.FORMULA_CLOCK_CONFIG=');
-  const app = html.indexOf('<script id="app-code">');
-  assert.ok(bootstrap < provider && provider < app && app < html.lastIndexOf('</body>'));
-  assert.ok(!html.includes('<!-- clock-scripts -->'));
-  assert.ok(read('index.html').includes('FormulaShare'));
-  assert.ok(read('index.html').includes('FormulaI18n'));
-  assert.ok(!read('index.html').includes('MathJaxEulerFontExtension'));
+  const script = html.match(/<script type="module" crossorigin src="([^"]+)"/);
+  assert.ok(script, 'Vite emits the browser entry as an ES module');
+  const js = read(script[1].replace(/^\//, ''));
+  assert.ok(js.includes('data/manifest.json'));
+  assert.ok(js.includes('FormulaShare'));
+  assert.ok(js.includes('FormulaI18n'));
+  assert.ok(!js.includes('MathJaxEulerFontExtension'));
+  assert.ok(!html.includes('<!-- clock-data -->'));
 });

@@ -48,11 +48,12 @@ export function createHandler({
 }: HandlerOptions) {
   const providers = new WeakMap<Assets, Data.FetchHourProvider>(),
     pending = new Map<string, Promise<ImageResult>>();
-  function providerFor(assets: Assets) {
+  function providerFor(assets: Assets, origin: string) {
+    // Use the request origin, as required by Vite's development asset binding.
     if (!providers.has(assets))
       providers.set(
         assets,
-        new Data.FetchHourProvider('https://assets.local/data/manifest.json', {
+        new Data.FetchHourProvider(new URL('/data/manifest.json', origin).href, {
           fetch: (url, options) => assets.fetch(new Request(url, options)),
         }),
       );
@@ -61,7 +62,7 @@ export function createHandler({
   function record(fields: Record<string, unknown>) {
     log({ event: 'og', revision, ...fields });
   }
-  function imageJob(state: SharedClockState, env: Env, shared?: SharedView) {
+  function imageJob(state: SharedClockState, env: Env, origin: string, shared?: SharedView) {
     const key = shared ? `og/${revision}/shares/${shared.id}.png` : keyFor(state, revision);
     if (pending.has(key)) return { task: pending.get(key)!, coalesced: true };
     const task = deadline<ImageResult>(
@@ -82,9 +83,8 @@ export function createHandler({
         }
         const ast = shared
           ? shared.snapshot.ast
-          : (await providerFor(env.ASSETS).getMinute(state.t.slice(0, 4), { signal })).seconds[
-              Number(state.t.slice(4))
-            ];
+          : (await providerFor(env.ASSETS, origin).getMinute(state.t.slice(0, 4), { signal }))
+              .seconds[Number(state.t.slice(4))];
         check(signal);
         const bytes = await renderOg({ state, ast });
         check(signal);
@@ -135,7 +135,7 @@ export function createHandler({
     const state = shared?.snapshot || Share.parse(url);
     if (!state) return fallback(request, env, 'no-shared-state');
     const started = Date.now();
-    const { task, coalesced } = imageJob(state, env, shared);
+    const { task, coalesced } = imageJob(state, env, url.origin, shared);
     ctx.waitUntil(task.catch(() => {}));
     try {
       const result = await task,
@@ -176,7 +176,8 @@ export function createHandler({
       try {
         ast = (
           await deadline(
-            (signal) => providerFor(env.ASSETS).getMinute(state.t.slice(0, 4), { signal }),
+            (signal) =>
+              providerFor(env.ASSETS, url.origin).getMinute(state.t.slice(0, 4), { signal }),
             timeoutMs,
             'Shared metadata',
           )

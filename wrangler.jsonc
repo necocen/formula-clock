@@ -5,11 +5,8 @@
   "compatibility_date": "2026-09-09",
   "workers_dev": true,
   "preview_urls": true,
-  "main": "./dist/worker/index.mjs",
-  "no_bundle": true,
-  "find_additional_modules": true,
-  "rules": [{ "type": "CompiledWasm", "globs": ["**/*.wasm"], "fallthrough": false }],
-  "build": { "command": "pnpm run build:external" },
+  "main": "./src/worker/index.ts",
+  "version_metadata": { "binding": "WORKER_VERSION" },
   "observability": { "enabled": true },
   "r2_buckets": [
     {
@@ -27,7 +24,6 @@
   ],
   "assets": {
     "binding": "ASSETS",
-    "directory": "./dist/site",
     "run_worker_first": ["/", "/og.png", "/s/*", "/api/shares"],
     "not_found_handling": "none",
   },

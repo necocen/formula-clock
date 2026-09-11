@@ -138,7 +138,7 @@ FormulaClock.setDataProvider(
 
 ### 起動前に指定
 
-`src/browser/bootstrap.ts`から生成したスクリプトが`FormulaData`などの公開APIを用意した後、`src/browser/app.ts`から生成したスクリプトの実行前に指定する。配信用ビルドはこの順序で挿入する。
+`src/browser/main.ts`は`bootstrap.ts` → `provider.ts` → `app.ts`の順にモジュールを実行する。初期プロバイダーを変更する場合は`src/browser/provider.ts`で指定する。`FormulaData`などの公開APIはこの時点で準備済み。先に設定済みの`window.FORMULA_CLOCK_CONFIG`は既定のプロバイダーで上書きしない。
 
 ```js
 window.FORMULA_CLOCK_CONFIG = {

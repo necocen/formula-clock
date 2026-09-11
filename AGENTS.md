@@ -5,11 +5,11 @@
 
 ## 編集とビルド
 
-- `src/browser/app.html` / `src/shared/i18n.ts` / `src/shared/display.ts` / `src/shared/share.ts` / `src/shared/expression.ts` / `src/shared/data.ts` / `src/browser/typesetter.ts` / `src/shared/symbols.ts` / `src/browser/app.ts` が表示アプリの原本。`src/browser/app.html`は画面・CSSを持つ完全なHTMLで、ビルド時に`<!-- clock-licenses -->`へライセンス表示、`<!-- clock-scripts -->`へスクリプトを挿入する。共有画像と配信処理は `src/worker/`。
+- `src/browser/index.html` / `src/shared/i18n.ts` / `src/shared/display.ts` / `src/shared/share.ts` / `src/shared/expression.ts` / `src/shared/data.ts` / `src/browser/typesetter.ts` / `src/shared/symbols.ts` / `src/browser/app.ts` が表示アプリの原本。`src/browser/index.html`は画面・CSSを持つ完全なHTMLで、ビルド時に`<!-- clock-licenses -->`へライセンス表示、単体版の`<!-- clock-data -->`へ式データを挿入する。共有画像と配信処理は `src/worker/`。
 - ライセンスの取得先・SHA-256・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。本文は取得してGit管理外の`licenses/texts/`へキャッシュする。通常ビルドでも自動生成し、`pnpm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版とハッシュを更新する。
 - アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行し、PythonはSymPyの厳密計算だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
-- `src/browser/bootstrap.ts` が公開グローバルを準備した後にプロバイダー設定、`src/browser/app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
-- `dist/` は生成物。単体HTMLは`dist/standalone/index.html`、配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。
+- `src/browser/main.ts`は`bootstrap.ts`・`provider.ts`・`app.ts`をこの順で読み込む。ビルドはVite、Worker・WASM・配布設定はCloudflare公式プラグイン、単体HTMLの埋め込みはvite-plugin-singlefileを使う。`tools/vite-clock.ts`には式データとライセンス固有の処理だけを置き、独自バンドラーやWASMローダーを追加しない。
+- `dist/` は生成物。単体HTMLは`dist/standalone/index.html`、配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。`public/data/`もVite起動時に生成する入力でGit管理外。
 - 整形はOxfmt、lintはOxlint。編集後に`pnpm run format`で原本を整形し、`pnpm run check`で整形・lint・型を確認する。`pnpm test`にも同じ確認を含む。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
 - パッケージ管理はpnpm 12.4.1。`pnpm install`でNode.js 22.23.2とJavaScript・Pythonの依存を準備する。Python 3.11以上の本体は別途必要。JavaScriptは`pnpm-lock.yaml`、テスト用Pythonは`pyproject.toml` / `pylock.toml`で管理し、`.venv`と`.pnpm/`は生成物としてGitへ入れない。npmやpipで別の依存環境・ロックファイルを作らない。Python連携は実験機能でロックがOS・Python環境に依存するため、環境変更時は通常インストールで更新し、同じ環境の再現には`--frozen-lockfile`を使う。
 - ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`pnpm test` / `pnpm run build` / `pnpm run build:external` が基本の確認コマンド（いずれも型チェックを含む）。`pnpm run typecheck`でも単独で確認できる。共有画像の変更時は `pnpm run test:og` も実行する。
@@ -52,12 +52,14 @@
 - 日本語UIでも一般的なWeb表記は自然に英語を使う。「字体」は「フォント」、ライセンスの見出しは「LICENSE」、読み込み表示は「Loading」。説明文やエラーの理由は分かりやすい日本語にする。現在時刻への復帰は「現在時刻へ」とし、Liveと略さない。一時停止の操作欄は左右キーの案内と現在時刻への復帰だけを表示し、再生・速度変更ボタンを置かない。左右キーは1秒移動、Spaceは一時停止／現在時刻への復帰とし、ショートカットの意味を明記する。
 - ライセンス画面の説明は日本語版だけを保ち、英訳しない。ライセンス原文はそのまま掲載し、見出し・閉じる操作だけ共通UIとして扱う。
 - アプリ名は読み上げ用も含めて「Formula Clock」とし、「計算時計」と訳さない。文字列リソースは実際の表示・読み上げ・通知で使うものを保ち、起動直後に置換されるだけの初期値を別リソースとして増やさない。
+- ロゴは`src/worker/assets/`の固定SVGと`public/og-default.png`を使い、実行時にフォントから組み立てない。画像キャッシュの描画版はCloudflareの`WORKER_VERSION.id`を使う。
 - OG描画は正規ASTから行い、任意のTeX・画像・外部URLを入力として受け付けない。R2の正常画像と短時間キャッシュの代替ロゴを混同しない。詳細は `docs/SHARING.md`。
 
 ## 検証と報告
 
 - `pnpm test` はデータとTeX生成の検証であり、配布フォントのロード検証ではない。
 - `vitest.config.ts`で`unit`・`build`・`og`を分け、`playwright.config.ts`でブラウザとサーバーの起動・終了・レポートを管理する。VitestのTypeScript変換はViteが行い、全テストの型チェックは`tsc --noEmit`で別に維持する。
+- Worker統合テストはWranglerの`createTestHarness`でViteが生成した`dist/worker/wrangler.json`を使う。固定PNGの回帰検証はPlaywrightの`toMatchSnapshot`で行い、基準画像は`tests/fixtures/og-snapshots/`、実際の画像と差分は`test-results/`に保存する。
 - ブラウザ検証は`tests/browser/clock.test.ts`を含めMathJax 4のCDN経路を使い、過去のMathJax 3／ローカルフォントによる代替検証は戻さない。
 - 以前のテスト結果を再実行した結果として扱わない。使用エンジン、書体、ブラウザ、実行コマンドを記録する。
 - 変更後は `docs/ACCEPTANCE.md` の該当項目と、分数・指数・通常時計・書体切り替えを確認する。

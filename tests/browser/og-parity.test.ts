@@ -6,7 +6,7 @@ import { isDeepStrictEqual, inspect } from 'node:util';
 import type { Bounds, Typography } from '../../src/shared/types.ts';
 import { isRecord } from '../../src/shared/types.ts';
 import Share from '../../src/shared/share.ts';
-import { renderOgReference } from '../helpers/og-reference.ts';
+import { createServer, isRunnableDevEnvironment } from 'vite';
 import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
 test.use({
   viewport: { width: 1200, height: 800 },
@@ -17,7 +17,21 @@ test('og-parity', async ({ browser, args, context: ctx }) => {
   const output = args.outputDir;
   const reference = args.renderResults ?? path.join(output, 'og-reference/render-results.json');
   // Use an explicitly supplied reference as-is; otherwise render this checkout afresh.
-  if (!args.renderResults) await renderOgReference(path.dirname(reference));
+  if (!args.renderResults) {
+    // Vite loads the renderer's TypeScript and raw SVG imports in Node, just as
+    // Vitest does, without teaching Playwright a separate asset loader.
+    const vite = await createServer({ configFile: false, server: { middlewareMode: true } });
+    try {
+      const environment = vite.environments.ssr;
+      assert.ok(isRunnableDevEnvironment(environment));
+      const { renderOgReference } = await environment.runner.import<
+        typeof import('../helpers/og-reference.ts')
+      >('/tests/helpers/og-reference.ts');
+      await renderOgReference(path.dirname(reference));
+    } finally {
+      await vite.close();
+    }
+  }
   const server: unknown = JSON.parse(fs.readFileSync(reference, 'utf8'));
   assert.ok(isRecord(server) && Array.isArray(server.cases));
   assert.equal(

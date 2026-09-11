@@ -1,6 +1,6 @@
 # ライセンス表示の管理
 
-ライセンス画面は`tools/licenses.ts`で生成し、通常のビルドが`src/browser/app.html`の`<!-- clock-licenses -->`へ挿入します。手作業で配信用HTMLへ貼り付ける必要はありません。
+ライセンス画面は`tools/licenses.ts`で生成し、通常のビルドが`src/browser/index.html`の`<!-- clock-licenses -->`へ挿入します。手作業で配信用HTMLへ貼り付ける必要はありません。
 
 ```sh
 pnpm run generate:licenses   # ライセンス部分だけを dist/licenses.html へ生成

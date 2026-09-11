@@ -27,6 +27,7 @@ function fixture(options: FixtureOptions = {}) {
   const env: Env = {
     ASSETS: {
       async fetch(request) {
+        assert.equal(new URL(request.url).origin, 'https://clock.example');
         const path = new URL(request.url).pathname;
         if (path === '/og-default.png')
           return new Response('default-png', { headers: { 'Content-Type': 'image/png' } });

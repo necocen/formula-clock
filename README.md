@@ -17,11 +17,10 @@ pnpm run build
 共有URLとOG画像を含むサイトをローカルで動かす場合：
 
 ```sh
-pnpm run build:external
 pnpm run dev
 ```
 
-`dist/site/`に配信用HTMLと24時間分のJSON、`dist/worker/`にOG画像生成用Workerを生成します。
+ViteがローカルのWorker・KV・R2と画面を起動します。`pnpm run build:external`で配信用アセットを`dist/site/`、Workerを`dist/worker/`へ生成し、`pnpm run preview:local`でその出力を確認できます。
 Cloudflareへのプレビュー・公開・KV／R2設定は[共有機能の運用](docs/SHARING.md)を参照してください。
 
 ## 使い方
@@ -74,9 +73,9 @@ src/
   shared/        AST・表示設定・データ取得・共有URL・共通の型
   worker/        共有API・HTMLメタデータ・OG画像
   api.d.ts       公開APIの型
-public/          配信用の静的設定（_headers）
+public/          配信用の静的設定・固定ロゴPNG（data/は生成物）
 licenses/        ライセンスの取得先・ハッシュ・表示テンプレート
-tools/           ビルド・データ生成／取り込み・テスト実行
+tools/           データ生成／取り込み・Vite用データ／ライセンス処理
 data/            採用済み式データ・JSON Schema・形式サンプル
 tests/
   unit/          Nodeによる単体・データ検証
@@ -90,9 +89,9 @@ dist/            ビルド出力（Git管理外）
 test-results/    実行結果・スクリーンショット（Git管理外）
 ```
 
-`src/browser/app.html`が画面の原本です。ビルドは`<!-- clock-licenses -->`へライセンス表示、`<!-- clock-scripts -->`へ公開APIの準備・データ設定・アプリを順に挿入し、単体版を`dist/standalone/index.html`、配信版を`dist/site/index.html`へ生成します。原本を編集して`pnpm run build`で更新してください。
+`src/browser/index.html`が画面の原本、`src/browser/main.ts`がViteのエントリーです。`bootstrap.ts`・`provider.ts`・`app.ts`の順に公開API・データ・画面を準備します。`tools/vite-clock.ts`はライセンス表示と式データだけを用意し、JavaScript・HTML・WASMの処理はViteと既存プラグインに任せます。原本を編集して`pnpm run build`で更新してください。
 
-`dist/`と`test-results/`は削除・再生成できるためGitへ入れません。`data/expressions.json`は採用済みの入力データ、`docs/images/`は説明用の見本なのでGit管理します。テスト結果を`tests/`へ出力しないでください。
+`dist/`と`test-results/`は削除・再生成できるためGitへ入れません。`data/expressions.json`は採用済みの入力データ、`docs/images/`は説明用の見本、`tests/fixtures/og-snapshots/`は画像差分の基準入力なのでGit管理します。`public/data/`も生成物です。テストの実際の画像や差分は`test-results/`へ出力します。
 
 `pnpm run generate`は全日の式を再探索し、現在の採用データを上書きします。通常の表示変更やビルドには不要です。外部データは`pnpm run import:data DIRECTORY`で取り込みます。出典と手順は[data/README.md](data/README.md)を参照してください。
 
@@ -124,7 +123,7 @@ pnpm run build:external
 pnpm run test:og
 ```
 
-単体・ビルド・OG検証はVitest、画面検証はPlaywright Testを使います。VitestのTypeScript変換はViteが担当し、`pnpm run test:watch`で単体テストを変更時に再実行できます。単体HTMLの埋め込み・時間別データ生成・WorkerのWASM同梱は既存のesbuildと専用ビルドで行います。
+単体・ビルド・OG検証はVitest、画面検証はPlaywright Testを使います。VitestのTypeScript変換はViteが担当し、`pnpm run test:watch`で単体テストを変更時に再実行できます。ビルドは[Vite](https://vite.dev/)、Worker・WASM・配布設定は[Cloudflare公式プラグイン](https://developers.cloudflare.com/workers/vite-plugin/)、単体HTMLの埋め込みは[vite-plugin-singlefile](https://github.com/richardtallent/vite-plugin-singlefile)が担当します。圧縮しない埋め込みJSONを調べる場合は`pnpm exec vite build --mode standalone-raw`を使います。
 
 `pnpm run typecheck`はTypeScriptの型チェックだけを実行します。`pnpm test`は最初に`pnpm run check`を実行し、整形・lint・型チェックの失敗を検出します。両ビルドにも型チェックを含めています。
 `pnpm test`は整形・lint・型、単体テスト、単体／配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。

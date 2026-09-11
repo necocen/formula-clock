@@ -42,9 +42,9 @@ pnpm run test:browser i18n.test.ts --project webkit
 pnpm run test:browser --project chromium --project webkit
 ```
 
-引数なしでは設定済みの全ブラウザを実行します。Chromium・WebKitは全14スイート、Firefoxは対応する10スイートです。テストファイル名か`--grep`で絞り込み、`--project`でブラウザを選択します。`share`など名前が重なる場合は`--grep '^share$'`でテスト名を完全一致させてください。アニメーションの計測に競合が出ないよう、実行workerは1に固定しています。
+引数なしでは設定済みの全ブラウザとOG画像差分を実行します。Chromium・WebKitは全14スイート、Firefoxは対応する10スイートです。テストファイル名か`--grep`で絞り込み、`--project`でブラウザを選択します。`share`など名前が重なる場合は`--grep '^share$'`でテスト名を完全一致させてください。アニメーションの計測に競合が出ないよう、実行workerは1に固定しています。
 
-実行時に単体HTMLをビルドし、HTTPのローカルWorkerも自動で起動・終了します。`--list` / `--help`ではビルドやサーバー起動は行いません。既定のHTTP URLは`http://127.0.0.1:8787/`です。開発中に同じポートでWorkerが動いていれば再利用し、CIでは既存サーバーとの競合をエラーにします。
+実行時に単体HTMLと配信版をViteでビルドし、`vite preview`のHTTP Workerを自動で起動・終了します。`--list` / `--help`ではビルドやサーバー起動は行いません。既定のHTTP URLは`http://127.0.0.1:8787/`です。開発中に同じポートでWorkerが動いていれば再利用し、CIでは既存サーバーとの競合をエラーにします。
 
 `clock`は`dist/standalone/index.html`を直接開き、他のスイートはHTTPを使います。プレビューなど別の配信先を確認するときは`FORMULA_CLOCK_TEST_URL`を指定します。この場合は`clock`も指定URLを使い、ローカルWorkerを起動しません。
 
@@ -67,6 +67,15 @@ pnpm run test:browser transport.test.ts --project chromium
 | `symbol-motion` / `structure-motion` / `symbol-morph` | 記号・構造・変形の各アニメーション                  |
 | `share` / `kv-share` / `speculative-share`            | 共有URL・保存済みAST・先行発行・競合                |
 | `og-parity`                                           | OG画像とブラウザの字形・軸・配置の一致              |
+
+`og-snapshots`プロジェクトはブラウザを起動せず、workerdから取得したPNGをPlaywright標準の`toMatchSnapshot`で比較します。4書体×2種類の数字×分数・指数・通常時計、÷・スラッシュ、代替ロゴの27件です。許容する差分は0ピクセル。基準PNGはVite移行前のレンダラー（`2ef649c`）から固定しました。
+
+```sh
+pnpm run test:browser --project og-snapshots
+pnpm exec playwright show-report test-results/playwright-report
+```
+
+意図した見た目の変更時は、先にレポートの実際の画像・差分を目視し、`pnpm run test:browser --project og-snapshots --update-snapshots`で基準を更新します。更新後は通常コマンドを再実行し、基準PNGも変更と一緒にコミットしてください。固定ロゴを変更した場合は`src/worker/assets/default.svg`に対応する1200×630の`public/og-default.png`も更新します。`test:og`がSVGからのPNGと配布アセットの一致を確認します。
 
 `og-parity`は現在のソースから240ケースのOG画像・測定値を自動生成します。以前の実行結果に依存しません。別途取得した測定値と比較するときだけ`FORMULA_CLOCK_RENDER_RESULTS`へJSONのパスを指定してください。
 
@@ -97,4 +106,4 @@ pnpm run test:browser transport.test.ts --project chromium
 
 独自のJSONは字形・配置などの詳細な計測値を残すためのものです。テストの成否と失敗箇所はPlaywright Testの標準レポートで確認できます。JSONはHTMLレポートにも添付します。
 
-`tests/`には実行コードと固定入力だけを置きます。比較の基準として残す画像は、テストの生出力と区別して`docs/images/`へ置き、用途を文書に記載してください。
+`tests/`には実行コードと固定入力だけを置きます。画像差分の基準PNGは`tests/fixtures/og-snapshots/`、説明用の見本は`docs/images/`へ置きます。実際の画像・差分・トレースは`test-results/`へ出力します。

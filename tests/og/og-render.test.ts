@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initRenderer, renderSvg } from '../../src/worker/render.ts';
+import { initRenderer, renderSvg, renderDefaultOg } from '../../src/worker/render.ts';
 import { renderOgReference } from '../helpers/og-reference.ts';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -16,6 +16,11 @@ await initRenderer(
 );
 test('all four fonts and independent styles render complete, bounded OG images', async () => {
   await renderOgReference(output);
+  assert.deepEqual(
+    Buffer.from(renderDefaultOg()),
+    await fs.readFile(path.join(root, 'public/og-default.png')),
+    'The fallback PNG must match the fixed SVG source',
+  );
 });
 test('concurrent requests cannot mix lining calibration, fonts, or expressions', async () => {
   const inputs = Array.from({ length: 16 }, (_, i): { state: SharedClockState } => ({

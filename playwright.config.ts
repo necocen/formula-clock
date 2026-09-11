@@ -32,23 +32,29 @@ export default defineConfig<ClockTestOptions>({
     },
   },
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
-    { name: 'webkit', use: { browserName: 'webkit' } },
+    { name: 'chromium', testIgnore: 'og-snapshots.test.ts', use: { browserName: 'chromium' } },
+    { name: 'webkit', testIgnore: 'og-snapshots.test.ts', use: { browserName: 'webkit' } },
     {
       name: 'firefox',
       use: { browserName: 'firefox' },
       testIgnore: [
+        'og-snapshots.test.ts',
         'i18n.test.ts',
         'transport.test.ts',
         'fullscreen.test.ts',
         'speculative-share.test.ts',
       ],
     },
+    {
+      name: 'og-snapshots',
+      testMatch: 'og-snapshots.test.ts',
+      snapshotPathTemplate: '{testDir}/../fixtures/og-snapshots/{arg}{ext}',
+    },
   ],
   webServer: url
     ? undefined
     : {
-        command: 'pnpm run dev',
+        command: 'pnpm run build:external && pnpm run preview:local',
         url: 'http://127.0.0.1:8787/',
         timeout: 120_000,
         reuseExistingServer: !process.env.CI,
