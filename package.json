@@ -1,8 +1,10 @@
 {
-  "name": "formula-clock-stix2",
+  "name": "formula-clock",
   "version": "6.0.0",
   "private": true,
   "description": "A mathematical clock with persistent digits, switchable typography, and AST data providers",
+  "license": "MIT",
+  "types": "./src/api.d.ts",
   "scripts": {
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
