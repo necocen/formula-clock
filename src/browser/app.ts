@@ -1,10 +1,7 @@
 import {
-  isRecord,
   type DisplayOptions,
   type FormulaProvider,
   type Expr,
-  type SharedSnapshot,
-  type SharedView,
   type LayoutItem,
   type ClockLayout,
 } from '../shared/types.ts';
@@ -18,7 +15,8 @@ import { createTimeSignal } from './audio.ts';
 import { assertProvider, createDataSource } from './data-source.ts';
 import { createSettings } from './settings.ts';
 import { createFullscreen } from './fullscreen.ts';
-import type { Frame, PlacedToken } from './types.ts';
+import { createSharing, readInitialShare } from './sharing.ts';
+import type { DisplayedFrame, Frame, PlacedToken } from './types.ts';
 // The default provider registers itself on FORMULA_CLOCK_CONFIG before the app reads it.
 import './provider.ts';
 
@@ -51,13 +49,6 @@ interface SymbolRecord {
   exiting?: boolean;
   animation?: Animation | null;
 }
-interface DisplayedFrame {
-  frame: Frame;
-  ast: Expr | null;
-  code: string;
-  seconds: number;
-  view: DisplayOptions;
-}
 interface Preview {
   epoch: number;
   started: number;
@@ -79,49 +70,7 @@ interface Preview {
   const licenseDialog = $<HTMLDialogElement>('#licenses');
   const shareButton = $<HTMLButtonElement>('#share'),
     shareDialog = $<HTMLDialogElement>('#share-dialog');
-  let sharedView: SharedView | null = null;
-  try {
-    const embedded = document.querySelector('#shared-clock');
-    if (embedded) {
-      const candidate = FormulaShare.view(JSON.parse(embedded.textContent || ''));
-      if (candidate.id === FormulaShare.id(location.pathname)) sharedView = candidate;
-    }
-  } catch (error) {
-    console.warn('[Formula Clock] Invalid shared snapshot.', error);
-  }
-  const sharedState = sharedView?.snapshot || FormulaShare.parse(new URL(location.href));
-  let activeSnapshot: SharedSnapshot | null = sharedView?.snapshot || null;
-  let sharedAddress = !!sharedState;
-  const shareLinks = new FormulaShare.LinkCache(sharedView);
-  let shareSerial = 0,
-    shareBusy = false;
-  let shareWarmTimer: ReturnType<typeof setTimeout> | undefined,
-    shareWarmKey = '';
-  function snapshotAt(code: string, seconds: number) {
-    return activeSnapshot?.t === code + pad(seconds) ? activeSnapshot : null;
-  }
-  function leaveSharedView(keepFormula = false) {
-    if (!keepFormula) activeSnapshot = null;
-    ++shareSerial;
-    shareLinks.cancelPending();
-    clearTimeout(shareWarmTimer);
-    shareWarmKey = '';
-    shareBusy = false;
-    lastVisual = '';
-    shareButton.removeAttribute('aria-busy');
-    showNotice('');
-    if (shareDialog.open) shareDialog.close();
-    if (sharedAddress) {
-      const target = new URL(location.href);
-      target.search = '';
-      target.hash = '';
-      // file:// previews retain their pathname; changing it would fail the origin check.
-      if (['http:', 'https:'].includes(target.protocol)) target.pathname = '/';
-      history.replaceState(history.state, '', target);
-      document.title = FormulaShare.title(null);
-      sharedAddress = false;
-    }
-  }
+  const { view: sharedView, state: sharedState } = readInitialShare();
   setupDialog(settingsDialog, settingsButton, $<HTMLButtonElement>('#settings-close'));
   setupDialog(
     licenseDialog,
@@ -150,7 +99,7 @@ interface Preview {
   });
   function setDataProvider(next: FormulaProvider) {
     assertProvider(next);
-    leaveSharedView();
+    sharing.leaveSharedView();
     data.replaceProvider(next);
     lastVisual = '';
     lastCode = null;
@@ -162,7 +111,7 @@ interface Preview {
     settingsDialog,
     shareButton,
     sharedState,
-    leaveShared: (keepFormula) => leaveSharedView(keepFormula),
+    leaveShared: (keepFormula) => sharing.leaveSharedView(keepFormula),
     invalidate: () => {
       lastVisual = '';
     },
@@ -539,14 +488,7 @@ interface Preview {
       typography: frame.typography,
     };
     displayedFrame = { frame, ast, code, seconds, view };
-    if (sharedAddress && !loading && !engineError)
-      document.title = FormulaShare.title({ v: 1, t: code + pad(seconds), ...view, ast });
-    shareButton.disabled =
-      shareBusy ||
-      loading ||
-      !!engineError ||
-      (!snapshotAt(code, seconds) && (!data.hasMinute(code) || !!data.getMinute(code)?.error));
-    preparePausedShare();
+    sharing.frameCommitted({ code, seconds, loading, view, ast });
     firstFrame = false;
   }
   function renderExpression(
@@ -556,7 +498,7 @@ interface Preview {
     loading: boolean,
     instant = false,
   ) {
-    const snapshot = snapshotAt(code, seconds);
+    const snapshot = sharing.snapshotAt(code, seconds);
     if (snapshot) {
       ast = snapshot.ast;
       loading = false;
@@ -636,7 +578,7 @@ interface Preview {
   }
   function setPreview(date: Date, paused = true) {
     if (!(date instanceof Date) || !Number.isFinite(+date)) return;
-    leaveSharedView();
+    sharing.leaveSharedView();
     preview = { epoch: +date, started: performance.now(), paused };
     resetTransport();
   }
@@ -650,7 +592,7 @@ interface Preview {
     scheduleTick();
   }
   function goLive() {
-    leaveSharedView();
+    sharing.leaveSharedView();
     preview = null;
     resetTransport();
   }
@@ -669,176 +611,34 @@ interface Preview {
     // Advance the requested time, so rapid keys accumulate before rendering.
     setPreview(new Date(Math.floor(+getNow() / 1000) * 1000 + offset * 1000), true);
   }
-  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
-  function showNotice(text: string) {
-    clearTimeout(noticeTimer);
-    $('#share-status').textContent = text;
-    noticeTimer = setTimeout(() => {
-      $('#share-status').textContent = '';
-    }, 4000);
-  }
-  function manualShare(url: string) {
-    const input = $<HTMLInputElement>('#share-url');
-    input.value = url;
-    $<HTMLButtonElement>('#share-native').hidden = typeof navigator.share !== 'function';
-    if (!shareDialog.open) shareDialog.showModal();
-    input.focus();
-    input.select();
-  }
-  async function copyShare(url: string, serial = shareSerial) {
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(url);
-      if (serial === shareSerial) {
-        if (shareDialog.open) shareDialog.close();
-        showNotice(t('shareCopied'));
-      }
-    } catch {
-      if (serial === shareSerial) manualShare(url);
-    }
-  }
-  function deliverShare(url: string, state: SharedSnapshot, serial: number) {
-    if (serial !== shareSerial) return;
-    if (typeof navigator.share !== 'function') {
-      void copyShare(url, serial);
-      return;
-    }
-    if (navigator.userActivation && !navigator.userActivation.isActive) {
-      manualShare(url);
-      return;
-    }
-    const failed = (error: unknown) => {
-      if (
-        serial !== shareSerial ||
-        ((isRecord(error) || error instanceof Error) && error.name === 'AbortError')
-      )
-        return;
-      manualShare(url);
-    };
-    const card = FormulaShare.card(state);
-    try {
-      void navigator.share({ title: card.title, url }).catch(failed);
-    } catch (error) {
-      failed(error);
-    }
-  }
-  function displayedSnapshot(): SharedSnapshot | null {
-    if (!displayedFrame || shareButton.disabled || shareButton.hidden || document.hidden)
-      return null;
-    const { code, seconds, view, ast } = displayedFrame;
-    return FormulaShare.snapshot({
-      v: 1,
-      t: code + pad(seconds),
-      font: view.font,
-      numerals: view.numerals,
-      division: view.division,
-      ast,
-    });
-  }
-  function preparePausedShare() {
-    const state = preview?.paused ? displayedSnapshot() : null;
-    if (!state) {
-      clearTimeout(shareWarmTimer);
-      return;
-    }
-    const key = JSON.stringify(state);
-    if (key === shareWarmKey) return;
-    clearTimeout(shareWarmTimer);
-    shareWarmKey = key;
-    const serial = shareSerial;
-    // Coalesce quick ruler/settings changes; failures stay quiet until a real share.
-    shareWarmTimer = setTimeout(() => {
-      if (serial === shareSerial && JSON.stringify(displayedSnapshot()) === key)
-        void shareLinks.prepare(state).catch(() => {});
-    }, 250);
-  }
-  function prepareShareOnIntent() {
-    const state = displayedSnapshot();
-    if (!state) return;
-    void shareLinks.prepare(state).catch(() => {});
-    if (preview?.paused) return;
-    // Only this gesture warms the next two seconds; the running clock never
-    // continuously writes to KV. Exact AST/settings keys guard second boundaries.
-    const now = FormulaShare.localDate(state.t);
-    for (const offset of [1, 2]) {
-      const next = new Date(+now + offset * 1000),
-        code = timeCode(next),
-        result = data.getMinute(code);
-      if (!result || result.error) continue;
-      void shareLinks
-        .prepare({
-          ...state,
-          t: code + pad(next.getSeconds()),
-          ast: result.solutions[next.getSeconds()] || null,
-        })
-        .catch(() => {});
-    }
-  }
-  for (const event of ['pointerenter', 'focus', 'pointerdown'])
-    shareButton.addEventListener(event, prepareShareOnIntent);
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      clearTimeout(shareWarmTimer);
-      shareWarmKey = '';
-      if (!shareBusy) shareLinks.cancelPending();
-    } else preparePausedShare();
-  });
-  $('#share-copy').addEventListener('click', () => {
-    void copyShare($<HTMLInputElement>('#share-url').value);
-  });
-  $('#share-native').addEventListener('click', () => {
-    if (activeSnapshot)
-      deliverShare($<HTMLInputElement>('#share-url').value, activeSnapshot, shareSerial);
-  });
-  shareButton.addEventListener('click', async () => {
-    if (shareButton.disabled || !displayedFrame) return;
-    const snapshot = displayedFrame,
-      { code, seconds, view } = snapshot;
-    const state = FormulaShare.snapshot({
-      v: 1,
-      t: code + pad(seconds),
-      font: view.font,
-      numerals: view.numerals,
-      division: view.division,
-      ast: snapshot.ast,
-    });
-    // Invalidate work for a newer second and settle the frame the user saw.
-    // Capture the AST before any network await, including an ordinary null frame.
-    settings.adoptView({ font: state.font, numerals: state.numerals, division: state.division });
-    activeSnapshot = state;
-    preview = { epoch: +FormulaShare.localDate(state.t), started: performance.now(), paused: true };
-    resetTransport();
-    ++requestSerial;
-    scene.getAnimations({ subtree: true }).forEach((animation) => animation.finish());
-    applyFrame(snapshot.frame, snapshot.ast, code, seconds, false, true, view);
-    showNotice('');
-    clearTimeout(shareWarmTimer);
-    shareWarmKey = JSON.stringify(state);
-    const serial = ++shareSerial,
-      preparedId = shareLinks.peek(state);
-    if (preparedId) {
-      deliverShare(FormulaShare.shortUrl(location.origin, preparedId).href, state, serial);
-      return;
-    }
-    shareBusy = true;
-    shareButton.disabled = true;
-    shareButton.setAttribute('aria-busy', 'true');
-    try {
-      const id = await shareLinks.prepare(state),
-        url = FormulaShare.shortUrl(location.origin, id).href;
-      if (serial !== shareSerial) return;
-      showNotice('');
-      deliverShare(url, state, serial);
-    } catch {
-      if (serial === shareSerial) showNotice(t('shareFailed'));
-    } finally {
-      if (serial === shareSerial) {
-        shareBusy = false;
-        shareButton.removeAttribute('aria-busy');
-        lastVisual = '';
-        refresh(true);
-      }
-    }
+  const sharing = createSharing({
+    t,
+    shareButton,
+    shareDialog,
+    sharedView,
+    initiallyShared: !!sharedState,
+    displayedFrame: () => displayedFrame,
+    applyFrame: (frame, ast, code, seconds, loading, instant, view) =>
+      applyFrame(frame, ast, code, seconds, loading, instant, view),
+    invalidate: () => {
+      lastVisual = '';
+    },
+    cancelPending: () => {
+      ++requestSerial;
+    },
+    finishAnimations: () => {
+      scene.getAnimations({ subtree: true }).forEach((animation) => animation.finish());
+    },
+    engineError: () => engineError,
+    hasMinute: (code) => data.hasMinute(code),
+    getMinute: (code) => data.getMinute(code),
+    settle: (epoch) => {
+      preview = { epoch, started: performance.now(), paused: true };
+      resetTransport();
+    },
+    previewPaused: () => !!preview?.paused,
+    kick: () => refresh(true),
+    adoptView: (view) => settings.adoptView(view),
   });
   function refresh(force = false) {
     const now = getNow(),
@@ -875,12 +675,12 @@ interface Preview {
         seconds: pad(seconds),
       }),
     );
-    const snapshot = snapshotAt(code, seconds),
+    const snapshot = sharing.snapshotAt(code, seconds),
       ast = snapshot ? snapshot.ast : result?.solutions[seconds] || null;
     renderExpression(ast, code, seconds, !result);
     prepareNext(now);
     ticks.forEach((el, i) => {
-      const saved = snapshotAt(code, i),
+      const saved = sharing.snapshotAt(code, i),
         entry = saved ? saved.ast : result?.solutions[i];
       el.classList.toggle('solved', !!entry);
       el.classList.toggle('current', i === seconds);
@@ -950,7 +750,11 @@ interface Preview {
     setPreview(d, true);
     settingsDialog.close();
   });
-  const fullscreen = createFullscreen({ t, notify: showNotice, renderResize });
+  const fullscreen = createFullscreen({
+    t,
+    notify: (text) => sharing.showNotice(text),
+    renderResize,
+  });
   document.addEventListener('keydown', (e) => {
     const target = e.target;
     if (
