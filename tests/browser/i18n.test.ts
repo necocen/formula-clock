@@ -33,7 +33,9 @@ test('i18n', { timeout: 900000 }, async (t) => {
     structureMotion: true,
     symbolMorph: false,
   };
-  const legal = [...renderLicenses().matchAll(new RegExp('<pre(?: [^>]*)?>(.*?)</pre>', 'gs'))]
+  const legal = [
+    ...(await renderLicenses()).matchAll(new RegExp('<pre(?: [^>]*)?>(.*?)</pre>', 'gs')),
+  ]
     .map((match) => match[1])
     .map((text) => decodeHtml(text).replace(/^\n/, ''));
   const query = '?v=1&t=123430&font=stix2&numerals=oldstyle&division=fraction';

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash, randomUUID } from 'node:crypto';
 import { isRecord } from '../src/shared/types.ts';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -22,8 +23,40 @@ function escapeHtml(text: string): string {
   });
 }
 
-// Builds from installed packages and reviewed local copies; never fetches from the network.
-export function renderLicenses(root = projectRoot): string {
+async function readLicenseText(root: string, source: Record<string, unknown>): Promise<string> {
+  if (typeof source.file !== 'string') throw new Error('Missing license text path');
+  const file = path.join(root, source.file);
+  if (source.download === undefined) return fs.readFileSync(file, 'utf8');
+  if (
+    typeof source.download !== 'string' ||
+    !source.download.startsWith('https://') ||
+    typeof source.sha256 !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(source.sha256)
+  )
+    throw new Error(`Invalid license download record: ${source.file}`);
+  const hash = (data: Buffer) => createHash('sha256').update(data).digest('hex');
+  if (fs.existsSync(file)) {
+    const cached = fs.readFileSync(file);
+    if (hash(cached) === source.sha256) return cached.toString('utf8');
+  }
+  const response = await fetch(source.download, { signal: AbortSignal.timeout(30_000) });
+  if (!response.ok)
+    throw new Error(`License download failed (${response.status}): ${source.download}`);
+  const data = Buffer.from(await response.arrayBuffer());
+  if (hash(data) !== source.sha256) throw new Error(`License SHA-256 mismatch: ${source.download}`);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const temporary = `${file}.${randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(temporary, data);
+    fs.renameSync(temporary, file);
+  } finally {
+    fs.rmSync(temporary, { force: true });
+  }
+  return data.toString('utf8');
+}
+
+// Missing or invalid cached texts are fetched and checked before HTML is produced.
+export async function renderLicenses(root = projectRoot): Promise<string> {
   const read = (file: string) => fs.readFileSync(path.join(root, file), 'utf8');
   const json = (file: string): Record<string, unknown> => {
     const value: unknown = JSON.parse(read(file));
@@ -66,14 +99,17 @@ export function renderLicenses(root = projectRoot): string {
   const cdnVersion = read('src/browser/typesetter.ts').match(/npm\/mathjax@([^/]+)\//)?.[1];
   if (!cdnVersion || cdnVersion !== values.get('version:@mathjax/src'))
     throw new Error('Browser MathJax CDN version does not match the reviewed license version');
-  for (const [id, source] of Object.entries(manifest.texts)) {
-    if (!isRecord(source) || typeof source.file !== 'string' || typeof source.source !== 'string')
-      throw new Error(`Invalid license text record: ${id}`);
-    const text = read(source.file);
-    if (!text.trim()) throw new Error(`Empty license text: ${source.file}`);
-    values.set(`text:${id}`, text);
-    values.set(`source:${id}`, source.source);
-  }
+  await Promise.all(
+    Object.entries(manifest.texts).map(async ([id, source]) => {
+      if (!isRecord(source) || typeof source.file !== 'string' || typeof source.source !== 'string')
+        throw new Error(`Invalid license text record: ${id}`);
+      const text = await readLicenseText(root, source);
+      if (!text.trim()) throw new Error(`Empty license text: ${source.file}`);
+      // HTML normalizes CRLF as well; keep the generated source consistent with the DOM.
+      values.set(`text:${id}`, text.replace(/\r\n?/g, '\n'));
+      values.set(`source:${id}`, source.source);
+    }),
+  );
   const used = new Set<string>();
   const html = read('licenses/notice.html').replace(/\{\{([^{}]+)\}\}/g, (_, key: string) => {
     const value = values.get(key);
@@ -89,7 +125,7 @@ export function renderLicenses(root = projectRoot): string {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const html = renderLicenses();
+  const html = await renderLicenses();
   const output = path.join(projectRoot, 'dist/licenses.html');
   fs.mkdirSync(path.dirname(output), { recursive: true });
   fs.writeFileSync(output, html);

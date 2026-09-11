@@ -37,31 +37,45 @@
     },
     "stix2-ofl": {
       "file": "licenses/texts/stix2-ofl.txt",
-      "source": "https://github.com/stipub/stixfonts/blob/master/OFL.txt"
+      "source": "https://github.com/stipub/stixfonts/blob/master/OFL.txt",
+      "download": "https://raw.githubusercontent.com/stipub/stixfonts/adfad5d9b5c9efb83200cac79bc00fca639ca20f/OFL.txt",
+      "sha256": "0c8825913b60d858aacdb33c4ca6660a7d64b0d6464702efbb19313f5765861a"
     },
     "gust": {
       "file": "licenses/texts/gust.txt",
-      "source": "https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt"
+      "source": "https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt",
+      "download": "https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt",
+      "sha256": "49ea6cb9257bbee0a3979c48a774cd221550ac1c20c95549efe45fc99cc18050"
     },
     "fira-math-ofl": {
       "file": "licenses/texts/fira-math-ofl.txt",
-      "source": "https://github.com/firamath/firamath/blob/main/LICENSE"
+      "source": "https://github.com/firamath/firamath/blob/main/LICENSE",
+      "download": "https://raw.githubusercontent.com/firamath/firamath/4bd85bc943eb6a194cfc090f7e194aa27d8f8419/LICENSE",
+      "sha256": "d91e145d7fabda1263178ec018ec7d97218856dc9f3e2d1a455d976896606c25"
     },
     "fira-sans-ofl": {
       "file": "licenses/texts/fira-sans-ofl.txt",
-      "source": "https://github.com/mozilla/Fira/blob/master/LICENSE"
+      "source": "https://github.com/mozilla/Fira/blob/master/LICENSE",
+      "download": "https://raw.githubusercontent.com/mozilla/Fira/606cb1fc9995666203c50ecf6c14c2c10cdb6659/LICENSE",
+      "sha256": "99bfb7c1e845b79d1031fcf37e678178eb4a8c7cc74a3f218ddf7223083a6fcd"
     },
     "euler-ofl": {
       "file": "licenses/texts/euler-ofl.txt",
-      "source": "https://github.com/aliftype/euler-otf"
+      "source": "https://github.com/aliftype/euler-otf",
+      "download": "https://raw.githubusercontent.com/aliftype/euler-otf/d2e22668d1c10f2ff9cfdcd96ce9436edb629614/OFL.txt",
+      "sha256": "170a92017a3e9db28989f172900fa784dddceb48dc3bfb49988a8a9843ee477a"
     },
     "lppl-1.3c": {
       "file": "licenses/texts/lppl-1.3c.txt",
-      "source": "https://www.latex-project.org/lppl/lppl-1-3c.txt"
+      "source": "https://www.latex-project.org/lppl/lppl-1-3c.txt",
+      "download": "https://www.latex-project.org/lppl/lppl-1-3c.txt",
+      "sha256": "3d262cdf34dafa6955f703c634a8c238ec44109bc8dd6ef34fb7aa54809f7e66"
     },
     "mpl-2.0": {
       "file": "licenses/texts/mpl-2.0.txt",
-      "source": "https://github.com/thx/resvg-js/blob/v2.6.2/LICENSE"
+      "source": "https://github.com/thx/resvg-js/blob/v2.6.2/LICENSE",
+      "download": "https://raw.githubusercontent.com/thx/resvg-js/9ca058462ac529120c8cc84ddcd6fef644cc5406/LICENSE",
+      "sha256": "4b89d4518bd135ab4ee154a7bce722246b57a98c3d7efc1a09409898160c2bd1"
     }
   }
 }

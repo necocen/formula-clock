@@ -6,7 +6,7 @@
 ## 編集とビルド
 
 - `src/browser/app.html` / `src/shared/i18n.ts` / `src/shared/display.ts` / `src/shared/share.ts` / `src/shared/expression.ts` / `src/shared/data.ts` / `src/browser/typesetter.ts` / `src/shared/symbols.ts` / `src/browser/app.ts` が表示アプリの原本。`src/browser/app.html`は画面・CSSを持つ完全なHTMLで、ビルド時に`<!-- clock-licenses -->`へライセンス表示、`<!-- clock-scripts -->`へスクリプトを挿入する。共有画像と配信処理は `src/worker/`。
-- ライセンス本文・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。通常ビルドでも自動生成し、`npm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版を更新する。
+- ライセンスの取得先・SHA-256・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。本文は取得してGit管理外の`licenses/texts/`へキャッシュする。通常ビルドでも自動生成し、`npm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版とハッシュを更新する。
 - アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。テストは`node:test`とNode版Playwrightで実行し、PythonはSymPyの厳密計算とfontToolsの字形抽出だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
 - `src/browser/bootstrap.ts` が公開グローバルを準備した後にプロバイダー設定、`src/browser/app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
 - `dist/` は生成物。単体HTMLは`dist/standalone/index.html`、配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。

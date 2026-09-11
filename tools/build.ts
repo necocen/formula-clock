@@ -31,7 +31,7 @@ const template = read('src/browser/app.html');
 for (const marker of ['<!-- clock-scripts -->', '<!-- clock-licenses -->']) {
   if (template.split(marker).length !== 2) throw new Error(`Expected exactly one ${marker}`);
 }
-const licenses = renderLicenses(root);
+const licenses = await renderLicenses(root);
 // Only the dedicated generated directory is cleaned. Never publish the repository root.
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });

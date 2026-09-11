@@ -64,7 +64,7 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 言語によって時計の数値・フォント・共有URL・保存設定は変わりません。
 
 ライセンス画面の説明は日本語のみで、ライセンス原文をそのまま掲載します。
-本文・出典・確認済みバージョンは`licenses/`で管理し、ビルド時に画面へ組み込みます。`npm run generate:licenses`でライセンス部分だけを生成できます。更新手順は[ライセンス表示の管理](licenses/README.md)を参照してください。
+出典・取得先・SHA-256・確認済みバージョンは`licenses/`で管理し、本文は初回ビルド時に取得してGit管理外の`licenses/texts/`へキャッシュします。`npm run generate:licenses`でライセンス部分だけを生成できます。更新手順は[ライセンス表示の管理](licenses/README.md)を参照してください。
 
 ## ディレクトリ構成
 
@@ -75,7 +75,7 @@ src/
   worker/        共有API・HTMLメタデータ・OG画像
   api.d.ts       公開APIの型
 public/          配信用の静的設定（_headers）
-licenses/        ライセンス本文・出典・表示テンプレート
+licenses/        ライセンスの取得先・ハッシュ・表示テンプレート
 tools/           ビルド・データ生成／取り込み・テスト実行
 data/            採用済み式データ・JSON Schema・形式サンプル
 tests/
