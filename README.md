@@ -89,7 +89,7 @@ dist/            ビルド出力（Git管理外）
 test-results/    実行結果・スクリーンショット（Git管理外）
 ```
 
-`src/browser/index.html`が画面の原本、`src/browser/main.ts`がViteのエントリーです。各モジュールはESモジュールとして相互にimportし、`bootstrap.ts`はテスト・コンソール向けに公開APIを`window`へ載せます。データ取得の既定値は`provider.ts`が登録します。`tools/vite-clock.ts`はライセンス表示と式データだけを用意し、JavaScript・HTML・WASMの処理はViteと既存プラグインに任せます。原本を編集して`pnpm run build`で更新してください。
+`src/browser/index.html`が画面の原本、`src/browser/main.ts`がViteのエントリーです。アプリ本体はデータ取得・表示設定・レンダラ・時計進行・共有・時報・全画面・ショートカットの役割別モジュールに分かれ、`app.ts`が合成ルートとして配線し、最後に公開API`window.FormulaClock`を組み立てます。`bootstrap.ts`はテスト・コンソール向けに共有モジュールを`window`へ載せます。データ取得の既定値は`provider.ts`が登録します。`tools/vite-clock.ts`はライセンス表示と式データだけを用意し、JavaScript・HTML・WASMの処理はViteと既存プラグインに任せます。原本を編集して`pnpm run build`で更新してください。
 
 `dist/`と`test-results/`は削除・再生成できるためGitへ入れません。`data/expressions.json`は採用済みの入力データ、`docs/images/`は説明用の見本、`tests/fixtures/og-snapshots/`は画像差分の基準入力なのでGit管理します。`public/data/`も生成物です。テストの実際の画像や差分は`test-results/`へ出力します。
 
