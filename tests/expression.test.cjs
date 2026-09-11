@@ -82,6 +82,15 @@ for(const structureMotion of [false,true]) {
  assert.deepEqual(parse(tex),rootPower);
 }
 assert.equal(E.compact(rootPower,'0220'),'0!+(√(√2))^20');
+// Unlike a superscript, a radical's postfix factorial gets an explicit group.
+const rootFactorial=table.minutes['0858'][46];
+for(const structureMotion of [false,true]) {
+ const tex=E.expressionTex(rootFactorial,'0858',{structureMotion});
+ assert.equal((tex.match(/\\left\(/g)||[]).length,1);
+ assert.equal((tex.match(/\\right\)/g)||[]).length,1);
+ assert.deepEqual(parse(tex),rootFactorial);
+}
+assert.equal(E.compact(rootFactorial,'0858'),'(√(0!+8))!+5×8');
 let equations=0,serializations=0,textSerializations=0,rest=0;
 const start=Date.now();
 function roundtrip(ast,code){

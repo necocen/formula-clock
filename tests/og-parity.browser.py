@@ -49,7 +49,7 @@ with sync_playwright() as p:
         for key in ['numericAxisEm', 'axisEm', 'equalCenterY']:
             assert abs(actual['typography'][key]-sample['typography'][key]) < .001, (sample['name'], key)
         cases.append({'name': sample['name'], 'glyphsMatch': True, 'axisDelta': actual['axisY']-sample['axisY']})
-        if state['division'] == 'fraction' and t in ['123430', '100836', '022033', '004159']:
+        if state['division'] == 'fraction' and t in ['123430', '100836', '022033', '085846', '004159']:
             page.locator('#stage').screenshot(path=str(output/(sample['name']+'.png')))
     report = {'command': sys.argv, 'at': datetime.now(timezone.utc).isoformat(), 'browser': args.browser, 'browserVersion': browser.version,
               'playwright': version('playwright'), 'mathjax': page.evaluate('FormulaClock.diagnostics().mathjax'), 'cases': cases, 'errors': errors, 'requests': requests}

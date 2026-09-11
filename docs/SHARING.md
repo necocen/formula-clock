@@ -112,7 +112,7 @@ python tests/og-parity.browser.py --url http://127.0.0.1:8787/
 python tests/browser.test.py --url http://127.0.0.1:8787/ --screenshots
 ```
 
-`test:og`の描画テストは216ケースのPNG・測定値を`test-results/share-og/`へ保存する。
+`test:og`の描画テストは240ケースのPNG・測定値を`test-results/share-og/`へ保存する。
 字形比較はその測定値と、実際にCDNから取得したMathJaxの字形パス・軸・viewBoxを照合する。
 ブラウザ検証はChromium / Firefox / WebKitを選択でき、実行コマンド・ブラウザとMathJaxの版・取得URLを記録する。
 CDN検証にローカル互換フォントを代用しない。ログ・実行結果・確認用画像はGit対象外の`test-results/`に保存する。

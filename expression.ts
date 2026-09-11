@@ -106,8 +106,9 @@ function expressionTex(ast: Expr, code: string, settings: Partial<TexOptions> = 
     }
     if (a.op === 'fact') {
       // (n!)! must not become n!!, which conventionally means double factorial.
+      // Parenthesize a radical too, so the postfix ! clearly applies to it all.
       const x = write(a.a);
-      return (['lit','sqrt'].includes(a.a.op) ? x : enclose(a.a,x)) + symbol(a,'!','mathclose');
+      return (a.a.op === 'lit' ? x : enclose(a.a,x)) + symbol(a,'!','mathclose');
     }
     if (a.op === 'pow') {
       let x = write(a.a);

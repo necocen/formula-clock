@@ -1819,7 +1819,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       }
       if (a.op === "fact") {
         const x = write(a.a);
-        return (["lit", "sqrt"].includes(a.a.op) ? x : enclose(a.a, x)) + symbol(a, "!", "mathclose");
+        return (a.a.op === "lit" ? x : enclose(a.a, x)) + symbol(a, "!", "mathclose");
       }
       if (a.op === "pow") {
         let x = write(a.a);
