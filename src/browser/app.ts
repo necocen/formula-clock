@@ -10,8 +10,16 @@ import {
   type ClockLayout,
   type AudioEvent,
 } from '../shared/types.ts';
-import type { Typesetter } from './typesetter.ts';
+import FormulaI18n from '../shared/i18n.ts';
+import FormulaDisplay from '../shared/display.ts';
+import FormulaShare from '../shared/share.ts';
+import FormulaExpression from '../shared/expression.ts';
+import FormulaData from '../shared/data.ts';
+import FormulaSymbols from '../shared/symbols.ts';
+import FormulaTypesetter, { type Typesetter } from './typesetter.ts';
 import type { ClockFace, Frame, PlacedToken } from './types.ts';
+// The default provider registers itself on FORMULA_CLOCK_CONFIG before the app reads it.
+import './provider.ts';
 
 interface MinuteSolutions {
   input: string;
