@@ -93,7 +93,7 @@ pnpm exec playwright show-report test-results/playwright-report
 
 `clock`で移動を完全に無効化する場合は、3つのmotion設定をすべて`0`にします。構造の移動・四則記号の変形には基本記号の移動が必要なためです。
 
-ブラウザ検証は配布用MathJax 4のCDN経路だけを使います。
+ブラウザ検証は配布経路のMathJax 4だけを使います。単体HTMLを開く`clock`はCDN、HTTP配信のスイートはサイト自身の`/vendor/mathjax/`から読み込みます。
 
 ## 実行結果
 

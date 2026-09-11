@@ -142,7 +142,7 @@ Tab / Shift+Tabをダイアログ内で循環させる。320px幅と低い画面
 高速プレビュー、式なし表示、設定切り替え後に記号が重複・残留しないこと。
 reduced-motionでは即座に配置し、フェードしないこと。分数線・括弧・根号は対象外。
 
-`tests/browser/symbol-motion.test.ts` が、配布CDNフォントで配置一致・要素寿命・設定保存を検証する。
+`tests/browser/symbol-motion.test.ts` が、配布経路のフォントで配置一致・要素寿命・設定保存を検証する。
 
 記号の持ち場は画面座標ではなくHHMMスロットで判定する。
 `1−2＋3＋4` → `1＋2−3＋4` では最初の−と＋を再利用せず、末尾の＋だけを保持すること。
@@ -162,7 +162,7 @@ reduced-motionでは即座に配置し、フェードしないこと。分数線
 高速プレビュー・書体切り替え・通常時計への移行・オフへの切り替えで残像が残らないこと。
 320px幅に収まり、reduced-motionでは移動とフェードを抑制すること。
 
-`tests/browser/structure-motion.test.ts` が配布CDNフォントの全字形座標、線の補間、識別子と要素寿命を検証する。
+`tests/browser/structure-motion.test.ts` が配布経路フォントの全字形座標、線の補間、識別子と要素寿命を検証する。
 
 ## 実験機能：四則記号の変形
 
@@ -178,7 +178,7 @@ reduced-motionでは即座に配置し、フェードしないこと。分数線
 終了後は回転用のグループを取り除き、本来の1字形を表示すること。
 reduced-motionへの切り替えは回転・フェードを止め、通常時計やオフへの切り替えで残像を残さないこと。
 
-`tests/browser/symbol-morph.test.ts` がCDNの4書体×Lining / Oldstyleで上記とモバイル設定・他の実験機能との併用を検証する。
+`tests/browser/symbol-morph.test.ts` が配布経路の4書体×Lining / Oldstyleで上記とモバイル設定・他の実験機能との併用を検証する。
 
 ## UIの言語
 

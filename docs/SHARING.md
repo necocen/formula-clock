@@ -117,6 +117,6 @@ FORMULA_CLOCK_TEST_URL=http://127.0.0.1:8787/ FORMULA_CLOCK_SCREENSHOTS=1 pnpm r
 
 `test:og`の描画テストは240ケースのPNG・測定値を`test-results/og/`へ保存する。Worker統合テストはWranglerの`createTestHarness`で実際の配布設定を読み、WASM・ASSETS・KV・R2を確認する。
 `og-snapshots`はworkerdのHTTP応答をPlaywrightの`toMatchSnapshot`で変更前の固定PNGと比較する。基準は`tests/fixtures/og-snapshots/`、失敗時の実際の画像・差分は`test-results/`に残る。更新方法は[テストの説明](../tests/README.md)を参照。
-`og-parity`も実行ごとの出力先に同じ240ケースを生成し、実際にCDNから取得したMathJaxの字形パス・軸・viewBoxと照合する。別の測定値を使う場合だけ`FORMULA_CLOCK_RENDER_RESULTS`でJSONを指定する。
+`og-parity`も実行ごとの出力先に同じ240ケースを生成し、実際に配布経路から取得したMathJaxの字形パス・軸・viewBoxと照合する。別の測定値を使う場合だけ`FORMULA_CLOCK_RENDER_RESULTS`でJSONを指定する。
 ブラウザ検証はChromium / Firefox / WebKitを選択でき、実行コマンド・ブラウザとMathJaxの版・取得URLを記録する。
-CDN検証にローカル互換フォントを代用しない。ログ・実行結果・確認用画像はGit対象外の`test-results/`に保存する。
+配布経路の検証に別実装の互換フォントを代用しない。ログ・実行結果・確認用画像はGit対象外の`test-results/`に保存する。

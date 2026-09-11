@@ -79,7 +79,18 @@ test('external build exactly partitions the canonical day and publishes only sit
     'data',
     'index.html',
     'og-default.png',
+    'vendor',
   ]);
+  assert.ok(fs.existsSync(path.join(dir, 'vendor/mathjax/tex-svg-nofont.js')));
+  for (const font of [
+    'mathjax-stix2-font',
+    'mathjax-termes-font',
+    'mathjax-fira-font',
+    'mathjax-modern-font',
+    'mathjax-euler-font-extension',
+  ]) {
+    assert.ok(fs.existsSync(path.join(dir, 'vendor/mathjax/fonts', font, 'svg.js')));
+  }
   assert.equal(fs.readdirSync(path.join(dir, 'data/hours')).length, 24);
   assert.ok(!read('index.html').includes('id="clock-data"'));
   assert.ok(read('_headers').includes('max-age=31536000, immutable'));

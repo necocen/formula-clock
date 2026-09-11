@@ -95,8 +95,8 @@ export async function renderLicenses(root = projectRoot): Promise<string> {
   for (const name of Object.keys(dependencies).filter((name) => /^@(mathjax|resvg)\//.test(name))) {
     if (!values.has(`version:${name}`)) throw new Error(`Missing license review for ${name}`);
   }
-  // The browser loads MathJax from the CDN, while the Worker uses @mathjax/src.
-  const cdnVersion = read('src/browser/typesetter.ts').match(/npm\/mathjax@([^/]+)\//)?.[1];
+  // The standalone browser build loads MathJax from the CDN, while the Worker uses @mathjax/src.
+  const cdnVersion = read('src/browser/typesetter.ts').match(/npm\/mathjax@([^/'"]+)/)?.[1];
   if (!cdnVersion || cdnVersion !== values.get('version:@mathjax/src'))
     throw new Error('Browser MathJax CDN version does not match the reviewed license version');
   await Promise.all(

@@ -1,8 +1,14 @@
 import type { DisplayOptions, Expr, TexOptions, Typography } from '../shared/types.ts';
 import type { ClockFace, Frame, GlyphToken, PlacedToken, MathJaxRuntime } from './types.ts';
 /* TeX -> SVG layout adapter. MathJax owns typography; the clock owns animation.
- * No font files are bundled. MathJax and its font extensions load from the CDN.
+ * No font files are bundled into the app script. Served builds load MathJax and
+ * its fonts from the site's own /vendor/mathjax assets; the standalone single
+ * file loads the same version from the CDN.
  */
+const STANDALONE = import.meta.env.MODE.startsWith('standalone');
+const MATHJAX_BASE = STANDALONE
+  ? 'https://cdn.jsdelivr.net/npm/mathjax@4.1.3'
+  : new URL('/vendor/mathjax', document.baseURI).href;
 const NS = 'http://www.w3.org/2000/svg';
 import * as Expression from '../shared/expression.ts';
 const { expressionTex, frameTex, mark, relation } = Expression;
@@ -109,6 +115,7 @@ class Typesetter {
       const config = {
         loader: {
           load: ['[tex]/html'],
+          ...(STANDALONE ? {} : { paths: { fonts: `${MATHJAX_BASE}/fonts` } }),
           failed: (error: unknown) =>
             finish(new Error(`MathJax: ${error instanceof Error ? error.message : String(error)}`)),
         },
@@ -128,7 +135,7 @@ class Typesetter {
       engineWindow.MathJax.loader.failed = (error) =>
         finish(new Error(`MathJax: ${error instanceof Error ? error.message : String(error)}`));
       const script = engineDocument.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-svg-nofont.js';
+      script.src = `${MATHJAX_BASE}/tex-svg-nofont.js`;
       script.async = true;
       script.id = 'mathjax-script';
       script.onerror = () => finish(new Error('MathJax could not be downloaded'));

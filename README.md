@@ -20,7 +20,7 @@ pnpm run build
 pnpm run dev
 ```
 
-ViteがローカルのWorker・KV・R2と画面を起動します。`pnpm run build:external`で配信用アセットを`dist/site/`、Workerを`dist/worker/`へ生成し、`pnpm run preview:local`でその出力を確認できます。
+ViteがローカルのWorker・KV・R2と画面を起動します。`pnpm run build:external`で配信用アセットを`dist/site/`、Workerを`dist/worker/`へ生成し、`pnpm run preview:local`でその出力を確認できます。配信サイトはMathJaxとフォントを`/vendor/mathjax/`として自ホストするため、単体HTMLと異なりCDNへは接続しません。
 Cloudflareへのプレビュー・公開・KV／R2設定は[共有機能の運用](docs/SHARING.md)を参照してください。
 
 ## 使い方
@@ -81,7 +81,7 @@ tests/
   unit/          Nodeによる単体・データ検証
   build/         単体HTML・配信用ビルドの検証
   og/            OG画像描画・workerdの統合テスト
-  browser/       MathJax 4 CDNを使うPlaywrightテスト
+  browser/       配布経路のMathJax 4を使うPlaywrightテスト
   fixtures/      固定したテスト入力
   helpers/       厳密計算・レポート出力などの補助コード
 docs/            仕様・運用・確認項目・説明用の見本画像
@@ -89,7 +89,7 @@ dist/            ビルド出力（Git管理外）
 test-results/    実行結果・スクリーンショット（Git管理外）
 ```
 
-`src/browser/index.html`が画面の原本、`src/browser/main.ts`がViteのエントリーです。`bootstrap.ts`・`provider.ts`・`app.ts`の順に公開API・データ・画面を準備します。`tools/vite-clock.ts`はライセンス表示と式データだけを用意し、JavaScript・HTML・WASMの処理はViteと既存プラグインに任せます。原本を編集して`pnpm run build`で更新してください。
+`src/browser/index.html`が画面の原本、`src/browser/main.ts`がViteのエントリーです。各モジュールはESモジュールとして相互にimportし、`bootstrap.ts`はテスト・コンソール向けに公開APIを`window`へ載せます。データ取得の既定値は`provider.ts`が登録します。`tools/vite-clock.ts`はライセンス表示と式データだけを用意し、JavaScript・HTML・WASMの処理はViteと既存プラグインに任せます。原本を編集して`pnpm run build`で更新してください。
 
 `dist/`と`test-results/`は削除・再生成できるためGitへ入れません。`data/expressions.json`は採用済みの入力データ、`docs/images/`は説明用の見本、`tests/fixtures/og-snapshots/`は画像差分の基準入力なのでGit管理します。`public/data/`も生成物です。テストの実際の画像や差分は`test-results/`へ出力します。
 
@@ -133,7 +133,7 @@ pnpm exec playwright install chromium firefox webkit
 pnpm run test:browser clock.test.ts --project chromium
 ```
 
-ブラウザテストはMathJax 4.1.3のCDN経路で実行します。
+ブラウザテストは配布経路そのままのMathJax 4.1.3を使います。単体HTMLを開く`clock`はCDN、HTTP配信のスイートはサイトが自ホストする`/vendor/mathjax/`から読み込みます。
 HTTP配信の共有・多言語UIは、Playwright TestがローカルWorkerを自動で起動して確認します。
 
 ```sh
