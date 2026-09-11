@@ -83,7 +83,6 @@ tests/
   build/         単体HTML・配信用ビルドの検証
   og/            OG画像描画・workerdの統合テスト
   browser/       MathJax 4 CDNを使うPlaywrightテスト
-  compat/        手元のMathJax 3・フォントを使う互換性確認
   fixtures/      固定したテスト入力
   helpers/       厳密計算・レポート出力などの補助コード
 docs/            仕様・運用・確認項目・説明用の見本画像
@@ -111,7 +110,7 @@ pnpm run check        # 整形確認・lint・TypeScript型チェック
 
 `pnpm run format:check`と`pnpm run lint`も単独で実行できます。Oxlintはcorrectnessルールと、厳密な比較・`const`の使用・`var`の禁止をチェックし、警告も失敗として扱います。`null`と`undefined`をまとめて判定する`== null` / `!= null`は許可します。型チェックは既存の`tsc --noEmit`で行います。
 
-JavaScript依存は`package.json`と`pnpm-lock.yaml`、テスト用のSymPy・fontToolsは`pyproject.toml`と`pylock.toml`で管理します。`packageManager`でpnpm、`devEngines.runtime`でNode.jsの版も固定しています。同じOS・Python環境では`pnpm install --frozen-lockfile`で両方を再現できます。
+JavaScript依存は`package.json`と`pnpm-lock.yaml`、テスト用のSymPyは`pyproject.toml`と`pylock.toml`で管理します。`packageManager`でpnpm、`devEngines.runtime`でNode.jsの版も固定しています。同じOS・Python環境では`pnpm install --frozen-lockfile`で両方を再現できます。
 
 Python連携はpnpmの実験機能で、この版のPythonロックは生成したOS・Python環境に対応します。環境が異なる場合は通常の`pnpm install`でPythonロックを更新します。Python本体は別途用意し、仮想環境と依存はpnpmに管理させます。`.venv`は`.pnpm/python-envs/`を指すリンクとして自動生成され、どちらもGit管理外です。以前の手作業で作った`.venv`がある場合は別名へ移してからインストールしてください。詳細は[テストの準備](tests/README.md)に記載しています。
 
@@ -125,21 +124,23 @@ pnpm run build:external
 pnpm run test:og
 ```
 
+単体・ビルド・OG検証はVitest、画面検証はPlaywright Testを使います。VitestのTypeScript変換はViteが担当し、`pnpm run test:watch`で単体テストを変更時に再実行できます。単体HTMLの埋め込み・時間別データ生成・WorkerのWASM同梱は既存のesbuildと専用ビルドで行います。
+
 `pnpm run typecheck`はTypeScriptの型チェックだけを実行します。`pnpm test`は最初に`pnpm run check`を実行し、整形・lint・型チェックの失敗を検出します。両ビルドにも型チェックを含めています。
 `pnpm test`は整形・lint・型、単体テスト、単体／配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。
 
 ```sh
-pnpm exec playwright install chromium webkit
-pnpm run test:browser clock --browser chromium
+pnpm exec playwright install chromium firefox webkit
+pnpm run test:browser clock.test.ts --project chromium
 ```
 
-ブラウザテストの既定はMathJax 4.1.3のCDN経路です。`--local-mathjax`を使う互換テストとは区別してください。
-HTTP配信の共有・多言語UIは、ローカルWorkerを起動して確認できます。
+ブラウザテストはMathJax 4.1.3のCDN経路で実行します。
+HTTP配信の共有・多言語UIは、Playwright TestがローカルWorkerを自動で起動して確認します。
 
 ```sh
-pnpm run test:browser share --browser chromium
-pnpm run test:browser i18n --browser chromium
-pnpm run test:browser transport --browser chromium
+pnpm run test:browser --grep '^share$' --project chromium
+pnpm run test:browser i18n.test.ts --project chromium
+pnpm run test:browser transport.test.ts --project chromium
 ```
 
 ログ・実行結果JSON・確認用スクリーンショットは、Git対象外の`test-results/`に保存します。

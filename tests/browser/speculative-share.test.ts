@@ -1,16 +1,13 @@
 import { sharedSnapshot } from '../helpers/share-response.ts';
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
-import type { Page } from 'playwright';
+import type { Page } from '@playwright/test';
 import type { Expr } from '../../src/shared/types.ts';
-import { browserArgs, createReport, playwrightVersion } from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, { browsers: ['chromium', 'webkit'], options: [] });
-test('speculative-share', { timeout: 900000 }, async (t) => {
+import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
+test('speculative-share', async ({ browser, args }) => {
   const report = createReport({
     command: process.argv,
     at: new Date().toISOString(),
@@ -35,8 +32,6 @@ test('speculative-share', { timeout: 900000 }, async (t) => {
     );
     await ready(page, time);
   }
-  const browser = await playwright[args.browser].launch();
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
   const ctx = await browser.newContext({ locale: 'ja-JP', timezoneId: 'Asia/Tokyo' });
   await ctx.addInitScript(`window.posts=[];window.nativeCalls=[];window.releaseSaves=[];window.saveMode='hold';
@@ -181,7 +176,6 @@ test('speculative-share', { timeout: 900000 }, async (t) => {
   report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
   assert.deepEqual(report['mathjax'], '4.1.3');
   await ctx.close();
-  await browser.close();
   assert.ok(!(report['errors'].length > 0), inspect(report['errors']));
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
@@ -189,5 +183,4 @@ test('speculative-share', { timeout: 900000 }, async (t) => {
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

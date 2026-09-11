@@ -1,23 +1,16 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
 import type { DisplayOptions, GlyphDiagnostic } from '../../src/shared/types.ts';
-import {
-  browserArgs,
-  createReport,
-  playwrightVersion,
-  zip,
-  combinations,
-} from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  options: [],
+import { test, createReport, playwrightVersion, zip, combinations } from '../helpers/browser.ts';
+test.use({
+  locale: 'ja-JP',
+  viewport: { width: 1440, height: 1000 },
+  timezoneId: 'Asia/Tokyo',
 });
-test('motion-settings', { timeout: 900000 }, async (t) => {
+test('motion-settings', async ({ browser, args, page }) => {
   const keys = ['symbolMotion', 'structureMotion', 'symbolMorph'];
   const selectors = ['#symbol-motion', '#structure-motion', '#symbol-morph'];
   const report = createReport({
@@ -29,14 +22,7 @@ test('motion-settings', { timeout: 900000 }, async (t) => {
     checks: [],
   });
   const errors: string[] = [];
-  const browser = await playwright[args.browser].launch();
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
-  const page = await browser.newPage({
-    locale: 'ja-JP',
-    viewport: { width: 1440, height: 1000 },
-    timezoneId: 'Asia/Tokyo',
-  });
   page.on('pageerror', (e) => errors.push(String(e)));
   async function ready() {
     await page.waitForFunction(
@@ -338,12 +324,10 @@ test('motion-settings', { timeout: 900000 }, async (t) => {
   await failed.close();
   assert.ok(!(errors.length > 0), inspect(errors));
   report['pageErrors'] = errors;
-  await browser.close();
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
     JSON.stringify(report, null, 2) +
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

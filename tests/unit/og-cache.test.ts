@@ -1,7 +1,7 @@
 import type { Env } from '../../src/worker/types.ts';
 import type { R2PutOptions } from '@cloudflare/workers-types';
 import { imageStore } from '../helpers/bindings.ts';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { createHandler } from '../../src/worker/handler.ts';
 

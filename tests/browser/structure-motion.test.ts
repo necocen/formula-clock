@@ -1,14 +1,12 @@
 import { script } from '../helpers/browser-script.ts';
 import { literal as L, binary as B, unary as U } from '../fixtures/ast.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual, inspect } from 'node:util';
-import * as playwright from 'playwright';
 import type { Expr, DisplayOptions } from '../../src/shared/types.ts';
 import {
-  browserArgs,
+  test,
   createReport,
   playwrightVersion,
   zip,
@@ -27,11 +25,11 @@ interface StructureSample {
   }[];
   junction: number[] | null;
 }
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  options: [],
+test.use({
+  viewport: { width: 1440, height: 1000 },
+  timezoneId: 'Asia/Tokyo',
 });
-test('structure-motion', { timeout: 900000 }, async (t) => {
+test('structure-motion', async ({ browser, args, page }) => {
   const fixtures: (readonly [string, string, number, Expr])[] = [
     ['fraction-narrow', '1212', 1, B('div', L(0, 2), L(2, 4))] as const,
     [
@@ -123,13 +121,7 @@ test('structure-motion', { timeout: 900000 }, async (t) => {
   const errors: string[] = [];
   const warnings: string[] = [];
   const cdn: string[] = [];
-  const browser = await playwright[args.browser].launch();
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
-  const page = await browser.newPage({
-    viewport: { width: 1440, height: 1000 },
-    timezoneId: 'Asia/Tokyo',
-  });
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (msg) => (msg.type() === 'warning' ? warnings.push(msg.text()) : null));
   page.on('request', (req) =>
@@ -422,7 +414,6 @@ test('structure-motion', { timeout: 900000 }, async (t) => {
     'No stale symbols after rapid previews/null; mobile fits; structure motion and its prerequisite persist; reduced motion snaps; persistent digits/equality remain intact',
   );
   assert.ok(!(errors.length > 0), inspect(errors));
-  await browser.close();
   report['pageErrors'] = errors;
   report['warnings'] = sorted(new Set(warnings));
   report['cdnRequests'] = sorted(new Set(cdn));
@@ -431,16 +422,5 @@ test('structure-motion', { timeout: 900000 }, async (t) => {
     JSON.stringify(report, null, 2) +
       `
 `,
-  );
-  console.log(
-    JSON.stringify(
-      Object.fromEntries(
-        Object.entries(report)
-          .filter(([k]) => !['geometry', 'cdnRequests'].includes(k))
-          .map(([k, v]) => [k, v] as const),
-      ),
-      null,
-      2,
-    ),
   );
 });

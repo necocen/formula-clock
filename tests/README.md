@@ -1,13 +1,13 @@
 # テストの実行と配置
 
-pnpm 12.4.1とPython 3.11以上を用意します。Node.js 22.23.2はpnpmが準備します。実行コードはTypeScriptのES Modulesに揃え、`node:test`とNode版Playwrightで検証します。PythonはSymPyの厳密計算とfontToolsの字形抽出にだけ使います。
+pnpm 12.4.1とPython 3.11以上を用意します。Node.js 22.23.2はpnpmが準備します。実行コードはTypeScriptのES Modulesに揃え、単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行します。PythonはSymPyの厳密計算にだけ使います。
 
 ```sh
 pnpm install
-pnpm exec playwright install chromium webkit
+pnpm exec playwright install chromium firefox webkit
 ```
 
-`pnpm-workspace.yaml`でPython連携を有効にしています。SymPyとfontToolsは`pyproject.toml`の`dev`グループで指定し、`pylock.toml`で間接依存・取得ファイルも固定します。JavaScriptの`pnpm-lock.yaml`とともにGit管理します。
+`pnpm-workspace.yaml`でPython連携を有効にしています。SymPyは`pyproject.toml`の`dev`グループで指定し、`pylock.toml`で間接依存・取得ファイルも固定します。JavaScriptの`pnpm-lock.yaml`とともにGit管理します。
 
 pnpm 12.4.1のPythonロックにはOS・Pythonの環境情報も含まれ、別の環境では`--frozen-lockfile`が失敗します。初回や環境変更時は通常の`pnpm install`でロックを更新してください。対応するロックがある環境では`pnpm install --frozen-lockfile`、取得済みのキャッシュから再現するときは`pnpm install --offline --frozen-lockfile`を使えます。CIで環境が変わった場合も、対象環境でロックを更新してから固定インストールを使います。
 
@@ -20,9 +20,12 @@ pnpmは`.pnpm/python-envs/`に環境を作り、`.venv`をそこへ向けます�
 ```sh
 pnpm test             # 整形・lint・型 → 単体テスト → ビルドテスト
 pnpm run test:unit    # AST・全日データ・取得・共有・キャッシュなど
+pnpm run test:watch   # 単体テストを変更時に再実行
 pnpm run test:build   # 単体HTMLと配信用アセットを実際にビルドして検証
 pnpm run test:og      # 配信用ビルド → 画像描画とworkerdの統合テスト
 ```
+
+`vitest.config.ts`で`unit`・`build`・`og`のプロジェクトを定義しています。`pnpm test`は整形・lint・型チェック後に`unit`・`build`を実行します。VitestはViteによってTypeScriptを変換しますが、型チェックは`tsc --noEmit`で別に行います。
 
 `unit/`は生成物に依存しません。`build/`と`og/`は実行時に必要なビルドを作ります。採用済みの`data/expressions.json`を読み取るだけで、式の再探索は行いません。
 
@@ -30,23 +33,28 @@ pnpm run test:og      # 配信用ビルド → 画像描画とworkerdの統合�
 
 ## ブラウザ
 
+`playwright.config.ts`のブラウザ別プロジェクトと、`tests/helpers/browser.ts`のfixtureを使います。Playwright Testがブラウザの起動・後片付け、テスト選択、タイムアウト、レポート、失敗時のトレースを管理します。
+
 ```sh
 pnpm run test:browser --list
-pnpm run test:browser clock --browser chromium
+pnpm run test:browser clock.test.ts --project chromium
+pnpm run test:browser i18n.test.ts --project webkit
+pnpm run test:browser --project chromium --project webkit
 ```
 
-ブラウザの操作・通信モック・検証はNodeで実行します。通常の実行前には単体HTMLをビルドし、`--list` / `--help`ではビルドしません。SymPyとfontToolsの補助処理だけはpnpmが管理する`.venv`を使い、別環境の検証時には`FORMULA_CLOCK_PYTHON`でも指定できます。
+引数なしでは設定済みの全ブラウザを実行します。Chromium・WebKitは全14スイート、Firefoxは対応する10スイートです。テストファイル名か`--grep`で絞り込み、`--project`でブラウザを選択します。`share`など名前が重なる場合は`--grep '^share$'`でテスト名を完全一致させてください。アニメーションの計測に競合が出ないよう、実行workerは1に固定しています。
 
-`clock`の既定は`dist/standalone/index.html`を直接開くテストです。他のスイートはローカルWorkerを使うため、別のターミナルで起動してください。
+実行時に単体HTMLをビルドし、HTTPのローカルWorkerも自動で起動・終了します。`--list` / `--help`ではビルドやサーバー起動は行いません。既定のHTTP URLは`http://127.0.0.1:8787/`です。開発中に同じポートでWorkerが動いていれば再利用し、CIでは既存サーバーとの競合をエラーにします。
+
+`clock`は`dist/standalone/index.html`を直接開き、他のスイートはHTTPを使います。プレビューなど別の配信先を確認するときは`FORMULA_CLOCK_TEST_URL`を指定します。この場合は`clock`も指定URLを使い、ローカルWorkerを起動しません。
 
 ```sh
-pnpm run dev
-# 別のターミナルで:
-pnpm run test:browser i18n --browser webkit
-pnpm run test:browser transport --browser chromium
+FORMULA_CLOCK_TEST_URL=http://127.0.0.1:8787/ pnpm run test:browser clock.test.ts --project chromium
+pnpm run test:browser --grep '^share$' --project chromium
+pnpm run test:browser transport.test.ts --project chromium
 ```
 
-HTTPの既定URLは`http://127.0.0.1:8787/`です。`--url`でプレビューなどへ変更できます。`--output-dir`で出力先も指定できます。
+ブラウザの操作・通信モック・検証はNodeで実行します。SymPyの補助処理だけはpnpmが管理する`.venv`を使い、別環境の検証時には`FORMULA_CLOCK_PYTHON`でも指定できます。
 
 | スイート                                              | 主な確認                                            |
 | ----------------------------------------------------- | --------------------------------------------------- |
@@ -60,26 +68,33 @@ HTTPの既定URLは`http://127.0.0.1:8787/`です。`--url`でプレビューな
 | `share` / `kv-share` / `speculative-share`            | 共有URL・保存済みAST・先行発行・競合                |
 | `og-parity`                                           | OG画像とブラウザの字形・軸・配置の一致              |
 
-`og-parity`は`pnpm run test:og`が作る`test-results/og/render-results.json`を先に用意してください。対応ブラウザや固有の引数は`pnpm run test:browser SUITE --help`で確認できます。
+`og-parity`は現在のソースから240ケースのOG画像・測定値を自動生成します。以前の実行結果に依存しません。別途取得した測定値と比較するときだけ`FORMULA_CLOCK_RENDER_RESULTS`へJSONのパスを指定してください。
 
-`browser/`は`node:test`からPlaywrightを操作するテストです。`all`は14スイートを順番に実行します（ローカルWorkerとOG描画結果を先に用意してください）。例えば`pnpm run test:browser all --browser webkit`で一括実行できます。既定は配布用MathJax 4のCDNを使います。`clock --local-mathjax DIRECTORY`を使った場合は互換性確認として扱い、CDN版の成功に数えません。
+追加の設定は次の環境変数、または`playwright.config.ts`の`use.clockOptions`で変更できます。出力先は標準の`--output DIRECTORY`で変更できます。
 
-## ローカルフォントの互換性確認
+| 環境変数                           | 用途                              |
+| ---------------------------------- | --------------------------------- |
+| `FORMULA_CLOCK_TEST_URL`           | 配信先URLの上書き                 |
+| `FORMULA_CLOCK_SCREENSHOTS=1`      | `clock`の各ケースの見本画像も保存 |
+| `FORMULA_CLOCK_SYMBOL_MOTION=0`    | `clock`で基本記号の移動を無効化   |
+| `FORMULA_CLOCK_STRUCTURE_MOTION=0` | `clock`で構造記号の移動を無効化   |
+| `FORMULA_CLOCK_SYMBOL_MORPH=0`     | `clock`で四則記号の変形を無効化   |
+| `FORMULA_CLOCK_RENDER_RESULTS`     | `og-parity`で使う外部の測定値JSON |
 
-`compat/`には、手元のMathJax 3とSTIX Twoフォントを使う確認を隔離しています。通常のテストには含めません。必要なファイルは実行者が用意してください。
+`clock`で移動を完全に無効化する場合は、3つのmotion設定をすべて`0`にします。構造の移動・四則記号の変形には基本記号の移動が必要なためです。
 
-```sh
-pnpm run test:browser compat/stix2 --local-mathjax DIRECTORY --stix-fonts DIRECTORY
-```
+ブラウザ検証は配布用MathJax 4のCDN経路だけを使います。
 
 ## 実行結果
 
 出力はすべてGit管理外の`test-results/`へ保存します。
 
-- `unit/`: Nodeテストの集計
+- `unit/`: 単体テストの詳細な計算結果
 - `og/`: 共有画像・測定値
-- `browser/SUITE/BROWSER/`: ブラウザの結果JSON・スクリーンショット
-- `compat/stix2/chromium/`: ローカルフォントの互換性確認
+- `browser/`: Playwrightがテスト・ブラウザごとに分けた結果JSON・画像・失敗時のトレース
+- `playwright-report/`: HTMLレポート（`pnpm exec playwright show-report test-results/playwright-report`で表示）
 - `generate/`: オフラインデータ探索の集計
+
+独自のJSONは字形・配置などの詳細な計測値を残すためのものです。テストの成否と失敗箇所はPlaywright Testの標準レポートで確認できます。JSONはHTMLレポートにも添付します。
 
 `tests/`には実行コードと固定入力だけを置きます。比較の基準として残す画像は、テストの生出力と区別して`docs/images/`へ置き、用途を文書に記載してください。

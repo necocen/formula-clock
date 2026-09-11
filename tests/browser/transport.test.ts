@@ -1,14 +1,11 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
-import type { Page } from 'playwright';
-import { browserArgs, createReport, playwrightVersion } from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, { browsers: ['chromium', 'webkit'], options: [] });
-test('transport', { timeout: 900000 }, async (t) => {
+import { expect, type Page } from '@playwright/test';
+import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
+test('transport', async ({ browser, args }) => {
   const report = createReport({
     at: new Date().toISOString(),
     command: process.argv,
@@ -30,8 +27,6 @@ test('transport', { timeout: 900000 }, async (t) => {
     await page.evaluate(script('t=>FormulaClock.preview(FormulaShare.localDate(t))'), time);
     await ready(page, time);
   }
-  const browser = await playwright[args.browser].launch({ headless: true });
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
   for (const locale of ['ja-JP', 'en-US']) {
     const ctx = await browser.newContext({
@@ -124,7 +119,11 @@ test('transport', { timeout: 900000 }, async (t) => {
     await page.keyboard.press('ArrowRight');
     assert.deepEqual(await page.evaluate<string>('FormulaClock.state.now'), frozen);
     await page.keyboard.press('Escape');
+    await expect(page.locator('#licenses')).not.toBeVisible();
+    await expect(page.locator('#licenses-open')).toBeFocused();
     await page.keyboard.press('Escape');
+    await expect(page.locator('#settings')).not.toBeVisible();
+    await expect(page.locator('#settings-open')).toBeFocused();
     await page.evaluate(
       'document.querySelector("#share-dialog").showModal();document.querySelector("#share-url").focus()',
     );
@@ -132,6 +131,9 @@ test('transport', { timeout: 900000 }, async (t) => {
     await page.keyboard.press('Space');
     assert.deepEqual(await page.evaluate<string>('FormulaClock.state.now'), frozen);
     await page.keyboard.press('Escape');
+    // The dialog's asynchronous close event restores focus before the next key test.
+    await expect(page.locator('#share-dialog')).not.toBeVisible();
+    await expect(page.locator('#share')).toBeFocused();
     await page.evaluate(
       'const el=document.createElement("div");el.id="editable-test";el.contentEditable="true";el.textContent="text";document.body.append(el);el.focus()',
     );
@@ -231,7 +233,6 @@ test('transport', { timeout: 900000 }, async (t) => {
     );
     await ctx.close();
   }
-  await browser.close();
   assert.ok(!(report['errors'].length > 0), inspect(report['errors']));
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
@@ -239,5 +240,4 @@ test('transport', { timeout: 900000 }, async (t) => {
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

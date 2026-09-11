@@ -1,22 +1,13 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
 import type { DisplayOptions, ClockState } from '../../src/shared/types.ts';
 import { renderLicenses } from '../../tools/licenses.ts';
-import {
-  browserArgs,
-  createReport,
-  playwrightVersion,
-  ROOT,
-  decodeHtml,
-} from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, { browsers: ['chromium', 'webkit'], options: [] });
-test('i18n', { timeout: 900000 }, async (t) => {
+import { test, createReport, playwrightVersion, ROOT, decodeHtml } from '../helpers/browser.ts';
+test('i18n', async ({ browser, args }) => {
   const report = createReport({
     at: new Date().toISOString(),
     command: process.argv,
@@ -40,8 +31,6 @@ test('i18n', { timeout: 900000 }, async (t) => {
     .map((text) => decodeHtml(text).replace(/^\n/, ''));
   const query = '?v=1&t=123430&font=stix2&numerals=oldstyle&division=fraction';
   let licenseContent = null;
-  const browser = await playwright[args.browser].launch({ headless: true });
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
   for (const language of ['ja-JP', 'en-US', 'fr-FR']) {
     const locale = language === 'ja-JP' ? 'ja' : 'en';
@@ -248,7 +237,6 @@ test('i18n', { timeout: 900000 }, async (t) => {
   assert.deepEqual(page.url(), pathToFileURL(path.join(ROOT, 'dist/standalone/index.html')).href);
   report['standaloneEnglish'] = true;
   await ctx.close();
-  await browser.close();
   assert.ok(!(report['errors'].length > 0), inspect(report['errors']));
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
@@ -256,5 +244,4 @@ test('i18n', { timeout: 900000 }, async (t) => {
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

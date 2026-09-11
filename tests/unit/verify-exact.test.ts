@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import verify from '../helpers/verify-exact.ts';
 import { validateAst } from '../../src/shared/expression.ts';

@@ -1,33 +1,33 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual, inspect } from 'node:util';
-import * as playwright from 'playwright';
 import type { Bounds, Typography } from '../../src/shared/types.ts';
 import { isRecord } from '../../src/shared/types.ts';
 import Share from '../../src/shared/share.ts';
-import { browserArgs, createReport, playwrightVersion } from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  options: ['render-results'],
+import { renderOgReference } from '../helpers/og-reference.ts';
+import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
+test.use({
+  viewport: { width: 1200, height: 800 },
+  timezoneId: 'Asia/Tokyo',
+  contextOptions: { reducedMotion: 'reduce' },
 });
-test('og-parity', { timeout: 900000 }, async (t) => {
+test('og-parity', async ({ browser, args, context: ctx }) => {
   const output = args.outputDir;
-  const server: unknown = JSON.parse(fs.readFileSync(args.renderResults, 'utf8'));
+  const reference = args.renderResults ?? path.join(output, 'og-reference/render-results.json');
+  // Use an explicitly supplied reference as-is; otherwise render this checkout afresh.
+  if (!args.renderResults) await renderOgReference(path.dirname(reference));
+  const server: unknown = JSON.parse(fs.readFileSync(reference, 'utf8'));
   assert.ok(isRecord(server) && Array.isArray(server.cases));
-  assert.equal(server.cases.length, 240, 'Run pnpm run test:og to produce the full reference set');
+  assert.equal(
+    server.cases.length,
+    240,
+    'Reference must contain all four fonts and independent styles',
+  );
   const cases: unknown[] = [];
   const errors: string[] = [];
   const requests: string[] = [];
-  const browser = await playwright[args.browser].launch({ headless: true });
-  t.after(() => browser.close());
-  const ctx = await browser.newContext({
-    viewport: { width: 1200, height: 800 },
-    timezoneId: 'Asia/Tokyo',
-    reducedMotion: 'reduce',
-  });
   const page = await ctx.newPage();
   page.on('pageerror', (error) => errors.push(String(error)));
   page.on('request', (request) => requests.push(request.url()));
@@ -124,26 +124,11 @@ test('og-parity', { timeout: 900000 }, async (t) => {
     errors: errors,
     requests: requests,
   });
-  await ctx.close();
-  await browser.close();
   assert.ok(!(errors.length > 0), inspect(errors));
   fs.writeFileSync(
     path.join(output, 'results.json'),
     JSON.stringify(report, null, 2) +
       `
 `,
-  );
-  console.log(
-    JSON.stringify(
-      {
-        browser: args.browser,
-        version: report['browserVersion'],
-        mathjax: report['mathjax'],
-        cases: cases.length,
-        errors: errors,
-      },
-      null,
-      2,
-    ),
   );
 });

@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
-/** Python is reserved for SymPy and fontTools; test orchestration stays in Node. */
+/** Python is reserved for SymPy; test orchestration stays in Node. */
 export function pythonJson(script: URL, input: unknown, args: string[] = []): unknown {
   const venv = path.join(
     root,

@@ -1,4 +1,4 @@
-import { test, type TestContext } from 'node:test';
+import { test, vi, onTestFinished } from 'vitest';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -7,9 +7,9 @@ import { createHash } from 'node:crypto';
 import { renderLicenses } from '../../tools/licenses.ts';
 
 // Minimal installed package tree, so drift cases never modify real dependencies.
-function fixture(t: TestContext) {
+function fixture() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'formula-clock-licenses-'));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  onTestFinished(() => fs.rmSync(root, { recursive: true, force: true }));
   const write = (file: string, contents: string) => {
     const output = path.join(root, file);
     fs.mkdirSync(path.dirname(output), { recursive: true });
@@ -36,8 +36,8 @@ function fixture(t: TestContext) {
   return { root, write, packageInfo, manifest };
 }
 
-function downloadFixture(t: TestContext) {
-  const fixtureFiles = fixture(t);
+function downloadFixture() {
+  const fixtureFiles = fixture();
   const { root, write, manifest } = fixtureFiles;
   const text = 'Copyright <Author> & "Font"\r\n\r\n  Keep indentation.\r\n';
   const download = 'https://example.org/pinned-commit/LICENSE';
@@ -58,35 +58,39 @@ function downloadFixture(t: TestContext) {
   return { ...fixtureFiles, text, download };
 }
 
-test('missing license cache is downloaded, verified, reused offline, and repaired if corrupt', async (t) => {
-  const { root, write, text, download } = downloadFixture(t);
-  const fetchMock = t.mock.method(globalThis, 'fetch', async () => new Response(text));
+test('missing license cache is downloaded, verified, reused offline, and repaired if corrupt', async () => {
+  const { root, write, text, download } = downloadFixture();
+  const fetchMock = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async () => new Response(text));
   const html = await renderLicenses(root);
-  assert.equal(fetchMock.mock.callCount(), 1);
-  assert.equal(fetchMock.mock.calls[0].arguments[0], download);
+  assert.equal(fetchMock.mock.calls.length, 1);
+  assert.equal(fetchMock.mock.calls[0][0], download);
   assert.equal(fs.readFileSync(path.join(root, 'licenses/sample.txt'), 'utf8'), text);
   assert.ok(
     html.includes('Copyright &lt;Author&gt; &amp; &quot;Font&quot;\n\n  Keep indentation.\n'),
   );
   assert.equal(await renderLicenses(root), html);
-  assert.equal(fetchMock.mock.callCount(), 1);
+  assert.equal(fetchMock.mock.calls.length, 1);
   write('licenses/sample.txt', 'Corrupted cache');
   assert.equal(await renderLicenses(root), html);
-  assert.equal(fetchMock.mock.callCount(), 2);
+  assert.equal(fetchMock.mock.calls.length, 2);
 });
 
-test('unverified or failed downloads never become license cache files', async (t) => {
-  const { root } = downloadFixture(t);
-  const fetchMock = t.mock.method(globalThis, 'fetch', async () => new Response('Wrong license'));
+test('unverified or failed downloads never become license cache files', async () => {
+  const { root } = downloadFixture();
+  const fetchMock = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async () => new Response('Wrong license'));
   await assert.rejects(() => renderLicenses(root), /SHA-256 mismatch/);
   assert.ok(!fs.existsSync(path.join(root, 'licenses/sample.txt')));
-  fetchMock.mock.mockImplementation(async () => new Response('Unavailable', { status: 503 }));
+  fetchMock.mockImplementation(async () => new Response('Unavailable', { status: 503 }));
   await assert.rejects(() => renderLicenses(root), /License download failed \(503\)/);
   assert.ok(!fs.existsSync(path.join(root, 'licenses/sample.txt')));
 });
 
-test('license generation escapes source text without changing whitespace and is deterministic', async (t) => {
-  const { root } = fixture(t);
+test('license generation escapes source text without changing whitespace and is deterministic', async () => {
+  const { root } = fixture();
   const html = await renderLicenses(root);
   assert.equal(
     html,
@@ -95,8 +99,8 @@ test('license generation escapes source text without changing whitespace and is 
   assert.equal(await renderLicenses(root), html);
 });
 
-test('license generation rejects dependency and CDN changes pending review', async (t) => {
-  const { root, write, packageInfo } = fixture(t);
+test('license generation rejects dependency and CDN changes pending review', async () => {
+  const { root, write, packageInfo } = fixture();
   for (const change of [{ version: '4.2.0' }, { license: 'MIT' }]) {
     write('node_modules/@mathjax/src/package.json', JSON.stringify({ ...packageInfo, ...change }));
     await assert.rejects(() => renderLicenses(root), /License review required for @mathjax\/src/);
@@ -117,8 +121,8 @@ test('license generation rejects dependency and CDN changes pending review', asy
   await assert.rejects(() => renderLicenses(root), /CDN version does not match/);
 });
 
-test('license generation rejects missing text and template omissions', async (t) => {
-  const { root, write } = fixture(t);
+test('license generation rejects missing text and template omissions', async () => {
+  const { root, write } = fixture();
   write('licenses/sample.txt', '');
   await assert.rejects(() => renderLicenses(root), /Empty license text/);
   fs.unlinkSync(path.join(root, 'licenses/sample.txt'));

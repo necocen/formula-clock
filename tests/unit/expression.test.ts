@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import * as E from '../../src/shared/expression.ts';
 import * as D from '../../src/shared/data.ts';
 import { createSolver } from '../../tools/solver.ts';

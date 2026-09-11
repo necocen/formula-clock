@@ -1,20 +1,19 @@
 import { shareId, sharedSnapshot } from '../helpers/share-response.ts';
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
-import * as playwright from 'playwright';
-import type { Page, BrowserContext } from 'playwright';
+import type { Page, BrowserContext } from '@playwright/test';
 import type { Expr, DisplayOptions, SharedSnapshot } from '../../src/shared/types.ts';
-import { browserArgs, createReport, playwrightVersion } from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  options: [],
+import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
+test.use({
+  locale: 'ja-JP',
+  timezoneId: 'Asia/Tokyo',
+  viewport: { width: 1200, height: 800 },
 });
-test('kv-share', { timeout: 900000 }, async (t) => {
+test('kv-share', async ({ browser, args, context: ctx }) => {
   const report = createReport({
     command: process.argv,
     at: new Date().toISOString(),
@@ -65,14 +64,7 @@ test('kv-share', { timeout: 900000 }, async (t) => {
     const html = await (await ctx.request.get(url)).text();
     return sharedSnapshot(html);
   }
-  const browser = await playwright[args.browser].launch({ headless: true });
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
-  const ctx = await browser.newContext({
-    locale: 'ja-JP',
-    timezoneId: 'Asia/Tokyo',
-    viewport: { width: 1200, height: 800 },
-  });
   await ctx.addInitScript(
     'localStorage.setItem("formula-clock-display-v2",' +
       JSON.stringify(JSON.stringify(saved)) +
@@ -363,8 +355,6 @@ test('kv-share', { timeout: 900000 }, async (t) => {
   );
   report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
   assert.deepEqual(report['mathjax'], '4.1.3');
-  await ctx.close();
-  await browser.close();
   assert.ok(!(report['errors'].length > 0), inspect(report['errors']));
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
@@ -372,5 +362,4 @@ test('kv-share', { timeout: 900000 }, async (t) => {
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

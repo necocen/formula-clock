@@ -1,11 +1,9 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
-import { browserArgs, createReport, playwrightVersion, sorted } from '../helpers/browser.ts';
+import { test, createReport, playwrightVersion, sorted } from '../helpers/browser.ts';
 interface AudioCommand {
   method: string;
   args: number[];
@@ -28,11 +26,11 @@ interface RenderedVoice {
   lateRms: number;
   wav?: string;
 }
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  options: [],
+test.use({
+  viewport: { width: 1440, height: 1000 },
+  timezoneId: 'Asia/Tokyo',
 });
-test('audio', { timeout: 900000 }, async (t) => {
+test('audio', async ({ browser, args, page }) => {
   const report = createReport({
     at: new Date().toISOString(),
     command: process.argv,
@@ -42,13 +40,7 @@ test('audio', { timeout: 900000 }, async (t) => {
     checks: [],
   });
   const errors: string[] = [];
-  const browser = await playwright[args.browser].launch();
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
-  const page = await browser.newPage({
-    viewport: { width: 1440, height: 1000 },
-    timezoneId: 'Asia/Tokyo',
-  });
   page.on('pageerror', (error) => errors.push(String(error)));
   await page.addInitScript(`
       window.audioVoices=[];window.audioGains=[];
@@ -300,12 +292,10 @@ test('audio', { timeout: 900000 }, async (t) => {
   await page.click('#sound');
   assert.ok(!(errors.length > 0), inspect(errors));
   report['pageErrors'] = errors;
-  await browser.close();
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
     JSON.stringify(report, null, 2) +
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

@@ -1,17 +1,11 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
-import type { Page } from 'playwright';
-import { browserArgs, createReport, playwrightVersion } from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  options: [],
-});
-test('audio-settings', { timeout: 900000 }, async (t) => {
+import type { Page } from '@playwright/test';
+import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
+test('audio-settings', async ({ browser, args }) => {
   const report = createReport({
     at: new Date().toISOString(),
     command: process.argv,
@@ -50,8 +44,6 @@ test('audio-settings', { timeout: 900000 }, async (t) => {
     forceResume(){window.holdAudioResume=false;return this.finishResume();}
   };
 `;
-  const browser = await playwright[args.browser].launch();
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
   async function newPage(prefix = '', suffix = '') {
     const page = await browser.newPage({
@@ -281,12 +273,10 @@ test('audio-settings', { timeout: 900000 }, async (t) => {
   );
   assert.ok(!(errors.length > 0), inspect(errors));
   report['pageErrors'] = errors;
-  await browser.close();
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
     JSON.stringify(report, null, 2) +
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

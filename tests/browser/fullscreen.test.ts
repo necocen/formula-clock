@@ -1,13 +1,10 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
-import { browserArgs, createReport, playwrightVersion } from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, { browsers: ['chromium', 'webkit'], options: [] });
-test('fullscreen', { timeout: 900000 }, async (t) => {
+import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
+test('fullscreen', async ({ browser, args }) => {
   const report = createReport({
     at: new Date().toISOString(),
     command: process.argv,
@@ -16,8 +13,6 @@ test('fullscreen', { timeout: 900000 }, async (t) => {
     checks: [],
     errors: [],
   });
-  const browser = await playwright[args.browser].launch({ headless: true });
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
   for (const scenario of ['native', 'unavailable', 'policy-disabled', 'rejected', 'prefixed']) {
     const ctx = await browser.newContext({
@@ -123,7 +118,6 @@ test('fullscreen', { timeout: 900000 }, async (t) => {
     await page.screenshot({ path: String(path.join(args.outputDir, scenario + '.png')) });
     await ctx.close();
   }
-  await browser.close();
   assert.ok(!(report['errors'].length > 0), inspect(report['errors']));
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
@@ -131,5 +125,4 @@ test('fullscreen', { timeout: 900000 }, async (t) => {
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

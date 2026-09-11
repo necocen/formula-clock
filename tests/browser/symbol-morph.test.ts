@@ -1,12 +1,10 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
 import type { DisplayOptions } from '../../src/shared/types.ts';
-import { browserArgs, createReport, playwrightVersion, zip, sorted } from '../helpers/browser.ts';
+import { test, createReport, playwrightVersion, zip, sorted } from '../helpers/browser.ts';
 interface GlyphBounds {
   key: string;
   box: number[];
@@ -22,11 +20,11 @@ interface MorphSample {
   morphing: boolean;
   parts: MorphPart[];
 }
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  options: [],
+test.use({
+  viewport: { width: 1440, height: 1000 },
+  timezoneId: 'Asia/Tokyo',
 });
-test('symbol-morph', { timeout: 900000 }, async (t) => {
+test('symbol-morph', async ({ browser, args, page }) => {
   const report = createReport({
     at: new Date().toISOString(),
     command: process.argv,
@@ -39,13 +37,7 @@ test('symbol-morph', { timeout: 900000 }, async (t) => {
   });
   const errors: string[] = [];
   const warnings: string[] = [];
-  const browser = await playwright[args.browser].launch();
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
-  const page = await browser.newPage({
-    viewport: { width: 1440, height: 1000 },
-    timezoneId: 'Asia/Tokyo',
-  });
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (msg) => (msg.type() === 'warning' ? warnings.push(msg.text()) : null));
   await page.goto(args.url);
@@ -453,7 +445,6 @@ test('symbol-morph', { timeout: 900000 }, async (t) => {
   report['checks'].push(
     'Rapid interruptions keep bounded glyph layers and clean up fully; reduced motion cancels rotation/fades; null clears signs; disabling morph retains basic signs; mobile setting and its prerequisites persist',
   );
-  await browser.close();
   report['pageErrors'] = errors;
   report['warnings'] = sorted(new Set(warnings));
   fs.writeFileSync(
@@ -462,5 +453,4 @@ test('symbol-morph', { timeout: 900000 }, async (t) => {
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

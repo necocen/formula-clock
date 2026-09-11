@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { match } from '../../src/shared/symbols.ts';
 import type { SymbolIdentity } from '../../src/shared/types.ts';

@@ -1,11 +1,8 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
-import type { Route } from 'playwright';
 import type {
   Expr,
   DisplayOptions,
@@ -14,7 +11,7 @@ import type {
   GlyphDiagnostic,
   AudioEvent,
 } from '../../src/shared/types.ts';
-import { browserArgs, createReport, playwrightVersion, zip, sorted } from '../helpers/browser.ts';
+import { test, createReport, playwrightVersion, zip, sorted } from '../helpers/browser.ts';
 interface SourceClockGeometry {
   font: string;
   numerals: string;
@@ -24,17 +21,17 @@ interface SourceClockGeometry {
   colons: { x: number; y: number; inside: boolean }[];
   glyphFonts: string[];
 }
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  standalone: true,
-  options: ['local-mathjax', 'screenshots', 'symbol-motion', 'structure-motion', 'symbol-morph'],
+test.use({ standalone: true });
+test.use({
+  locale: 'ja-JP',
+  viewport: { width: 1440, height: 1000 },
+  timezoneId: 'Asia/Tokyo',
 });
-test('clock', { timeout: 900000 }, async (t) => {
+test('clock', async ({ browser, args, context: ctx }) => {
   // Either optional motion feature includes the basic-symbol prerequisite.
   args.symbolMotion = args.symbolMotion || args.structureMotion || args.symbolMorph;
   const out = args.outputDir;
   const report = createReport({
-    compatibilityOnly: Boolean(args.localMathjax),
     url: args.url,
     browser: args.browser,
     playwright: playwrightVersion,
@@ -47,14 +44,7 @@ test('clock', { timeout: 900000 }, async (t) => {
   const errors: string[] = [];
   const warnings: string[] = [];
   const requests: string[] = [];
-  const browser = await playwright[args.browser].launch({ headless: true });
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
-  const ctx = await browser.newContext({
-    locale: 'ja-JP',
-    viewport: { width: 1440, height: 1000 },
-    timezoneId: 'Asia/Tokyo',
-  });
   const saved = JSON.stringify({
     symbolMotion: args.symbolMotion,
     structureMotion: args.structureMotion,
@@ -63,29 +53,6 @@ test('clock', { timeout: 900000 }, async (t) => {
   await ctx.addInitScript(
     "localStorage.setItem('formula-clock-display-v2'," + JSON.stringify(saved) + ')',
   );
-  async function routeLocal(route: Route) {
-    const lib = args.localMathjax;
-    assert.ok(lib);
-    const url = route.request().url();
-    if (url.endsWith('/tex-svg-nofont.js')) {
-      await route.fulfill({
-        contentType: 'application/javascript',
-        body:
-          `delete window.MathJax.output;
-` + fs.readFileSync(path.join(lib, 'tex-svg.js'), 'utf8'),
-      });
-      return;
-    }
-    const f = path.join(lib, url.split('/mathjax@4.1.3/').at(-1)!);
-    if (fs.existsSync(f)) {
-      await route.fulfill({ path: String(f), contentType: 'application/javascript' });
-    } else {
-      await route.abort();
-    }
-  }
-  if (args.localMathjax) {
-    await ctx.route('https://cdn.jsdelivr.net/**', routeLocal);
-  }
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (msg) => (msg.type() === 'warning' ? warnings.push(msg.text()) : null));
@@ -104,9 +71,7 @@ test('clock', { timeout: 900000 }, async (t) => {
     "window.originalProvider=window.FORMULA_CLOCK_CONFIG?.provider || new FormulaData.TableProvider(()=>FormulaData.loadEmbedded(document.querySelector('#clock-data')))",
   );
   report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
-  if (!args.localMathjax) {
-    assert.deepEqual(report['mathjax'], '4.1.3');
-  }
+  assert.deepEqual(report['mathjax'], '4.1.3');
   assert.deepEqual(await page.evaluate('FormulaClock.state.display.font'), 'stix2');
   assert.deepEqual(await page.evaluate('FormulaClock.state.display.numerals'), 'oldstyle');
   assert.deepEqual(
@@ -310,20 +275,16 @@ test('clock', { timeout: 900000 }, async (t) => {
         .every(Boolean),
       inspect(source),
     );
-    if (!args.localMathjax) {
-      assert.ok(
-        source['glyphFonts']
-          .map((key) => key.startsWith(source['font'] + '@4.1.3:'))
-          .every(Boolean),
-        inspect(source),
-      );
-      assert.ok(
-        source['glyphFonts']
-          .map((key) => key.includes('-tex-oldstyle:') === (source['numerals'] === 'oldstyle'))
-          .every(Boolean),
-        inspect(source),
-      );
-    }
+    assert.ok(
+      source['glyphFonts'].map((key) => key.startsWith(source['font'] + '@4.1.3:')).every(Boolean),
+      inspect(source),
+    );
+    assert.ok(
+      source['glyphFonts']
+        .map((key) => key.includes('-tex-oldstyle:') === (source['numerals'] === 'oldstyle'))
+        .every(Boolean),
+      inspect(source),
+    );
     assert.ok(
       await page.evaluate(
         script(`()=>[...document.querySelectorAll('#source-time .source-digit')].every((g,i,all)=>{
@@ -385,17 +346,13 @@ test('clock', { timeout: 900000 }, async (t) => {
         });
       }
     }
-    if (!args.localMathjax) {
-      assert.notDeepEqual(
-        numeralShapes[([font, 'lining'] as const).join(':')],
-        numeralShapes[([font, 'oldstyle'] as const).join(':')],
-        inspect(font),
-      );
-    }
+    assert.notDeepEqual(
+      numeralShapes[([font, 'lining'] as const).join(':')],
+      numeralShapes[([font, 'oldstyle'] as const).join(':')],
+      inspect(font),
+    );
   }
-  if (!args.localMathjax) {
-    assert.deepEqual(new Set(Object.values(numeralShapes)).size, 8);
-  }
+  assert.deepEqual(new Set(Object.values(numeralShapes)).size, 8);
   report['checks'].push(
     '216 formula/time layouts; 4 fonts × 2 numeral styles × 3 division modes; distinct native glyphs; persistent HHMM elements; lining numeric axis and oldstyle native axis',
   );
@@ -416,12 +373,10 @@ test('clock', { timeout: 900000 }, async (t) => {
   await page.locator('#numeral-choice input[value=oldstyle]').check();
   await page.waitForFunction("FormulaClock.state.layout.display.numerals==='oldstyle'", undefined);
   await page.waitForTimeout(750);
-  if (!args.localMathjax) {
-    assert.notDeepEqual(
-      await page.locator('#source-time [data-digit="2"] path').first().getAttribute('d'),
-      await page.evaluate('beforeStyle'),
-    );
-  }
+  assert.notDeepEqual(
+    await page.locator('#source-time [data-digit="2"] path').first().getAttribute('d'),
+    await page.evaluate('beforeStyle'),
+  );
   assert.deepEqual(await page.evaluate('FormulaClock.state.layout.code'), '1234');
   assert.deepEqual(await page.evaluate('FormulaClock.state.layout.seconds'), 8);
   const stored = await page.evaluate<DisplayOptions>(
@@ -809,9 +764,6 @@ test('clock', { timeout: 900000 }, async (t) => {
   ];
   for (const [saved, font, numerals] of migrations) {
     const migrationCtx = await browser.newContext({ locale: 'ja-JP', timezoneId: 'Asia/Tokyo' });
-    if (args.localMathjax) {
-      await migrationCtx.route('https://cdn.jsdelivr.net/**', routeLocal);
-    }
     const migration = await migrationCtx.newPage();
     // A session flag applies the input once, allowing reload to read the
     // settings written by the real controls/API on the previous page load.
@@ -854,27 +806,11 @@ test('clock', { timeout: 900000 }, async (t) => {
   report['dataRequests'] = sorted(
     new Set(requests.filter((url) => url.includes('/data/')).map((url) => url)),
   );
-  await browser.close();
-  const name = args.localMathjax ? 'browser-compatibility-results.json' : 'browser-results.json';
+  const name = 'browser-results.json';
   fs.writeFileSync(
     path.join(out, name),
     JSON.stringify(report, null, 2) +
       `
 `,
-  );
-  console.log(
-    JSON.stringify(
-      {
-        browser: args.browser,
-        version: report['browserVersion'],
-        mathjax: report['mathjax'],
-        cases: report['cases'].length,
-        checks: report['checks'],
-        warnings: report['warnings'],
-        report: String(path.join(out, name)),
-      },
-      null,
-      2,
-    ),
   );
 });

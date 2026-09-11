@@ -106,13 +106,13 @@ pnpm test
 pnpm run build
 pnpm run build:external
 pnpm run test:og
-pnpm run test:browser share
-pnpm run test:browser kv-share --browser chromium
-pnpm run test:browser og-parity
-pnpm run test:browser clock --url http://127.0.0.1:8787/ --screenshots
+pnpm run test:browser --grep '^share$' --project chromium
+pnpm run test:browser kv-share.test.ts --project chromium
+pnpm run test:browser og-parity.test.ts --project chromium
+FORMULA_CLOCK_TEST_URL=http://127.0.0.1:8787/ FORMULA_CLOCK_SCREENSHOTS=1 pnpm run test:browser clock.test.ts --project chromium
 ```
 
 `test:og`の描画テストは240ケースのPNG・測定値を`test-results/og/`へ保存する。
-字形比較はその測定値と、実際にCDNから取得したMathJaxの字形パス・軸・viewBoxを照合する。
+`og-parity`も実行ごとの出力先に同じ240ケースを生成し、実際にCDNから取得したMathJaxの字形パス・軸・viewBoxと照合する。別の測定値を使う場合だけ`FORMULA_CLOCK_RENDER_RESULTS`でJSONを指定する。
 ブラウザ検証はChromium / Firefox / WebKitを選択でき、実行コマンド・ブラウザとMathJaxの版・取得URLを記録する。
 CDN検証にローカル互換フォントを代用しない。ログ・実行結果・確認用画像はGit対象外の`test-results/`に保存する。

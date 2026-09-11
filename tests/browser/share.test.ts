@@ -1,18 +1,17 @@
 import { sharedSnapshot } from '../helpers/share-response.ts';
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
 import type { DisplayOptions, ClockState } from '../../src/shared/types.ts';
-import { browserArgs, createReport, playwrightVersion } from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  options: [],
+import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
+test.use({
+  locale: 'ja-JP',
+  viewport: { width: 1200, height: 800 },
+  timezoneId: 'Asia/Tokyo',
 });
-test('share', { timeout: 900000 }, async (t) => {
+test('share', async ({ browser, args, context: ctx }) => {
   const output = args.outputDir;
   const saved: DisplayOptions = {
     font: 'fira',
@@ -35,14 +34,7 @@ test('share', { timeout: 900000 }, async (t) => {
     errors: errors,
     requests: requests,
   });
-  const browser = await playwright[args.browser].launch({ headless: true });
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
-  const ctx = await browser.newContext({
-    locale: 'ja-JP',
-    viewport: { width: 1200, height: 800 },
-    timezoneId: 'Asia/Tokyo',
-  });
   await ctx.addInitScript(
     "localStorage.setItem('formula-clock-display-v2'," +
       JSON.stringify(JSON.stringify(saved)) +
@@ -263,20 +255,11 @@ test('share', { timeout: 900000 }, async (t) => {
     await other.close();
   }
   checks.push('Recipient timezone does not change HH:MM:SS');
-  await ctx.close();
-  await browser.close();
   assert.ok(!(errors.length > 0), inspect(errors));
   fs.writeFileSync(
     path.join(output, 'results.json'),
     JSON.stringify(report, null, 2) +
       `
 `,
-  );
-  console.log(
-    JSON.stringify(
-      { browser: args.browser, version: report['browserVersion'], checks: checks, errors: errors },
-      null,
-      2,
-    ),
   );
 });

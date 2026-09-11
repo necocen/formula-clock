@@ -2,7 +2,7 @@ import { shareId } from '../helpers/share-response.ts';
 import type { Env, RenderInput } from '../../src/worker/types.ts';
 import type { SharedSnapshot } from '../../src/shared/types.ts';
 import { imageStore, shareStore } from '../helpers/bindings.ts';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { createHandler } from '../../src/worker/handler.ts';
 const snapshot: SharedSnapshot = {

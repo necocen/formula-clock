@@ -1,17 +1,15 @@
 import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import * as playwright from 'playwright';
 import type { DisplayOptions } from '../../src/shared/types.ts';
-import { browserArgs, createReport, zip } from '../helpers/browser.ts';
-const args = browserArgs(import.meta.url, {
-  browsers: ['chromium', 'firefox', 'webkit'],
-  options: [],
+import { test, createReport, zip } from '../helpers/browser.ts';
+test.use({
+  viewport: { width: 1440, height: 1000 },
+  timezoneId: 'Asia/Tokyo',
 });
-test('symbol-motion', { timeout: 900000 }, async (t) => {
+test('symbol-motion', async ({ browser, args, page }) => {
   const report = createReport({
     at: new Date().toISOString(),
     command: process.argv,
@@ -22,13 +20,7 @@ test('symbol-motion', { timeout: 900000 }, async (t) => {
     checks: [],
   });
   const errors: string[] = [];
-  const browser = await playwright[args.browser].launch();
-  t.after(() => browser.close());
   report['browserVersion'] = browser.version();
-  const page = await browser.newPage({
-    viewport: { width: 1440, height: 1000 },
-    timezoneId: 'Asia/Tokyo',
-  });
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(args.url);
   await page.waitForFunction(
@@ -237,7 +229,6 @@ test('symbol-motion', { timeout: 900000 }, async (t) => {
     'Settings switch persists across reload; reduced motion immediately places symbols',
   );
   assert.ok(!(errors.length > 0), inspect(errors));
-  await browser.close();
   report['pageErrors'] = errors;
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
@@ -245,5 +236,4 @@ test('symbol-motion', { timeout: 900000 }, async (t) => {
       `
 `,
   );
-  console.log(JSON.stringify(report, null, 2));
 });

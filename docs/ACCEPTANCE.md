@@ -1,7 +1,7 @@
 # 動作の確認項目
 
 この文書は今後の検証用チェックリスト。完了を示す記録ではない。
-`tests/browser/clock.test.ts` と `tests/compat/stix2.test.ts` に対応する確認も含む。
+`tests/browser/clock.test.ts`によるMathJax 4 CDN経路の確認も含む。
 
 ## 基本
 

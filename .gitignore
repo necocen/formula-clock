@@ -16,6 +16,7 @@
 /.wrangler/
 /.playwright-cli/
 /.cache/
+/.vitest/
 *.log
 *.tsbuildinfo
 __pycache__/
