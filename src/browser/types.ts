@@ -1,6 +1,13 @@
-import type { Bounds, DisplayOptions, SymbolIdentity, Typography } from '../shared/types.ts';
+import type { Bounds, DisplayOptions, Expr, SymbolIdentity, Typography } from '../shared/types.ts';
 import type { MessageKey } from '../shared/i18n.ts';
 export type Translate = (key: MessageKey, values?: Record<string, string | number>) => string;
+export interface DisplayedFrame {
+  frame: Frame;
+  ast: Expr | null;
+  code: string;
+  seconds: number;
+  view: DisplayOptions;
+}
 export interface PlacedToken extends SymbolIdentity {
   slot: string;
   text: string;

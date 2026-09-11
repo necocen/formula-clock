@@ -13,11 +13,12 @@ import FormulaDisplay from '../shared/display.ts';
 import FormulaShare from '../shared/share.ts';
 import FormulaExpression from '../shared/expression.ts';
 import FormulaSymbols from '../shared/symbols.ts';
-import FormulaTypesetter, { type Typesetter } from './typesetter.ts';
 import { $, pad, timeCode, setupDialog } from './dom.ts';
 import { createTimeSignal } from './audio.ts';
 import { assertProvider, createDataSource } from './data-source.ts';
-import type { ClockFace, Frame, PlacedToken } from './types.ts';
+import { createSettings } from './settings.ts';
+import { createFullscreen } from './fullscreen.ts';
+import type { Frame, PlacedToken } from './types.ts';
 // The default provider registers itself on FORMULA_CLOCK_CONFIG before the app reads it.
 import './provider.ts';
 
@@ -133,49 +134,7 @@ interface Preview {
     isCurrentCode: (code) => timeCode(getNow()) === code,
     kick: () => refresh(true),
   });
-  function savedDisplay(): Record<string, unknown> {
-    try {
-      const saved: unknown = JSON.parse(localStorage.getItem('formula-clock-display-v2') || '{}');
-      return isRecord(saved) ? saved : {};
-    } catch {
-      return {};
-    }
-  }
-  function activeDisplay(options: DisplayOptions = displaySettings): DisplayOptions {
-    return {
-      ...options,
-      structureMotion: options.symbolMotion && options.structureMotion,
-      symbolMorph: options.symbolMotion && options.symbolMorph,
-    };
-  }
-  const saved = savedDisplay();
-  let displaySettings: DisplayOptions = {
-    font:
-      typeof saved.font === 'string' && Object.hasOwn(FormulaTypesetter.PROFILES, saved.font)
-        ? (saved.font as DisplayOptions['font'])
-        : 'stix2',
-    // Preserve the appearance of settings saved before numeral styles were independent.
-    numerals:
-      typeof saved.numerals === 'string' &&
-      Object.hasOwn(FormulaTypesetter.NUMERALS, saved.numerals)
-        ? (saved.numerals as DisplayOptions['numerals'])
-        : saved.font === 'euler'
-          ? 'lining'
-          : 'oldstyle',
-    division:
-      saved.division === 'fraction' || saved.division === 'inline' || saved.division === 'slash'
-        ? saved.division
-        : 'fraction',
-    symbolMotion: saved.symbolMotion !== false,
-    structureMotion: saved.structureMotion !== false,
-    symbolMorph: saved.symbolMorph !== false,
-  };
-  // Restore before selecting an engine; opening a link never saves preferences.
-  if (sharedState) {
-    const { font, numerals, division } = sharedState;
-    Object.assign(displaySettings, { font, numerals, division });
-    document.title = FormulaShare.title(sharedState);
-  }
+  if (sharedState) document.title = FormulaShare.title(sharedState);
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const ticks = Array.from({ length: 60 }, (_, i) => {
     const b = document.createElement('button');
@@ -199,122 +158,18 @@ interface Preview {
     refresh(true);
   }
 
-  // MathJax computes the layout; persistent digits and equality display it.
-  // The four HHMM objects are never recreated, including ordinary clock mode.
-  const engines = new Map<string, Typesetter>(),
-    clockFaces = new Map<string, ClockFace>();
-  const typographyKey = (font: DisplayOptions['font'], numerals: DisplayOptions['numerals']) =>
-    `${font}:${numerals}`;
-  function engineFor(
-    font: DisplayOptions['font'],
-    numerals: DisplayOptions['numerals'],
-  ): Typesetter {
-    const key = typographyKey(font, numerals);
-    const selected = () => typographyKey(displaySettings.font, displaySettings.numerals) === key;
-    if (!engines.has(key)) {
-      const engine = new FormulaTypesetter.Typesetter(font, numerals);
-      engines.set(key, engine);
-      engine
-        .clockFace()
-        .then((face) => {
-          clockFaces.set(key, face);
-          if (selected()) {
-            lastVisual = '';
-            refresh(true);
-          }
-        })
-        .catch((error) => console.warn('[Formula Clock] Small clock font unavailable.', error));
-      engine.boot
-        .then(() => {
-          if (selected()) {
-            lastVisual = '';
-            refresh(true);
-          }
-        })
-        .catch((error) => {
-          if (selected()) {
-            engineError = String(error);
-            lastVisual = '';
-            refresh(true);
-          }
-        });
-    }
-    return engines.get(key)!;
-  }
-  let typesetter = engineFor(displaySettings.font, displaySettings.numerals);
-  const segmentedChoices = [
-    ...settingsDialog.querySelectorAll<HTMLInputElement>('.segmented-control input'),
-  ];
-  function syncMotionControls() {
-    $<HTMLInputElement>('#symbol-motion').checked = displaySettings.symbolMotion;
-    $<HTMLInputElement>('#structure-motion').checked = displaySettings.structureMotion;
-    $<HTMLInputElement>('#structure-motion').disabled = !displaySettings.symbolMotion;
-    $<HTMLInputElement>('#symbol-morph').checked = displaySettings.symbolMorph;
-    $<HTMLInputElement>('#symbol-morph').disabled = !displaySettings.symbolMotion;
-  }
-  async function setDisplay(changes: Partial<DisplayOptions>) {
-    const next = { ...displaySettings, ...changes };
-    if (
-      !Object.hasOwn(FormulaTypesetter.PROFILES, next.font) ||
-      !Object.hasOwn(FormulaTypesetter.NUMERALS, next.numerals) ||
-      !['fraction', 'inline', 'slash'].includes(next.division) ||
-      (['symbolMotion', 'structureMotion', 'symbolMorph'] as const).some(
-        (key) => typeof next[key] !== 'boolean',
-      )
-    )
-      throw new TypeError('Invalid display options');
-    leaveSharedView(true); // Restyle the saved formula until the user changes time.
-    displaySettings = {
-      font: next.font,
-      numerals: next.numerals,
-      division: next.division,
-      symbolMotion: next.symbolMotion,
-      structureMotion: next.structureMotion,
-      symbolMorph: next.symbolMorph,
-    };
-    shareButton.disabled = true;
-    syncMotionControls();
-    $<HTMLSelectElement>('#font-choice').value = next.font;
-    segmentedChoices.forEach((input) => {
-      input.checked = input.value === next[input.name as keyof DisplayOptions];
-    });
-    try {
-      localStorage.setItem('formula-clock-display-v2', JSON.stringify(displaySettings));
-    } catch {}
-    typesetter = engineFor(next.font, next.numerals);
-    engineError = null;
-    lastVisual = '';
-    refresh(true);
-    await typesetter.boot;
-  }
-  syncMotionControls();
-  $<HTMLInputElement>('#symbol-motion').addEventListener('change', (e) => {
-    setDisplay({ symbolMotion: (e.target as HTMLInputElement).checked }).catch(() => {});
-  });
-  $<HTMLInputElement>('#structure-motion').addEventListener('change', (e) => {
-    setDisplay({ structureMotion: (e.target as HTMLInputElement).checked }).catch(() => {});
-  });
-  $<HTMLInputElement>('#symbol-morph').addEventListener('change', (e) => {
-    setDisplay({ symbolMorph: (e.target as HTMLInputElement).checked }).catch(() => {});
-  });
-  $<HTMLSelectElement>('#font-choice').value = displaySettings.font;
-  segmentedChoices.forEach((input) => {
-    input.checked = input.value === displaySettings[input.name as keyof DisplayOptions];
-  });
-  $<HTMLSelectElement>('#font-choice').addEventListener('change', (e) => {
-    setDisplay({ font: (e.target as HTMLSelectElement).value as DisplayOptions['font'] }).catch(
-      () => {},
-    );
-  });
-  $('#numeral-choice').addEventListener('change', (e) => {
-    setDisplay({
-      numerals: (e.target as HTMLInputElement).value as DisplayOptions['numerals'],
-    }).catch(() => {});
-  });
-  $('#division-choice').addEventListener('change', (e) => {
-    setDisplay({
-      division: (e.target as HTMLInputElement).value as DisplayOptions['division'],
-    }).catch(() => {});
+  const settings = createSettings({
+    settingsDialog,
+    shareButton,
+    sharedState,
+    leaveShared: (keepFormula) => leaveSharedView(keepFormula),
+    invalidate: () => {
+      lastVisual = '';
+    },
+    kick: () => refresh(true),
+    setEngineError: (message) => {
+      engineError = message;
+    },
   });
   const scene = $<SVGSVGElement>('#math-scene'),
     notationRoot = $<MovingElement>('#notation-root'),
@@ -537,7 +392,7 @@ interface Preview {
     seconds: number,
     visible: boolean,
   ) {
-    const face = clockFaces.get(typographyKey(font, numerals));
+    const face = settings.face(font, numerals);
     if (face) {
       const colon = face.glyphs[':'];
       // Six equal 500-unit cells keep every digit stationary, even with oldstyle
@@ -707,8 +562,8 @@ interface Preview {
       loading = false;
     }
     if (loading) shareButton.disabled = true;
-    const engine = typesetter,
-      view = activeDisplay();
+    const engine = settings.engine(),
+      view = settings.view();
     const key = `${view.font}:${view.numerals}:${view.division}:${view.symbolMotion}:${view.structureMotion}:${view.symbolMorph}:${JSON.stringify(ast)}:${code}:${seconds}:${stage.clientWidth}:${stage.clientHeight}:${loading}`;
     if (lastVisual === key && !instant) return;
     lastVisual = key;
@@ -748,18 +603,19 @@ interface Preview {
   // Warm only the immediately upcoming frames; do not queue a minute of work
   // ahead of interactive previews. The LRU retains recent typesetting results.
   function prepareNext(now: Date) {
-    if (!typesetter.ready || preview?.paused || document.hidden) return;
+    if (!settings.engine().ready || preview?.paused || document.hidden) return;
     for (const offset of [1, 2]) {
       const next = new Date(+now + offset * 1000),
         code = timeCode(next),
         result = data.getMinute(code);
       if (result)
-        typesetter
+        settings
+          .engine()
           .frame(
             result.solutions[next.getSeconds()] || null,
             code,
             next.getSeconds(),
-            activeDisplay(),
+            settings.view(),
           )
           .catch(() => {});
     }
@@ -948,11 +804,7 @@ interface Preview {
     });
     // Invalidate work for a newer second and settle the frame the user saw.
     // Capture the AST before any network await, including an ordinary null frame.
-    Object.assign(displaySettings, {
-      font: state.font,
-      numerals: state.numerals,
-      division: state.division,
-    });
+    settings.adoptView({ font: state.font, numerals: state.numerals, division: state.division });
     activeSnapshot = state;
     preview = { epoch: +FormulaShare.localDate(state.t), started: performance.now(), paused: true };
     resetTransport();
@@ -1098,49 +950,7 @@ interface Preview {
     setPreview(d, true);
     settingsDialog.close();
   });
-  const fullscreenButton = $<HTMLButtonElement>('#fullscreen');
-  const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement;
-  function fullscreenApi() {
-    const element = document.documentElement;
-    if (document.fullscreenEnabled && typeof element.requestFullscreen === 'function') {
-      return { enter: () => element.requestFullscreen(), exit: () => document.exitFullscreen() };
-    }
-    if (document.webkitFullscreenEnabled && typeof element.webkitRequestFullscreen === 'function') {
-      return {
-        enter: () => element.webkitRequestFullscreen!(),
-        exit: () => document.webkitExitFullscreen!(),
-      };
-    }
-    return null;
-  }
-  function paintFullscreen() {
-    const active = !!fullscreenElement(),
-      label = t(active ? 'exitFullscreen' : 'fullscreen');
-    fullscreenButton.hidden = !active && !fullscreenApi();
-    fullscreenButton.setAttribute('aria-pressed', String(active));
-    fullscreenButton.setAttribute('aria-label', label);
-    fullscreenButton.title = t('shortcut', { label, key: 'F' });
-    document.body.classList.toggle('fullscreen', active);
-  }
-  async function toggleFullscreen() {
-    const api = fullscreenApi();
-    if (!api) return;
-    try {
-      await (fullscreenElement() ? api.exit() : api.enter());
-    } catch {
-      showNotice(t('fullscreenFailed'));
-    } finally {
-      paintFullscreen();
-    }
-  }
-  fullscreenButton.addEventListener('click', toggleFullscreen);
-  for (const event of ['fullscreenchange', 'webkitfullscreenchange']) {
-    document.addEventListener(event, () => {
-      paintFullscreen();
-      renderResize();
-    });
-  }
-  paintFullscreen();
+  const fullscreen = createFullscreen({ t, notify: showNotice, renderResize });
   document.addEventListener('keydown', (e) => {
     const target = e.target;
     if (
@@ -1169,7 +979,7 @@ interface Preview {
     }
     if (e.key.toLowerCase() === 'm') sound.toggle();
     if (e.key.toLowerCase() === 'l') goLive();
-    if (e.key.toLowerCase() === 'f') toggleFullscreen();
+    if (e.key.toLowerCase() === 'f') fullscreen.toggle();
     if (e.code === 'Space') {
       e.preventDefault();
       if (preview?.paused) goLive();
@@ -1215,11 +1025,11 @@ interface Preview {
     },
     live: goLive,
     pause: pauseClock,
-    setDisplay,
+    setDisplay: settings.setDisplay,
     setDataProvider,
     get state() {
       return {
-        display: { ...displaySettings },
+        display: { ...settings.current },
         dataRevision: data.revision,
         dataError: data.getMinute(timeCode(getNow()))?.error || null,
         now: getNow().toISOString(),
@@ -1231,9 +1041,9 @@ interface Preview {
         soundEnabled: sound.enabled,
         soundReady: sound.ready,
         soundVolume: sound.volume,
-        engineReady: typesetter.ready,
+        engineReady: settings.engine().ready,
         engineError,
-        typesetCacheSize: typesetter.cache.size,
+        typesetCacheSize: settings.engine().cache.size,
       };
     },
     get digits() {
@@ -1243,12 +1053,12 @@ interface Preview {
       const host = stage.getBoundingClientRect();
       return {
         build: 'r6-minimal',
-        mathjax: typesetter.mathjax?.version || null,
-        display: { ...displaySettings },
+        mathjax: settings.engine().mathjax?.version || null,
+        display: { ...settings.current },
         userAgent: navigator.userAgent,
         locale: ui.locale,
         engineError,
-        typography: typesetter.typography,
+        typography: settings.engine().typography,
         axisY: latestLayout?.axisY,
         localAxisY: latestLayout?.localAxisY,
         time: latestLayout ? `${latestLayout.code}:${pad(latestLayout.seconds)}` : null,
