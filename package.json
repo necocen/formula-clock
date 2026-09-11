@@ -9,15 +9,19 @@
     "lint": "oxlint --deny-warnings --report-unused-disable-directives",
     "lint:fix": "npm run lint -- --fix",
     "check": "npm run format:check && npm run lint && npm run typecheck",
-    "build": "npm run typecheck && tsx build.ts",
-    "build:external": "npm run typecheck && tsx build.ts --external",
+    "build": "npm run typecheck && tsx tools/build.ts",
+    "build:external": "npm run typecheck && tsx tools/build.ts --external",
     "generate": "npm run typecheck && tsx tools/generate.ts",
-    "test": "npm run check && node --import tsx tests/expression.test.cjs && node --import tsx tests/data.test.cjs && node --import tsx --test tests/verify-exact.test.cjs tests/hourly.test.cjs tests/build.test.cjs tests/symbols.test.cjs tests/share.test.cjs tests/share-storage.test.mjs tests/i18n.test.cjs tests/og-cache.test.mjs",
-    "test:og": "node --import tsx --test tests/og-render.test.mjs tests/og-worker.test.mjs",
+    "test": "npm run check && npm run test:unit && npm run test:build",
+    "test:og": "npm run build:external && node --import tsx --test tests/og/*.test.mjs",
     "deploy": "wrangler deploy",
     "preview": "wrangler versions upload",
     "typecheck": "tsc --noEmit",
-    "import:data": "npm run typecheck && tsx tools/import-data.ts"
+    "import:data": "npm run typecheck && tsx tools/import-data.ts",
+    "dev": "wrangler dev --local",
+    "test:unit": "node --import tsx --test tests/unit/*.test.cjs tests/unit/*.test.mjs",
+    "test:build": "node --import tsx --test tests/build/*.test.cjs",
+    "test:browser": "tsx tools/test-browser.ts"
   },
   "engines": {
     "node": ">=22.12.0 <23"

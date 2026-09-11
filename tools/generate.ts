@@ -4,8 +4,8 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { createSolver } from './solver.ts';
-import { normalizeMinute, SCHEMA } from '../data.ts';
-import type { SecondEntries } from '../types.ts';
+import { normalizeMinute, SCHEMA } from '../src/shared/data.ts';
+import type { SecondEntries } from '../src/shared/types.ts';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const solver = createSolver(),
   minutes: Record<string, SecondEntries> = {};
@@ -35,8 +35,9 @@ const report = {
   gzipBytes: zlib.gzipSync(json, { level: 9 }).length,
   elapsedMs: Date.now() - started,
 };
+fs.mkdirSync(path.join(root, 'test-results/generate'), { recursive: true });
 fs.writeFileSync(
-  path.join(root, 'tests/data-results.json'),
+  path.join(root, 'test-results/generate/results.json'),
   JSON.stringify(report, null, 2) + '\n',
 );
 console.log(report);

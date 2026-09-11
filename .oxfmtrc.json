@@ -6,5 +6,5 @@
   "sortImports": false,
   "sortPackageJson": false,
   "htmlWhitespaceSensitivity": "css",
-  "ignorePatterns": ["index.html", "data/**", "tests/*-results.json", "package-lock.json"]
+  "ignorePatterns": ["data/expressions.json", "data/examples/**", "package-lock.json"]
 }

@@ -2,8 +2,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeMinute, SCHEMA } from '../data.ts';
-import { isRecord } from '../types.ts';
+import { normalizeMinute, SCHEMA } from '../src/shared/data.ts';
+import { isRecord } from '../src/shared/types.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const directory = process.argv[2];

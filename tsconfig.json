@@ -11,6 +11,6 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["*.ts", "tools/**/*.ts", "worker/**/*.ts"],
-  "exclude": ["node_modules", "dist-external", "dist-worker"]
+  "include": ["src/**/*.ts", "tools/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

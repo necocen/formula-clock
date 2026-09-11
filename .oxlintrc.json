@@ -10,9 +10,7 @@
     "eslint/prefer-const": "error"
   },
   "ignorePatterns": [
-    "index.html",
-    "dist-external/**",
-    "dist-worker/**",
+    "dist/**",
     "node_modules/**",
     ".venv/**",
     ".wrangler/**",

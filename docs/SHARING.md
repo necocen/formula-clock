@@ -7,18 +7,18 @@
 
 Node.js 22系で `npm ci` を実行する。
 
-- `npm run build`：単体HTMLの`index.html`を生成する。画像生成コードやWASMは含めない。
-- `npm run build:external`：静的サイトの`dist-external/`とWorkerの`dist-worker/`を生成する。
-- `npx wrangler dev --local`：ローカルのWorker、ASSETS、KV、R2を起動する。
+- `npm run build`：単体HTMLの`dist/standalone/index.html`を生成する。画像生成コードやWASMは含めない。
+- `npm run build:external`：静的サイトの`dist/site/`とWorkerの`dist/worker/`を生成する。
+- `npm run dev`：ローカルのWorker、ASSETS、KV、R2を起動する。
 - `npm run preview`：Cloudflareへプレビュー可能なWorkerバージョンをアップロードする。本番の配信バージョンは切り替えない。
 - `npm run deploy`：既存Workerへ公開する。Wranglerのビルド設定が配信用ビルドを実行する。
 
-Wranglerの`main`はビルド済みWorker、`ASSETS`は`dist-external/`。
+Wranglerの`main`はビルド済みWorker、`ASSETS`は`dist/site/`。
 Workerを先に呼ぶパスは`/`・`/og.png`・`/s/*`・`/api/shares`。時間別JSONなどは従来の静的配信を使う。
-`dist-worker/`、ソース、検証記録は公開アセットに含めない。フォントデータとWASMはWorker内部の依存になる。
+`dist/worker/`、ソース、検証記録は公開アセットに含めない。フォントデータとWASMはWorker内部の依存になる。
 MathJax本体・4書体とEuler拡張は4.1.3、resvg WASMは2.6.2に固定する。
 
-ローカルサーバーの実行中に別プロセスで`dist-external/`を再生成した場合は、検証前にサーバーを再起動してアセット目録を読み直す。
+ローカルサーバーの実行中に別プロセスで`dist/site/`を再生成した場合は、検証前にサーバーを再起動してアセット目録を読み直す。
 
 ## KVと共有リンク
 
@@ -106,13 +106,13 @@ npm test
 npm run build
 npm run build:external
 npm run test:og
-python tests/share.browser.py --url http://127.0.0.1:8787/
-python tests/kv-share.browser.py --url http://127.0.0.1:8787/ --browser chromium --output-dir test-results/kv-share-chromium
-python tests/og-parity.browser.py --url http://127.0.0.1:8787/
-python tests/browser.test.py --url http://127.0.0.1:8787/ --screenshots
+npm run test:browser -- share
+npm run test:browser -- kv_share --browser chromium
+npm run test:browser -- og_parity
+npm run test:browser -- clock --url http://127.0.0.1:8787/ --screenshots
 ```
 
-`test:og`の描画テストは240ケースのPNG・測定値を`test-results/share-og/`へ保存する。
+`test:og`の描画テストは240ケースのPNG・測定値を`test-results/og/`へ保存する。
 字形比較はその測定値と、実際にCDNから取得したMathJaxの字形パス・軸・viewBoxを照合する。
 ブラウザ検証はChromium / Firefox / WebKitを選択でき、実行コマンド・ブラウザとMathJaxの版・取得URLを記録する。
 CDN検証にローカル互換フォントを代用しない。ログ・実行結果・確認用画像はGit対象外の`test-results/`に保存する。

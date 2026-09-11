@@ -1,14 +1,14 @@
 # このプロジェクトで作業するエージェントへ
 
-使い方と開発手順は `README.md`、データとAPIの仕様は `FORMAT.md`。このファイルは実装で守る要点。
+使い方と開発手順は `README.md`、データとAPIの仕様は `docs/FORMAT.md`。このファイルは実装で守る要点。
 後続のユーザー指示による仕様変更は、その指示を優先する。
 
 ## 編集とビルド
 
-- ルートの `app.html` / `i18n.ts` / `display.ts` / `share.ts` / `expression.ts` / `data.ts` / `typesetter.ts` / `symbols.ts` / `app.ts` が表示アプリの原本。`app.html`は画面・CSS・ライセンス本文を持つ完全なHTMLで、ビルド時に`<!-- clock-scripts -->`へスクリプトを挿入する。共有画像と配信処理は `worker/`。
-- アプリ・Worker・ビルドツールはTypeScriptのES Modules。共通の型は `types.ts`、ブラウザ固有の型は `browser-types.ts` / `globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
-- `browser.ts` が公開グローバルを準備した後にプロバイダー設定、`app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
-- `index.html` は生成物。直接編集せず、原本を変更して `npm run build` を実行する。
+- `src/browser/app.html` / `src/shared/i18n.ts` / `src/shared/display.ts` / `src/shared/share.ts` / `src/shared/expression.ts` / `src/shared/data.ts` / `src/browser/typesetter.ts` / `src/shared/symbols.ts` / `src/browser/app.ts` が表示アプリの原本。`src/browser/app.html`は画面・CSS・ライセンス本文を持つ完全なHTMLで、ビルド時に`<!-- clock-scripts -->`へスクリプトを挿入する。共有画像と配信処理は `src/worker/`。
+- アプリ・Worker・ビルドツールはTypeScriptのES Modules。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
+- `src/browser/bootstrap.ts` が公開グローバルを準備した後にプロバイダー設定、`src/browser/app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
+- `dist/` は生成物。単体HTMLは`dist/standalone/index.html`、配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。
 - 整形はOxfmt、lintはOxlint。編集後に`npm run format`で原本を整形し、`npm run check`で整形・lint・型を確認する。`npm test`にも同じ確認を含む。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
 - Node.js 22系。ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`npm test` / `npm run build` / `npm run build:external` が基本の確認コマンド（いずれも型チェックを含む）。`npm run typecheck`でも単独で確認できる。共有画像の変更時は `npm run test:og` も実行する。
 - `npm run generate` は全日データの再探索。起動・表示変更だけなら実行しない。外部の検証済みデータは`npm run import:data -- DIRECTORY`で24時間分を取り込み、`data/README.md`の出典も更新する。`npm test`の厳密検証には`requirements-test.txt`のSymPyを使う。
@@ -34,19 +34,19 @@
 ## 設計の分離
 
 - データの正規形式は `formula-clock/1` のAST。TeX文字列には置き換えない。
-- 表示上の優先度と結合性は `expression.ts` で処理する。文字列置換による分数→÷変換は行わない。
+- 表示上の優先度と結合性は `src/shared/expression.ts` で処理する。文字列置換による分数→÷変換は行わない。
 - データ取得は `getMinute(hhmm, {signal})` で統一する。埋め込みと非同期の選択をアプリ全体に持ち込まない。
 - ブラウザ用コードにソルバを含めない。値と定義域の検証は生成・テスト側の責務。
 - 測定用SVGと数字パスには同じ基準の `getScreenCTM()` を使う。過去の数字消失を再発させない。
 - 書体×数字スタイルごとのiframeと設定のrealmに関する処理を理解せず削除しない。
 - MathJaxの `charNode` で失われる前のサイズバリアントを記録する処理を保持する。内部APIが使えない互換エンジンでは該当字形をフェードに戻す。CDN更新時は構造記号のブラウザ検証も実行する。
 - 古い非同期応答を破棄するserial/revision確認と、失敗時の時刻表示を維持する。
-- 共有URLの解析・生成は `share.ts` に集約し、復元でlocalStorageを書き換えない。共有時は描画済みの秒を同期的に停止し、ネイティブ共有の前に画像生成を待たない。
+- 共有URLの解析・生成は `src/shared/share.ts` に集約し、復元でlocalStorageを書き換えない。共有時は描画済みの秒を同期的に停止し、ネイティブ共有の前に画像生成を待たない。
 - 新しい共有URLは英数字10文字の`/s/<ID>`。ID発行後に202で返し、時刻・表示設定・AST（nullを含む）のKVへの期限なし保存を`ctx.waitUntil`で継続する。共有シート表示ではKV保存を待たず、タイトルはブラウザから渡す。画面とOG画像は保存済みASTから再現する。時刻操作で固定ASTを解除し、表示設定変更時はASTを保ってURLを`/`へ戻す。ID発行を待った後のネイティブ共有ではユーザー操作の有効期間を確認する。
 - 共有URLは一時停止後と共有ボタンへの操作の兆候で先行発行する。動作中の先読みは操作時の次の2秒までとし、通常の時計更新でKVへ書き続けない。時刻・表示設定・ASTが完全一致する発行済みURLだけを即時共有し、同じ発行が進行中なら要求を共有する。投機的な失敗は通知せず、クリック時に再試行できるようにする。
 - 共有ページのタイトルはASTの数式テキストと秒の等式にする。OG／Twitterカードはタイトルを`Formula Clock - HH:MM:SS`、Descriptionを`-(2×3)+50=44`のような空白なしの式にする。ネイティブ共有では`title`へカードのタイトル、`url`へ共有URLだけを渡し、`text`は渡さない。URL生成中の通知は表示せず、失敗時とコピー完了の通知は保つ。除算は`/`、累乗は`^`、乗算は`×`、負号と減算は`-`。式がない場合はDescriptionに時刻を使う。
 - テキスト数式の括弧はタイトル・Descriptionで共通の規則を使い、優先順位・結合順序と根号・階乗の意味を保つために必要なものだけ残す。式全体を無条件に囲まない。
-- UI文言は `i18n.ts` に集約する。ブラウザの最優先言語が日本語なら日本語、それ以外は英語。言語を共有URL・表示設定へ混ぜず、時計の数値・書体・ASTを変えない。
+- UI文言は `src/shared/i18n.ts` に集約する。ブラウザの最優先言語が日本語なら日本語、それ以外は英語。言語を共有URL・表示設定へ混ぜず、時計の数値・書体・ASTを変えない。
 - 日本語UIでも一般的なWeb表記は自然に英語を使う。「字体」は「フォント」、ライセンスの見出しは「LICENSE」、読み込み表示は「Loading」。説明文やエラーの理由は分かりやすい日本語にする。現在時刻への復帰は「現在時刻へ」とし、Liveと略さない。一時停止の操作欄は左右キーの案内と現在時刻への復帰だけを表示し、再生・速度変更ボタンを置かない。左右キーは1秒移動、Spaceは一時停止／現在時刻への復帰とし、ショートカットの意味を明記する。
 - ライセンス画面の説明は日本語版だけを保ち、英訳しない。ライセンス原文はそのまま掲載し、見出し・閉じる操作だけ共通UIとして扱う。
 - アプリ名は読み上げ用も含めて「Formula Clock」とし、「計算時計」と訳さない。文字列リソースは実際の表示・読み上げ・通知で使うものを保ち、起動直後に置換されるだけの初期値を別リソースとして増やさない。
@@ -55,16 +55,16 @@
 ## 検証と報告
 
 - `npm test` はデータとTeX生成の検証であり、配布フォントのロード検証ではない。
-- `tests/browser.test.py` の既定はMathJax 4のCDN経路。
+- `tests/browser/clock.py` の既定はMathJax 4のCDN経路。
 - `--local-mathjax` や `stix2.local.test.py` の成功を、MathJax 4＋CDNの成功として報告しない。
 - 以前のテスト結果を再実行した結果として扱わない。使用エンジン、書体、ブラウザ、実行コマンドを記録する。
 - 変更後は `docs/ACCEPTANCE.md` の該当項目と、分数・指数・通常時計・書体切り替えを確認する。
 
 ## リポジトリの管理
 
-ビルド済みHTML、式データ、ソース、テスト、説明、PNG見本が基準。
+ソース、採用済み式データ、テスト入力、説明、説明用PNG見本をGit管理する。`dist/`と`test-results/`は再生成可能な出力なのでGit管理しない。
 ブラウザのフォントは配布アプリのCDN設定から取得する。Workerには同じ版のフォントデータを同梱し、ライセンス表示を維持する。ローカル互換テスト用のフォントはテスト実行者が用意する。
 
 - `docs/`には継続して参照する仕様・運用手順・確認項目を置く。作業ごとのverificationディレクトリや引き継ぎ報告書を増やさない。
-- テストの生ログ・実行結果JSON・確認用スクリーンショットは、Git対象外の`test-results/`に保存する。実行結果は必要な範囲を回答やコミットに要約する。
+- テストは`tests/README.md`の役割別ディレクトリに置く。生ログ・実行結果JSON・確認用スクリーンショットは、Git対象外の`test-results/`に保存し、`tests/`へ出力しない。実行結果は必要な範囲を回答やコミットに要約する。
 - 変更は確認できたまとまりごとにGitへコミットする。複数の依頼の変更を未コミットのまま溜めない。

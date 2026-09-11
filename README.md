@@ -12,16 +12,16 @@ npm ci
 npm run build
 ```
 
-生成された`index.html`をブラウザで開けます。MathJax 4.1.3とフォントはCDNから読み込むため、インターネット接続が必要です。
+生成された`dist/standalone/index.html`をブラウザで開けます。MathJax 4.1.3とフォントはCDNから読み込むため、インターネット接続が必要です。
 
 共有URLとOG画像を含むサイトをローカルで動かす場合：
 
 ```sh
 npm run build:external
-npx wrangler dev --local
+npm run dev
 ```
 
-`dist-external/`に配信用HTMLと24時間分のJSON、`dist-worker/`にOG画像生成用Workerを生成します。
+`dist/site/`に配信用HTMLと24時間分のJSON、`dist/worker/`にOG画像生成用Workerを生成します。
 Cloudflareへのプレビュー・公開・KV／R2設定は[共有機能の運用](docs/SHARING.md)を参照してください。
 
 ## 使い方
@@ -34,7 +34,7 @@ Cloudflareへのプレビュー・公開・KV／R2設定は[共有機能の運�
 共有ボタンを押すと表示中の秒で停止し、時刻・フォント・表示形式・式木をKVへ保存する短いURLを共有できます。
 URLのIDが発行されたら共有を開き、KV保存の完了は待ちません。一時停止後や共有ボタンにカーソル・フォーカスが来たときにもURLを先に準備します。
 式データが更新されても共有時の数式を再現し、受け取った人の保存済み設定は書き換えません。
-時刻の移動や設定変更の操作で、アドレスは`/`へ戻ります。共有URLの形式は[FORMAT.md](FORMAT.md#9-共有urlとog画像)に記載しています。
+時刻の移動や設定変更の操作で、アドレスは`/`へ戻ります。共有URLの形式は[docs/FORMAT.md](docs/FORMAT.md#9-共有urlとog画像)に記載しています。
 
 | キー  | 操作                                 |
 | ----- | ------------------------------------ |
@@ -58,40 +58,48 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 
 ## UIの言語
 
-ブラウザの最優先言語が日本語なら日本語、それ以外は英語になります。文言は`i18n.ts`で管理しています。
+ブラウザの最優先言語が日本語なら日本語、それ以外は英語になります。文言は`src/shared/i18n.ts`で管理しています。
 日本語UIでも「フォント」「LICENSE」「Loading」など、一般的な表記を使います。
 現在時刻への復帰やショートカットの説明は、意味が伝わる日本語にしています。
 言語によって時計の数値・フォント・共有URL・保存設定は変わりません。
 
 ライセンス画面の説明は日本語のみで、ライセンス原文をそのまま掲載します。
 
-## ソースの構成
+## ディレクトリ構成
 
-| ファイル                                      | 役割                                              |
-| --------------------------------------------- | ------------------------------------------------- |
-| `app.html`                                    | 画面・CSS・ライセンス本文の原本                   |
-| `app.ts`                                      | 操作・時計・アニメーション・時報                  |
-| `i18n.ts`                                     | 日英のUI文言                                      |
-| `expression.ts` / `data.ts`                   | ASTからのTeX生成、式データの取得                  |
-| `display.ts` / `typesetter.ts` / `symbols.ts` | 表示設定、組版、数字と記号の配置・同一性          |
-| `share.ts` / `worker/`                        | 共有URL、HTMLメタデータ、OG画像の描画・キャッシュ |
-| `build.ts` / `tools/build-worker.ts`          | 単体HTML・配信用アセット・Workerのビルド          |
-| `types.ts` / `api.d.ts` / `browser-types.ts`  | 共通・公開API・SVGレイアウトの型                  |
-| `browser.ts` / `globals.d.ts`                 | ブラウザの公開APIと起動順序                       |
-| `tools/solver.ts` / `tools/generate.ts`       | オフラインの式探索・データ生成                    |
-| `data/expressions.json`                       | 事前生成した1日分の式データ                       |
-| `tests/`                                      | Nodeとブラウザのテスト                            |
+```text
+src/
+  browser/       画面・CSS・ライセンス・組版・ブラウザ操作
+  shared/        AST・表示設定・データ取得・共有URL・共通の型
+  worker/        共有API・HTMLメタデータ・OG画像
+  api.d.ts       公開APIの型
+public/          配信用の静的設定（_headers）
+tools/           ビルド・データ生成／取り込み・テスト実行
+data/            採用済み式データ・JSON Schema・形式サンプル
+tests/
+  unit/          Nodeによる単体・データ検証
+  build/         単体HTML・配信用ビルドの検証
+  og/            OG画像描画・workerdの統合テスト
+  browser/       MathJax 4 CDNを使うPlaywrightテスト
+  compat/        手元のMathJax 3・フォントを使う互換性確認
+  fixtures/      固定したテスト入力
+  helpers/       厳密計算・レポート出力などの補助コード
+docs/            仕様・運用・確認項目・説明用の見本画像
+dist/            ビルド出力（Git管理外）
+test-results/    実行結果・スクリーンショット（Git管理外）
+```
 
-`tsconfig.json`の`strict`でソースを型チェックし、esbuildでブラウザ用JavaScriptをHTMLへ埋め込みます。Nodeのツールと既存のJavaScriptテストはtsxでTypeScriptソースを読み込みます。ブラウザにTypeScriptの実行環境やnpmライブラリを追加する必要はありません。
+`src/browser/app.html`が画面の原本です。ビルドは`<!-- clock-scripts -->`へ公開APIの準備・データ設定・アプリを順に挿入し、単体版を`dist/standalone/index.html`、配信版を`dist/site/index.html`へ生成します。原本を編集して`npm run build`で更新してください。
 
-`app.html`が画面の原本、`index.html`が単体配布用の生成物です。ビルドは`app.html`の`<!-- clock-scripts -->`へブラウザの公開API・データ設定・アプリを順に挿入します。ライセンス本文も同じ原本内のダイアログにあり、別ページへの配信やビルド時の本文抽出はありません。原本を編集して`npm run build`で更新してください。
-`npm run generate`は全日の式を再探索し、現在の採用データを上書きする処理です。通常の表示変更やビルドには不要です。外部で生成したデータは`npm run import:data -- DIRECTORY`で取り込みます。出典と手順は[data/README.md](data/README.md)を参照してください。
+`dist/`と`test-results/`は削除・再生成できるためGitへ入れません。`data/expressions.json`は採用済みの入力データ、`docs/images/`は説明用の見本なのでGit管理します。テスト結果を`tests/`へ出力しないでください。
+
+`npm run generate`は全日の式を再探索し、現在の採用データを上書きします。通常の表示変更やビルドには不要です。外部データは`npm run import:data -- DIRECTORY`で取り込みます。出典と手順は[data/README.md](data/README.md)を参照してください。
 
 ## 検証
 
 整形は[Oxfmt](https://oxc.rs/docs/guide/usage/formatter)、lintは[Oxlint](https://oxc.rs/docs/guide/usage/linter)を使います。
 TypeScript・JavaScriptの原本とテスト、HTML内のCSS、JSON設定、Markdownを整形します。2スペース・シングルクォート・100文字幅を基準にし、importの自動並べ替えは行いません。
-生成済みの`index.html`・式データ・テスト結果・ロックファイルは整形対象外です。HTMLやTypeScriptの整形後は`npm run build`で`index.html`を更新します。
+生成物・採用済み式データ・形式サンプル・ロックファイルは整形対象外です。HTMLやTypeScriptの整形後は`npm run build`で出力を更新します。
 
 ```sh
 npm run format       # 原本を一括整形
@@ -119,23 +127,23 @@ npm run test:og
 ```
 
 `npm run typecheck`はTypeScriptの型チェックだけを実行します。`npm test`は最初に`npm run check`を実行し、整形・lint・型チェックの失敗を検出します。両ビルドにも型チェックを含めています。
-`npm test`は式・データ・URL・ビルド・キャッシュなどを検証します。配布フォントの実際の読み込みはブラウザで確認します。
+`npm test`は整形・lint・型、単体テスト、単体／配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。
 
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -r requirements-test.txt
 python -m playwright install chromium
-python tests/browser.test.py --browser chromium
+npm run test:browser -- clock --browser chromium
 ```
 
 ブラウザテストの既定はMathJax 4.1.3のCDN経路です。`--local-mathjax`を使う互換テストとは区別してください。
 HTTP配信の共有・多言語UIは、ローカルWorkerを起動して確認できます。
 
 ```sh
-python tests/share.browser.py --url http://127.0.0.1:8787/ --browser chromium
-python tests/i18n.browser.py --url http://127.0.0.1:8787/ --browser chromium --output-dir test-results/i18n
-python tests/transport.browser.py --url http://127.0.0.1:8787/ --browser chromium --output-dir test-results/transport
+npm run test:browser -- share --browser chromium
+npm run test:browser -- i18n --browser chromium
+npm run test:browser -- transport --browser chromium
 ```
 
 ログ・実行結果JSON・確認用スクリーンショットは、Git対象外の`test-results/`に保存します。
@@ -143,7 +151,7 @@ python tests/transport.browser.py --url http://127.0.0.1:8787/ --browser chromiu
 
 ## ドキュメント
 
-- [FORMAT.md](FORMAT.md)：式データ、表示設定、プロバイダーAPI、共有URLの仕様
+- [docs/FORMAT.md](docs/FORMAT.md)：式データ、表示設定、プロバイダーAPI、共有URLの仕様
 - [SHARING.md](docs/SHARING.md)：Cloudflare・R2・OG画像の運用
 - [ACCEPTANCE.md](docs/ACCEPTANCE.md)：変更時に確認する動作
 - [AGENTS.md](AGENTS.md)：実装で守る要点と作業方針

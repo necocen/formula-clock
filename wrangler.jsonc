@@ -5,7 +5,7 @@
   "compatibility_date": "2026-09-09",
   "workers_dev": true,
   "preview_urls": true,
-  "main": "./dist-worker/index.mjs",
+  "main": "./dist/worker/index.mjs",
   "no_bundle": true,
   "find_additional_modules": true,
   "rules": [{ "type": "CompiledWasm", "globs": ["**/*.wasm"], "fallthrough": false }],
@@ -27,7 +27,7 @@
   ],
   "assets": {
     "binding": "ASSETS",
-    "directory": "./dist-external",
+    "directory": "./dist/site",
     "run_worker_first": ["/", "/og.png", "/s/*", "/api/shares"],
     "not_found_handling": "none",
   },

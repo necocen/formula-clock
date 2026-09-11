@@ -1,4 +1,4 @@
-import type { Expr } from '../types.ts';
+import type { Expr } from '../src/shared/types.ts';
 type UnaryOp = 'neg' | 'sqrt' | 'fact';
 type BinaryOp = 'add' | 'sub' | 'mul' | 'div' | 'pow';
 interface Value {
