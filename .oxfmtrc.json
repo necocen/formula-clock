@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "singleQuote": true,
+  "tabWidth": 2,
+  "printWidth": 100,
+  "sortImports": false,
+  "sortPackageJson": false,
+  "htmlWhitespaceSensitivity": "css",
+  "ignorePatterns": ["index.html", "data/**", "tests/*-results.json", "package-lock.json"]
+}

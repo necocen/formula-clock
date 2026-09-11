@@ -1,6 +1,25 @@
 export type {
-  Expr, SecondEntries, MinuteRecord, FormulaTable, HourManifest, FormulaProvider, FetchHourOptions,
-  DisplayOptions, FormulaClockAPI, SharedClockState, SharedSnapshot, SharedView, FormulaShareAPI, Bounds, TexOptions, Typography,
-  LayoutItem, ClockLayout, AudioEvent, ClockState, GlyphDiagnostic, ClockDiagnostics
+  Expr,
+  SecondEntries,
+  MinuteRecord,
+  FormulaTable,
+  HourManifest,
+  FormulaProvider,
+  FetchHourOptions,
+  DisplayOptions,
+  FormulaClockAPI,
+  SharedClockState,
+  SharedSnapshot,
+  SharedView,
+  FormulaShareAPI,
+  Bounds,
+  TexOptions,
+  Typography,
+  LayoutItem,
+  ClockLayout,
+  AudioEvent,
+  ClockState,
+  GlyphDiagnostic,
+  ClockDiagnostics,
 } from './types.ts';
 import './globals.d.ts';

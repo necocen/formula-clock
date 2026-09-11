@@ -9,6 +9,7 @@
 - アプリ・Worker・ビルドツールはTypeScriptのES Modules。共通の型は `types.ts`、ブラウザ固有の型は `browser-types.ts` / `globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
 - `browser.ts` が公開グローバルを準備した後にプロバイダー設定、`app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
 - `index.html` は生成物。直接編集せず、原本を変更して `npm run build` を実行する。
+- 整形はOxfmt、lintはOxlint。編集後に`npm run format`で原本を整形し、`npm run check`で整形・lint・型を確認する。`npm test`にも同じ確認を含む。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
 - Node.js 22系。ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`npm test` / `npm run build` / `npm run build:external` が基本の確認コマンド（いずれも型チェックを含む）。`npm run typecheck`でも単独で確認できる。共有画像の変更時は `npm run test:og` も実行する。
 - `npm run generate` は全日データの再探索。起動・表示変更だけなら実行しない。外部の検証済みデータは`npm run import:data -- DIRECTORY`で24時間分を取り込み、`data/README.md`の出典も更新する。`npm test`の厳密検証には`requirements-test.txt`のSymPyを使う。
 - 既にユーザーが評価しているUIを、依頼なしに全面改装しない。

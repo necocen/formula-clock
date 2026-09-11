@@ -5,7 +5,7 @@
 
 ## 起動
 
-Node.js 22系を使用します。アプリ・Worker・ビルドツールのソースはTypeScriptです。
+Node.js 22系の22.12.0以上を使用します（推奨版は`.node-version`）。アプリ・Worker・ビルドツールのソースはTypeScriptです。
 
 ```sh
 npm ci
@@ -36,12 +36,12 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 式データが更新されても共有時の数式を再現し、受け取った人の保存済み設定は書き換えません。
 時刻の移動や設定変更の操作で、アドレスは`/`へ戻ります。共有URLの形式は[FORMAT.md](FORMAT.md#9-共有urlとog画像)に記載しています。
 
-| キー | 操作 |
-|---|---|
-| M | 時報のオン／オフ |
-| F | 全画面表示の切り替え |
-| L | 現在時刻へ戻る |
-| ← / → | 一時停止中に1秒戻る／進む |
+| キー  | 操作                                 |
+| ----- | ------------------------------------ |
+| M     | 時報のオン／オフ                     |
+| F     | 全画面表示の切り替え                 |
+| L     | 現在時刻へ戻る                       |
+| ← / → | 一時停止中に1秒戻る／進む            |
 | Space | 表示中の秒で一時停止／現在時刻へ戻る |
 
 全画面ボタンはブラウザが対応・許可している場合に表示します。
@@ -67,19 +67,19 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 
 ## ソースの構成
 
-| ファイル | 役割 |
-|---|---|
-| `_head.html` / `app.ts` | 画面・操作・時計・アニメーション・時報 |
-| `i18n.ts` | 日英のUI文言 |
-| `expression.ts` / `data.ts` | ASTからのTeX生成、式データの取得 |
-| `display.ts` / `typesetter.ts` / `symbols.ts` | 表示設定、組版、数字と記号の配置・同一性 |
-| `share.ts` / `worker/` | 共有URL、HTMLメタデータ、OG画像の描画・キャッシュ |
-| `build.ts` / `tools/build-worker.ts` | 単体HTML・配信用アセット・Workerのビルド |
-| `types.ts` / `api.d.ts` / `browser-types.ts` | 共通・公開API・SVGレイアウトの型 |
-| `browser.ts` / `globals.d.ts` | ブラウザの公開APIと起動順序 |
-| `tools/solver.ts` / `tools/generate.ts` | オフラインの式探索・データ生成 |
-| `data/expressions.json` | 事前生成した1日分の式データ |
-| `tests/` | Nodeとブラウザのテスト |
+| ファイル                                      | 役割                                              |
+| --------------------------------------------- | ------------------------------------------------- |
+| `_head.html` / `app.ts`                       | 画面・操作・時計・アニメーション・時報            |
+| `i18n.ts`                                     | 日英のUI文言                                      |
+| `expression.ts` / `data.ts`                   | ASTからのTeX生成、式データの取得                  |
+| `display.ts` / `typesetter.ts` / `symbols.ts` | 表示設定、組版、数字と記号の配置・同一性          |
+| `share.ts` / `worker/`                        | 共有URL、HTMLメタデータ、OG画像の描画・キャッシュ |
+| `build.ts` / `tools/build-worker.ts`          | 単体HTML・配信用アセット・Workerのビルド          |
+| `types.ts` / `api.d.ts` / `browser-types.ts`  | 共通・公開API・SVGレイアウトの型                  |
+| `browser.ts` / `globals.d.ts`                 | ブラウザの公開APIと起動順序                       |
+| `tools/solver.ts` / `tools/generate.ts`       | オフラインの式探索・データ生成                    |
+| `data/expressions.json`                       | 事前生成した1日分の式データ                       |
+| `tests/`                                      | Nodeとブラウザのテスト                            |
 
 `tsconfig.json`の`strict`でソースを型チェックし、esbuildでブラウザ用JavaScriptをHTMLへ埋め込みます。Nodeのツールと既存のJavaScriptテストはtsxでTypeScriptソースを読み込みます。ブラウザにTypeScriptの実行環境やnpmライブラリを追加する必要はありません。
 
@@ -87,6 +87,18 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 `npm run generate`は全日の式を再探索し、現在の採用データを上書きする処理です。通常の表示変更やビルドには不要です。外部で生成したデータは`npm run import:data -- DIRECTORY`で取り込みます。出典と手順は[data/README.md](data/README.md)を参照してください。
 
 ## 検証
+
+整形は[Oxfmt](https://oxc.rs/docs/guide/usage/formatter)、lintは[Oxlint](https://oxc.rs/docs/guide/usage/linter)を使います。
+TypeScript・JavaScriptの原本とテスト、HTML内のCSS、JSON設定、Markdownを整形します。2スペース・シングルクォート・100文字幅を基準にし、importの自動並べ替えは行いません。
+生成済みの`index.html`・式データ・テスト結果・ロックファイルは整形対象外です。HTMLやTypeScriptの整形後は`npm run build`で`index.html`を更新します。
+
+```sh
+npm run format       # 原本を一括整形
+npm run lint:fix     # 安全なlint自動修正（残った指摘は手で修正）
+npm run check        # 整形確認・lint・TypeScript型チェック
+```
+
+`npm run format:check`と`npm run lint`も単独で実行できます。Oxlintはcorrectnessルールと、厳密な比較・`const`の使用・`var`の禁止をチェックし、警告も失敗として扱います。`null`と`undefined`をまとめて判定する`== null` / `!= null`は許可します。型チェックは既存の`tsc --noEmit`で行います。
 
 値の厳密検証にはPythonとSymPyを使います。開発用の依存を初回に準備してください（ビルド・配布アプリには不要です）。
 
@@ -105,7 +117,7 @@ npm run build:external
 npm run test:og
 ```
 
-`npm run typecheck`はTypeScriptの型チェックだけを実行します。`npm test`と両ビルドにも型チェックを含めています。
+`npm run typecheck`はTypeScriptの型チェックだけを実行します。`npm test`は最初に`npm run check`を実行し、整形・lint・型チェックの失敗を検出します。両ビルドにも型チェックを含めています。
 `npm test`は式・データ・URL・ビルド・キャッシュなどを検証します。配布フォントの実際の読み込みはブラウザで確認します。
 
 ```sh

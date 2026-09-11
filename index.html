@@ -1,126 +1,1236 @@
 <!doctype html>
 <html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#111311">
-<meta name="description" content="A clock that displays a different mathematical expression every second.">
-<meta name="formula-clock-build" content="r6-minimal">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Formula Clock">
-<meta property="og:description" content="A clock that displays a different mathematical expression every second.">
-<meta property="og:image" content="/og-default.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:type" content="image/png">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Formula Clock">
-<meta name="twitter:image" content="/og-default.png">
-<title>Formula Clock</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111311'/%3E%3Ccircle cx='10' cy='10' r='4' fill='%23eea28c'/%3E%3Ccircle cx='22' cy='10' r='4' fill='%23e4c782'/%3E%3Ccircle cx='10' cy='22' r='4' fill='%239acbbb'/%3E%3Ccircle cx='22' cy='22' r='4' fill='%23b8ace1'/%3E%3C/svg%3E">
-<style>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111311" />
+    <meta
+      name="description"
+      content="A clock that displays a different mathematical expression every second."
+    />
+    <meta name="formula-clock-build" content="r6-minimal" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Formula Clock" />
+    <meta
+      property="og:description"
+      content="A clock that displays a different mathematical expression every second."
+    />
+    <meta property="og:image" content="/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Formula Clock" />
+    <meta name="twitter:image" content="/og-default.png" />
+    <title>Formula Clock</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111311'/%3E%3Ccircle cx='10' cy='10' r='4' fill='%23eea28c'/%3E%3Ccircle cx='22' cy='10' r='4' fill='%23e4c782'/%3E%3Ccircle cx='10' cy='22' r='4' fill='%239acbbb'/%3E%3Ccircle cx='22' cy='22' r='4' fill='%23b8ace1'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111311;
+        --fg: #edece4;
+        --muted: #92978e;
+        --dim: #636b61;
+        --line: #30362c;
+        --c0: #eea28c;
+        --c1: #e4c782;
+        --c2: #9acbbb;
+        --c3: #b8ace1;
+        --sans:
+          Inter, 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+        --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--sans);
+        font-weight: 400;
+        -webkit-font-smoothing: antialiased;
+      }
+      body:before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse at 48% 38%, #2b332323, transparent 64%);
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button,
+      a,
+      input,
+      select,
+      summary {
+        touch-action: manipulation;
+      }
+      button {
+        color: inherit;
+        cursor: pointer;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      summary:focus-visible,
+      select:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--c2);
+        outline-offset: 4px;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.35;
+      }
+      button svg {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      button[aria-pressed='true'] {
+        border-color: #687762;
+        background: #283125;
+      }
+      button:hover:not(:disabled) {
+        background: #252c22;
+        color: #fff;
+      }
+      ::selection {
+        background: #83977b55;
+      }
+      .shell {
+        position: relative;
+        max-width: 1520px;
+        min-height: 100svh;
+        margin: auto;
+        padding: 28px 50px;
+        display: flex;
+        flex-direction: column;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        min-height: 40px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-size: 12px;
+        font-weight: 550;
+        letter-spacing: 2.3px;
+        white-space: nowrap;
+      }
+      .brand-mark {
+        display: grid;
+        grid-template-columns: repeat(2, 3px);
+        gap: 4px;
+      }
+      .brand-mark i {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--c0);
+      }
+      .brand-mark i:nth-child(2) {
+        background: var(--c1);
+      }
+      .brand-mark i:nth-child(3) {
+        background: var(--c2);
+      }
+      .brand-mark i:nth-child(4) {
+        background: var(--c3);
+      }
+      .tools {
+        display: flex;
+        gap: 8px;
+      }
+      .tool {
+        display: inline-flex;
+        justify-content: center;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--line);
+        background: transparent;
+        border-radius: 7px;
+        padding: 11px 12px;
+        font-size: 11px;
+        line-height: 1;
+        min-height: 40px;
+        transition:
+          background 0.2s,
+          border-color 0.2s;
+      }
+      .tool.icon-only {
+        width: 40px;
+        padding: 10px;
+      }
+      .tool[aria-pressed='true'] {
+        color: var(--c2);
+      }
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        width: 100%;
+        padding: 56px 0 64px;
+      }
+      .clock-top {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 8px;
+      }
+      .source-time {
+        display: block;
+        width: 4.2em;
+        height: 1.1em;
+        font-size: 24px;
+        opacity: 1;
+        visibility: visible;
+        transition:
+          opacity 300ms ease,
+          visibility 0s;
+      }
+      .source-clock {
+        display: block;
+        width: 100%;
+        height: 100%;
+        fill: currentColor;
+        stroke: currentColor;
+        stroke-width: 0;
+        overflow: visible;
+      }
+      .source-time [data-digit='0'] {
+        color: var(--c0);
+      }
+      .source-time [data-digit='1'] {
+        color: var(--c1);
+      }
+      .source-time [data-digit='2'] {
+        color: var(--c2);
+      }
+      .source-time [data-digit='3'] {
+        color: var(--c3);
+      }
+      .source-time .colon {
+        color: #71786c;
+      }
+      .source-time .src-second {
+        color: var(--muted);
+      }
+      .source-time[hidden] {
+        display: block;
+        opacity: 0;
+        visibility: hidden;
+        transition:
+          opacity 300ms ease,
+          visibility 0s 300ms;
+      }
+      .stage-wrap {
+        position: relative;
+        margin: 8px 0 0;
+      }
+      .stage {
+        height: 242px;
+        width: 100%;
+        position: relative;
+        overflow: visible;
+        isolation: isolate;
+      }
+      .stage:before {
+        content: '';
+        position: absolute;
+        left: 12%;
+        right: 12%;
+        top: 17%;
+        bottom: 10%;
+        border-radius: 50%;
+        background: radial-gradient(ellipse, #8aa7770c, transparent 68%);
+        pointer-events: none;
+      }
+      .math-scene {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        visibility: hidden;
+        user-select: none;
+      }
+      .math-scene .digit,
+      .answer-digit {
+        fill: currentColor;
+        stroke: currentColor;
+        stroke-width: 0;
+        transition:
+          opacity 440ms ease,
+          filter 440ms ease;
+      }
+      .digit[data-digit='0'] {
+        color: var(--c0);
+      }
+      .digit[data-digit='1'] {
+        color: var(--c1);
+      }
+      .digit[data-digit='2'] {
+        color: var(--c2);
+      }
+      .digit[data-digit='3'] {
+        color: var(--c3);
+      }
+      .answer-digit {
+        color: var(--fg);
+      }
+      #operator-root {
+        fill: currentColor;
+        stroke: currentColor;
+        stroke-width: 0;
+        color: #c3c8ba;
+      }
+      #equal-sign {
+        fill: currentColor;
+        stroke: currentColor;
+        stroke-width: 0;
+        color: #c3c8ba;
+        opacity: 0;
+        transition: opacity 440ms ease;
+      }
+      #notation-root {
+        color: #c3c8ba;
+        transition: opacity 440ms ease;
+      }
+      .stage.resting .digit {
+        opacity: 0.48;
+        filter: saturate(0.38);
+      }
+      .stage.resting .answer-digit {
+        opacity: 0.48;
+      }
+      .stage.resting #notation-root {
+        opacity: 0.44;
+      }
+      .stage.loading .digit {
+        opacity: 0.6;
+      }
+      .math-staging {
+        position: fixed;
+        left: -100000px;
+        top: 0;
+        visibility: hidden;
+        pointer-events: none;
+        width: 20000px;
+        font-size: 16px;
+        contain: layout style;
+        z-index: -1;
+      }
+      .math-staging mjx-container {
+        margin: 0 !important;
+      }
+      .plain-time {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: var(--mono);
+        font-size: clamp(28px, 6vw, 78px);
+        letter-spacing: 1px;
+        opacity: 0.48;
+        filter: saturate(0.38);
+        white-space: nowrap;
+      }
+      .plain-time[hidden] {
+        display: none;
+      }
+      .plain-time span:nth-child(1) {
+        color: var(--c0);
+      }
+      .plain-time span:nth-child(2) {
+        color: var(--c1);
+      }
+      .plain-time span:nth-child(4) {
+        color: var(--c2);
+      }
+      .plain-time span:nth-child(5) {
+        color: var(--c3);
+      }
+      .plain-time span:nth-child(3),
+      .plain-time span:nth-child(6) {
+        margin: 0 0.08em;
+        color: var(--muted);
+      }
+      .state-label {
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: var(--muted);
+        letter-spacing: 1.4px;
+      }
+      .state-label.quiet {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 4px;
+        color: #737c6a;
+      }
+      .state-label.counting {
+        color: var(--c1);
+        font-size: 12px;
+        letter-spacing: 2px;
+      }
+      .flash {
+        position: absolute;
+        inset: 0;
+        border-radius: 20px;
+        background: radial-gradient(ellipse, #c4d0ae18, transparent 66%);
+        pointer-events: none;
+        opacity: 0;
+      }
+      .a11y {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
 
-:root{color-scheme:dark;--bg:#111311;--fg:#edece4;--muted:#92978e;--dim:#636b61;--line:#30362c;--c0:#eea28c;--c1:#e4c782;--c2:#9acbbb;--c3:#b8ace1;--sans:Inter,"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;--mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace}
-*{box-sizing:border-box}body{margin:0;min-width:320px;background:var(--bg);color:var(--fg);font-family:var(--sans);font-weight:400;-webkit-font-smoothing:antialiased}body:before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 48% 38%,#2b332323,transparent 64%)}button,input,select{font:inherit}button,a,input,select,summary{touch-action:manipulation}button{color:inherit;cursor:pointer}button:focus-visible,input:focus-visible,summary:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--c2);outline-offset:4px}button:disabled{cursor:default;opacity:.35}button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}button[aria-pressed=true]{border-color:#687762;background:#283125}button:hover:not(:disabled){background:#252c22;color:#fff}::selection{background:#83977b55}
-.shell{position:relative;max-width:1520px;min-height:100svh;margin:auto;padding:28px 50px;display:flex;flex-direction:column}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:40px}.brand{display:flex;align-items:center;gap:11px;font-size:12px;font-weight:550;letter-spacing:2.3px;white-space:nowrap}.brand-mark{display:grid;grid-template-columns:repeat(2,3px);gap:4px}.brand-mark i{width:3px;height:3px;border-radius:50%;background:var(--c0)}.brand-mark i:nth-child(2){background:var(--c1)}.brand-mark i:nth-child(3){background:var(--c2)}.brand-mark i:nth-child(4){background:var(--c3)}.tools{display:flex;gap:8px}.tool{display:inline-flex;justify-content:center;gap:8px;align-items:center;border:1px solid var(--line);background:transparent;border-radius:7px;padding:11px 12px;font-size:11px;line-height:1;min-height:40px;transition:background .2s,border-color .2s}.tool.icon-only{width:40px;padding:10px}.tool[aria-pressed=true]{color:var(--c2)}
-main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%;padding:56px 0 64px}.clock-top{display:flex;justify-content:center;margin-bottom:8px}.source-time{display:block;width:4.2em;height:1.1em;font-size:24px;opacity:1;visibility:visible;transition:opacity 300ms ease,visibility 0s}.source-clock{display:block;width:100%;height:100%;fill:currentColor;stroke:currentColor;stroke-width:0;overflow:visible}.source-time [data-digit="0"]{color:var(--c0)}.source-time [data-digit="1"]{color:var(--c1)}.source-time [data-digit="2"]{color:var(--c2)}.source-time [data-digit="3"]{color:var(--c3)}.source-time .colon{color:#71786c}.source-time .src-second{color:var(--muted)}.source-time[hidden]{display:block;opacity:0;visibility:hidden;transition:opacity 300ms ease,visibility 0s 300ms}
-.stage-wrap{position:relative;margin:8px 0 0}.stage{height:242px;width:100%;position:relative;overflow:visible;isolation:isolate}.stage:before{content:"";position:absolute;left:12%;right:12%;top:17%;bottom:10%;border-radius:50%;background:radial-gradient(ellipse,#8aa7770c,transparent 68%);pointer-events:none}.math-scene{position:absolute;inset:0;width:100%;height:100%;overflow:visible;visibility:hidden;user-select:none}.math-scene .digit,.answer-digit{fill:currentColor;stroke:currentColor;stroke-width:0;transition:opacity 440ms ease,filter 440ms ease}.digit[data-digit="0"]{color:var(--c0)}.digit[data-digit="1"]{color:var(--c1)}.digit[data-digit="2"]{color:var(--c2)}.digit[data-digit="3"]{color:var(--c3)}.answer-digit{color:var(--fg)}#operator-root{fill:currentColor;stroke:currentColor;stroke-width:0;color:#c3c8ba}#equal-sign{fill:currentColor;stroke:currentColor;stroke-width:0;color:#c3c8ba;opacity:0;transition:opacity 440ms ease}#notation-root{color:#c3c8ba;transition:opacity 440ms ease}.stage.resting .digit{opacity:.48;filter:saturate(.38)}.stage.resting .answer-digit{opacity:.48}.stage.resting #notation-root{opacity:.44}.stage.loading .digit{opacity:.6}.math-staging{position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;width:20000px;font-size:16px;contain:layout style;z-index:-1}.math-staging mjx-container{margin:0!important}.plain-time{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;font-family:var(--mono);font-size:clamp(28px,6vw,78px);letter-spacing:1px;opacity:.48;filter:saturate(.38);white-space:nowrap}.plain-time[hidden]{display:none}.plain-time span:nth-child(1){color:var(--c0)}.plain-time span:nth-child(2){color:var(--c1)}.plain-time span:nth-child(4){color:var(--c2)}.plain-time span:nth-child(5){color:var(--c3)}.plain-time span:nth-child(3),.plain-time span:nth-child(6){margin:0 .08em;color:var(--muted)}.state-label{height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);letter-spacing:1.4px}.state-label.quiet{font-family:var(--mono);font-size:12px;letter-spacing:4px;color:#737c6a}.state-label.counting{color:var(--c1);font-size:12px;letter-spacing:2px}.flash{position:absolute;inset:0;border-radius:20px;background:radial-gradient(ellipse,#c4d0ae18,transparent 66%);pointer-events:none;opacity:0}.a11y{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-
-.stage{height:clamp(242px,32svh,360px)}
-.minute{max-width:710px;width:calc(100% - 50px);margin:28px auto 0}.ruler{height:32px;display:grid;grid-template-columns:repeat(60,1fr);align-items:center;gap:4px}.tick{position:relative;background:transparent;padding:0;height:32px;border:0;border-radius:2px}.tick:before{content:"";position:absolute;left:50%;top:12px;width:2px;height:7px;transform:translateX(-50%);background:#30372b;transition:background .3s,height .3s,top .3s}.tick.major:before{height:12px;top:9px}.tick.solved:before{background:#7c8970}.tick.past:before{opacity:.55}.tick.current:before{height:22px;top:4px;background:var(--fg);box-shadow:0 0 10px #d5dbc333}.tick:hover:before{background:var(--c2);height:20px;top:5px}.ruler-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim)}
-.transport{display:flex;justify-content:center;align-items:center;gap:16px;height:38px;margin-top:18px}.transport[hidden]{display:flex;visibility:hidden}.transport button{border:0;background:transparent;color:var(--muted);font-size:10px;padding:10px;border-radius:4px;letter-spacing:.5px}.transport .live-return{color:var(--c2);white-space:nowrap}.transport .seek-hint{color:var(--dim);font-size:10px}
-.settings-dialog{position:fixed;inset:80px 28px auto auto;margin:0;width:350px;max-width:calc(100vw - 32px);max-height:calc(100svh - 100px);overflow:auto;overscroll-behavior:contain;background:#181d17;border:1px solid #394232;border-radius:12px;color:var(--fg);padding:22px;box-shadow:0 16px 70px #0005;font-size:12px}.settings-dialog::backdrop{background:#0003}.settings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.settings-header h2{font-size:13px;font-weight:500;letter-spacing:1px;margin:0}.settings-close{display:grid;place-items:center;width:32px;height:32px;background:transparent;border:0;border-radius:5px;color:var(--muted)}.setting-row{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:16px 0;color:var(--muted)}.setting-row select{color:var(--fg);background:#111710;border:1px solid var(--line);border-radius:5px;padding:8px;max-width:180px}.setting-row input[type=range]{width:160px;accent-color:var(--c2)}.experimental-option{margin-top:22px;font-size:11px}.experimental-option:has(input:disabled){opacity:.45}.experimental-option input{accent-color:var(--c2);width:16px;height:16px}.custom-time-label{display:block;margin:22px 0 9px;color:var(--muted)}.custom-time{display:flex;gap:8px}.custom-time input{background:#111710;color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:8px;min-width:0;flex:1;font-family:var(--mono)}.settings-dialog .small-button{border:1px solid var(--line);background:transparent;border-radius:5px;padding:8px 10px;font-size:11px}.advanced{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}.advanced summary{color:var(--muted);cursor:pointer;padding:4px 0}.advanced p{font-size:10px;line-height:1.8;color:var(--muted);overflow-wrap:anywhere}.settings-links{display:flex;gap:18px;margin-top:22px}.settings-links a,.license-link{padding:0;border:0;background:none;color:var(--muted);font-size:10px;text-decoration:underline;text-underline-offset:3px}.settings-dialog.license-dialog{inset:0;margin:auto;width:760px;max-height:calc(100svh - 48px);padding:0}.license-dialog .settings-header{position:sticky;top:0;margin:0;padding:16px 22px;background:#181d17;border-bottom:1px solid var(--line);z-index:1}.license-content{padding:0 24px 24px;font-size:12px;line-height:1.8;overflow-wrap:anywhere}.license-content h1{display:none}.license-content h2{font-size:14px;margin-top:28px}.license-content a{color:var(--c2)}.license-content pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 var(--mono);color:var(--muted)}.license-content summary{cursor:pointer;padding:12px 0}.license-content details{border-bottom:1px solid var(--line)}.math-engine-frame{position:fixed;left:-100000px;top:0;width:300px;height:200px;visibility:hidden;pointer-events:none;border:0}
-.segmented-control{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:180px;flex-shrink:0;gap:2px;padding:3px;background:#111710;border:1px solid var(--line);border-radius:7px}.segmented-control label{position:relative;cursor:pointer}.segmented-control input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}.segmented-control span{display:block;border-radius:4px;padding:6px 9px;text-align:center;line-height:18px;color:var(--muted)}.segmented-control input:hover+span{color:var(--fg)}.segmented-control input:checked+span{background:#35402f;color:var(--fg);box-shadow:0 1px 3px #0005}.segmented-control input:focus-visible+span{outline:2px solid var(--c2);outline-offset:1px}#division-choice span{padding-inline:2px}
-@media(max-width:760px){.shell{padding:22px}.brand{font-size:10px;letter-spacing:1.8px}.tools{gap:6px}main{padding:40px 0 48px}.minute{width:100%;margin-top:22px}.ruler{gap:2px}.source-time{font-size:22px}.settings-dialog{right:16px;top:76px;max-height:calc(100svh - 92px)}}
-@media(max-width:480px){.shell{padding:18px 16px}.brand{font-size:9px;letter-spacing:1.4px;gap:8px}.tool{padding:10px;min-width:40px}.tools{gap:5px}.stage{height:226px}.transport{gap:10px}.transport button{padding:10px 7px}.setting-row select{max-width:165px}.segmented-control{width:165px}.settings-dialog{padding:20px}}
-@media(prefers-reduced-motion:reduce){*,*:before{scroll-behavior:auto!important}.source-time,.math-scene .digit,.answer-digit,#equal-sign,#notation-root{transition:none!important}}
-.tools #share{margin-inline-start:8px}.tool:disabled{opacity:.4;cursor:default}.tool[hidden]{display:none}.share-status{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);margin:0;padding:10px 16px;border:1px solid var(--line);border-radius:7px;background:#181d17;color:var(--fg);font-size:12px;z-index:2;white-space:nowrap}.share-status:empty{display:none}.share-dialog{inset:0;margin:auto;width:460px}.share-dialog p{color:var(--muted);line-height:1.8}.share-url{width:100%;padding:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:5px;font:12px var(--mono)}
-@media(max-width:480px){.topbar{gap:8px}.tools{gap:4px}.tool.icon-only{width:36px;min-width:36px;padding:8px}}
-.advanced .state-label{height:auto;min-height:26px;text-align:center}
-@media(max-width:360px){.segmented-control{width:144px}#division-choice span{font-size:11px}}
-.share-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.share-status{width:max-content;max-width:calc(100vw - 32px);white-space:normal;text-align:center}
-body.fullscreen .shell{max-width:none;padding-block:16px}body.fullscreen main{padding:20px 0}body.fullscreen .stage{height:clamp(120px,calc(100svh - 280px),66svh)}
-</style>
-</head>
-<body>
-<div class="shell">
-<header class="topbar">
-  <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>FORMULA CLOCK</div>
-  <div class="tools">
-    <button class="tool icon-only" id="settings-open" data-i18n-aria-label="settings" aria-label="設定" aria-haspopup="dialog" aria-controls="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9m4 0h3M4 17h3m4 0h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
-    <button class="tool icon-only" id="sound" data-i18n-aria-label="soundOff" aria-pressed="false" aria-label="時報 OFF"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path id="sound-waves" d="m16 9 6 6m0-6-6 6"/></svg></button>
-    <button class="tool icon-only" id="fullscreen" data-i18n-aria-label="fullscreen" hidden aria-pressed="false" aria-label="全画面表示"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
-    <button class="tool icon-only" id="share" data-i18n-aria-label="share" data-i18n-title="share" disabled aria-label="現在の表示を共有" title="現在の表示を共有"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M7 11H4v10h16V11h-3"/></svg></button>
-  </div>
-</header>
-<main>
-  <h1 class="a11y">Formula Clock</h1>
-  <div class="clock-top">
-    <div class="source-time" id="source-time" hidden role="img">
-      <svg class="source-clock" viewBox="0 0 4200 1100" aria-hidden="true">
-        <g class="source-digit" data-digit="0"></g><g class="source-digit" data-digit="1"></g><g class="colon"></g>
-        <g class="source-digit" data-digit="2"></g><g class="source-digit" data-digit="3"></g><g class="colon"></g>
-        <g class="src-second" id="source-second"><g class="source-digit" data-second="0"></g><g class="source-digit" data-second="1"></g></g>
-      </svg>
+      .stage {
+        height: clamp(242px, 32svh, 360px);
+      }
+      .minute {
+        max-width: 710px;
+        width: calc(100% - 50px);
+        margin: 28px auto 0;
+      }
+      .ruler {
+        height: 32px;
+        display: grid;
+        grid-template-columns: repeat(60, 1fr);
+        align-items: center;
+        gap: 4px;
+      }
+      .tick {
+        position: relative;
+        background: transparent;
+        padding: 0;
+        height: 32px;
+        border: 0;
+        border-radius: 2px;
+      }
+      .tick:before {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 12px;
+        width: 2px;
+        height: 7px;
+        transform: translateX(-50%);
+        background: #30372b;
+        transition:
+          background 0.3s,
+          height 0.3s,
+          top 0.3s;
+      }
+      .tick.major:before {
+        height: 12px;
+        top: 9px;
+      }
+      .tick.solved:before {
+        background: #7c8970;
+      }
+      .tick.past:before {
+        opacity: 0.55;
+      }
+      .tick.current:before {
+        height: 22px;
+        top: 4px;
+        background: var(--fg);
+        box-shadow: 0 0 10px #d5dbc333;
+      }
+      .tick:hover:before {
+        background: var(--c2);
+        height: 20px;
+        top: 5px;
+      }
+      .ruler-labels {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--dim);
+      }
+      .transport {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 16px;
+        height: 38px;
+        margin-top: 18px;
+      }
+      .transport[hidden] {
+        display: flex;
+        visibility: hidden;
+      }
+      .transport button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 10px;
+        padding: 10px;
+        border-radius: 4px;
+        letter-spacing: 0.5px;
+      }
+      .transport .live-return {
+        color: var(--c2);
+        white-space: nowrap;
+      }
+      .transport .seek-hint {
+        color: var(--dim);
+        font-size: 10px;
+      }
+      .settings-dialog {
+        position: fixed;
+        inset: 80px 28px auto auto;
+        margin: 0;
+        width: 350px;
+        max-width: calc(100vw - 32px);
+        max-height: calc(100svh - 100px);
+        overflow: auto;
+        overscroll-behavior: contain;
+        background: #181d17;
+        border: 1px solid #394232;
+        border-radius: 12px;
+        color: var(--fg);
+        padding: 22px;
+        box-shadow: 0 16px 70px #0005;
+        font-size: 12px;
+      }
+      .settings-dialog::backdrop {
+        background: #0003;
+      }
+      .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .settings-header h2 {
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 1px;
+        margin: 0;
+      }
+      .settings-close {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        color: var(--muted);
+      }
+      .setting-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin: 16px 0;
+        color: var(--muted);
+      }
+      .setting-row select {
+        color: var(--fg);
+        background: #111710;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 8px;
+        max-width: 180px;
+      }
+      .setting-row input[type='range'] {
+        width: 160px;
+        accent-color: var(--c2);
+      }
+      .experimental-option {
+        margin-top: 22px;
+        font-size: 11px;
+      }
+      .experimental-option:has(input:disabled) {
+        opacity: 0.45;
+      }
+      .experimental-option input {
+        accent-color: var(--c2);
+        width: 16px;
+        height: 16px;
+      }
+      .custom-time-label {
+        display: block;
+        margin: 22px 0 9px;
+        color: var(--muted);
+      }
+      .custom-time {
+        display: flex;
+        gap: 8px;
+      }
+      .custom-time input {
+        background: #111710;
+        color: var(--fg);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 8px;
+        min-width: 0;
+        flex: 1;
+        font-family: var(--mono);
+      }
+      .settings-dialog .small-button {
+        border: 1px solid var(--line);
+        background: transparent;
+        border-radius: 5px;
+        padding: 8px 10px;
+        font-size: 11px;
+      }
+      .advanced {
+        margin-top: 22px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+      .advanced summary {
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px 0;
+      }
+      .advanced p {
+        font-size: 10px;
+        line-height: 1.8;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+      .settings-links {
+        display: flex;
+        gap: 18px;
+        margin-top: 22px;
+      }
+      .settings-links a,
+      .license-link {
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--muted);
+        font-size: 10px;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      .settings-dialog.license-dialog {
+        inset: 0;
+        margin: auto;
+        width: 760px;
+        max-height: calc(100svh - 48px);
+        padding: 0;
+      }
+      .license-dialog .settings-header {
+        position: sticky;
+        top: 0;
+        margin: 0;
+        padding: 16px 22px;
+        background: #181d17;
+        border-bottom: 1px solid var(--line);
+        z-index: 1;
+      }
+      .license-content {
+        padding: 0 24px 24px;
+        font-size: 12px;
+        line-height: 1.8;
+        overflow-wrap: anywhere;
+      }
+      .license-content h1 {
+        display: none;
+      }
+      .license-content h2 {
+        font-size: 14px;
+        margin-top: 28px;
+      }
+      .license-content a {
+        color: var(--c2);
+      }
+      .license-content pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font: 11px/1.7 var(--mono);
+        color: var(--muted);
+      }
+      .license-content summary {
+        cursor: pointer;
+        padding: 12px 0;
+      }
+      .license-content details {
+        border-bottom: 1px solid var(--line);
+      }
+      .math-engine-frame {
+        position: fixed;
+        left: -100000px;
+        top: 0;
+        width: 300px;
+        height: 200px;
+        visibility: hidden;
+        pointer-events: none;
+        border: 0;
+      }
+      .segmented-control {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        width: 180px;
+        flex-shrink: 0;
+        gap: 2px;
+        padding: 3px;
+        background: #111710;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+      }
+      .segmented-control label {
+        position: relative;
+        cursor: pointer;
+      }
+      .segmented-control input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .segmented-control span {
+        display: block;
+        border-radius: 4px;
+        padding: 6px 9px;
+        text-align: center;
+        line-height: 18px;
+        color: var(--muted);
+      }
+      .segmented-control input:hover + span {
+        color: var(--fg);
+      }
+      .segmented-control input:checked + span {
+        background: #35402f;
+        color: var(--fg);
+        box-shadow: 0 1px 3px #0005;
+      }
+      .segmented-control input:focus-visible + span {
+        outline: 2px solid var(--c2);
+        outline-offset: 1px;
+      }
+      #division-choice span {
+        padding-inline: 2px;
+      }
+      @media (max-width: 760px) {
+        .shell {
+          padding: 22px;
+        }
+        .brand {
+          font-size: 10px;
+          letter-spacing: 1.8px;
+        }
+        .tools {
+          gap: 6px;
+        }
+        main {
+          padding: 40px 0 48px;
+        }
+        .minute {
+          width: 100%;
+          margin-top: 22px;
+        }
+        .ruler {
+          gap: 2px;
+        }
+        .source-time {
+          font-size: 22px;
+        }
+        .settings-dialog {
+          right: 16px;
+          top: 76px;
+          max-height: calc(100svh - 92px);
+        }
+      }
+      @media (max-width: 480px) {
+        .shell {
+          padding: 18px 16px;
+        }
+        .brand {
+          font-size: 9px;
+          letter-spacing: 1.4px;
+          gap: 8px;
+        }
+        .tool {
+          padding: 10px;
+          min-width: 40px;
+        }
+        .tools {
+          gap: 5px;
+        }
+        .stage {
+          height: 226px;
+        }
+        .transport {
+          gap: 10px;
+        }
+        .transport button {
+          padding: 10px 7px;
+        }
+        .setting-row select {
+          max-width: 165px;
+        }
+        .segmented-control {
+          width: 165px;
+        }
+        .settings-dialog {
+          padding: 20px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *:before {
+          scroll-behavior: auto !important;
+        }
+        .source-time,
+        .math-scene .digit,
+        .answer-digit,
+        #equal-sign,
+        #notation-root {
+          transition: none !important;
+        }
+      }
+      .tools #share {
+        margin-inline-start: 8px;
+      }
+      .tool:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .tool[hidden] {
+        display: none;
+      }
+      .share-status {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        margin: 0;
+        padding: 10px 16px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #181d17;
+        color: var(--fg);
+        font-size: 12px;
+        z-index: 2;
+        white-space: nowrap;
+      }
+      .share-status:empty {
+        display: none;
+      }
+      .share-dialog {
+        inset: 0;
+        margin: auto;
+        width: 460px;
+      }
+      .share-dialog p {
+        color: var(--muted);
+        line-height: 1.8;
+      }
+      .share-url {
+        width: 100%;
+        padding: 10px;
+        background: var(--bg);
+        color: var(--fg);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        font: 12px var(--mono);
+      }
+      @media (max-width: 480px) {
+        .topbar {
+          gap: 8px;
+        }
+        .tools {
+          gap: 4px;
+        }
+        .tool.icon-only {
+          width: 36px;
+          min-width: 36px;
+          padding: 8px;
+        }
+      }
+      .advanced .state-label {
+        height: auto;
+        min-height: 26px;
+        text-align: center;
+      }
+      @media (max-width: 360px) {
+        .segmented-control {
+          width: 144px;
+        }
+        #division-choice span {
+          font-size: 11px;
+        }
+      }
+      .share-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .share-status {
+        width: max-content;
+        max-width: calc(100vw - 32px);
+        white-space: normal;
+        text-align: center;
+      }
+      body.fullscreen .shell {
+        max-width: none;
+        padding-block: 16px;
+      }
+      body.fullscreen main {
+        padding: 20px 0;
+      }
+      body.fullscreen .stage {
+        height: clamp(120px, calc(100svh - 280px), 66svh);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>FORMULA
+          CLOCK
+        </div>
+        <div class="tools">
+          <button
+            class="tool icon-only"
+            id="settings-open"
+            data-i18n-aria-label="settings"
+            aria-label="設定"
+            aria-haspopup="dialog"
+            aria-controls="settings"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h9m4 0h3M4 17h3m4 0h9" />
+              <circle cx="15" cy="7" r="2" />
+              <circle cx="9" cy="17" r="2" />
+            </svg>
+          </button>
+          <button
+            class="tool icon-only"
+            id="sound"
+            data-i18n-aria-label="soundOff"
+            aria-pressed="false"
+            aria-label="時報 OFF"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M11 5 6 9H3v6h3l5 4Z" />
+              <path id="sound-waves" d="m16 9 6 6m0-6-6 6" />
+            </svg>
+          </button>
+          <button
+            class="tool icon-only"
+            id="fullscreen"
+            data-i18n-aria-label="fullscreen"
+            hidden
+            aria-pressed="false"
+            aria-label="全画面表示"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
+            </svg>
+          </button>
+          <button
+            class="tool icon-only"
+            id="share"
+            data-i18n-aria-label="share"
+            data-i18n-title="share"
+            disabled
+            aria-label="現在の表示を共有"
+            title="現在の表示を共有"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 16V3m-4 4 4-4 4 4M7 11H4v10h16V11h-3" />
+            </svg>
+          </button>
+        </div>
+      </header>
+      <main>
+        <h1 class="a11y">Formula Clock</h1>
+        <div class="clock-top">
+          <div class="source-time" id="source-time" hidden role="img">
+            <svg class="source-clock" viewBox="0 0 4200 1100" aria-hidden="true">
+              <g class="source-digit" data-digit="0"></g>
+              <g class="source-digit" data-digit="1"></g>
+              <g class="colon"></g>
+              <g class="source-digit" data-digit="2"></g>
+              <g class="source-digit" data-digit="3"></g>
+              <g class="colon"></g>
+              <g class="src-second" id="source-second">
+                <g class="source-digit" data-second="0"></g>
+                <g class="source-digit" data-second="1"></g>
+              </g>
+            </svg>
+          </div>
+        </div>
+        <div class="stage-wrap">
+          <div class="stage" id="stage" role="img" aria-label="Formula Clock">
+            <div class="flash" id="flash"></div>
+            <svg
+              id="math-scene"
+              class="math-scene"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <g id="notation-root"></g>
+              <g id="operator-root"></g>
+              <g id="equal-sign"></g>
+              <g class="digit" data-digit="0"></g>
+              <g class="digit" data-digit="1"></g>
+              <g class="digit" data-digit="2"></g>
+              <g class="digit" data-digit="3"></g>
+              <g class="answer-digit" data-second="0"></g>
+              <g class="answer-digit" data-second="1"></g>
+            </svg>
+            <div id="plain-time" class="plain-time" aria-hidden="true">
+              <span>0</span><span>0</span><span>:</span><span>0</span><span>0</span><span>:</span
+              ><span>0</span><span>0</span>
+            </div>
+          </div>
+        </div>
+        <div class="minute">
+          <div
+            class="ruler"
+            id="ruler"
+            data-i18n-aria-label="chooseSecond"
+            aria-label="秒を選んでプレビュー"
+          ></div>
+          <div class="ruler-labels" aria-hidden="true">
+            <span>00</span><span>15</span><span>30</span><span>45</span><span>59</span>
+          </div>
+        </div>
+        <div class="transport" id="transport" hidden>
+          <span class="seek-hint" data-i18n="seekHint">← → 1秒ずつ移動</span
+          ><button
+            class="live-return"
+            id="go-live"
+            data-i18n-title="goLiveShortcut"
+            title="現在時刻に戻る（L）"
+          >
+            <span data-i18n="goLive">現在時刻へ</span>
+          </button>
+        </div>
+      </main>
     </div>
-  </div>
-  <div class="stage-wrap">
-    <div class="stage" id="stage" role="img" aria-label="Formula Clock">
-      <div class="flash" id="flash"></div>
-      <svg id="math-scene" class="math-scene" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <g id="notation-root"></g>
-        <g id="operator-root"></g>
-        <g id="equal-sign"></g>
-        <g class="digit" data-digit="0"></g><g class="digit" data-digit="1"></g><g class="digit" data-digit="2"></g><g class="digit" data-digit="3"></g>
-        <g class="answer-digit" data-second="0"></g><g class="answer-digit" data-second="1"></g>
-      </svg>
-      <div id="plain-time" class="plain-time" aria-hidden="true"><span>0</span><span>0</span><span>:</span><span>0</span><span>0</span><span>:</span><span>0</span><span>0</span></div>
-    </div>
-  </div>
-  <div class="minute">
-    <div class="ruler" id="ruler" data-i18n-aria-label="chooseSecond" aria-label="秒を選んでプレビュー"></div>
-    <div class="ruler-labels" aria-hidden="true"><span>00</span><span>15</span><span>30</span><span>45</span><span>59</span></div>
-  </div>
-  <div class="transport" id="transport" hidden>
-    <span class="seek-hint" data-i18n="seekHint">← → 1秒ずつ移動</span><button class="live-return" id="go-live" data-i18n-title="goLiveShortcut" title="現在時刻に戻る（L）"><span data-i18n="goLive">現在時刻へ</span></button>
-  </div>
-</main>
-</div>
-<p id="share-status" class="share-status" role="status" aria-live="polite"></p>
-<dialog class="settings-dialog share-dialog" id="share-dialog" aria-labelledby="share-title">
-  <div class="settings-header"><h2 id="share-title"><span data-i18n="shareTitle">Share</span></h2><button class="settings-close" id="share-close" data-i18n-aria-label="close" aria-label="閉じる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-  <p><span data-i18n="shareHelp">このURLをコピーして共有できます。</span></p>
-  <input id="share-url" data-i18n-aria-label="shareUrl" class="share-url" type="url" readonly aria-label="共有URL">
-  <div class="share-actions"><button id="share-native" class="small-button" data-i18n="shareNative" hidden>共有する</button><button id="share-copy" class="small-button" data-i18n="shareCopy">リンクをコピー</button></div>
-</dialog>
-<dialog class="settings-dialog" id="settings" aria-labelledby="settings-title">
-  <div class="settings-header"><h2 id="settings-title"><span data-i18n="settings">設定</span></h2><button class="settings-close" id="settings-close" data-i18n-aria-label="closeSettings" aria-label="設定を閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-  <label class="setting-row"><span data-i18n="font">フォント</span><select id="font-choice" data-i18n-aria-label="mathFont" aria-label="数式のフォント"><option value="stix2" selected>STIX Two</option><option value="termes">Termes</option><option value="fira">Fira</option><option value="euler">Euler</option></select></label>
-  <div class="setting-row"><span id="numeral-label" data-i18n="numerals">数字のスタイル</span><div class="segmented-control" id="numeral-choice" role="radiogroup" aria-labelledby="numeral-label"><label><input type="radio" name="numerals" value="lining"><span>Lining</span></label><label><input type="radio" name="numerals" value="oldstyle" checked><span>Oldstyle</span></label></div></div>
-  <div class="setting-row"><span id="division-label" data-i18n="division">除算のスタイル</span><div class="segmented-control" id="division-choice" role="radiogroup" aria-labelledby="division-label"><label><input type="radio" name="division" value="fraction" checked><span data-i18n="fraction">分数</span></label><label><input type="radio" name="division" value="inline"><span>÷</span></label><label><input type="radio" name="division" value="slash"><span>/</span></label></div></div>
-  <label class="setting-row"><span data-i18n="volume">音量</span><input id="volume" data-i18n-aria-label="signalVolume" type="range" min="0" max="100" value="25" aria-label="時報の音量"></label>
-  <label class="custom-time-label" for="custom-time"><span data-i18n="setTime">時刻を指定</span></label>
-  <div class="custom-time"><input type="time" id="custom-time" step="1" value="12:34:30"><button class="small-button" id="custom-go"><span data-i18n="show">表示</span></button></div>
-  <details class="advanced" id="advanced-settings"><summary><span data-i18n="advanced">詳細</span></summary>
-    <label class="setting-row experimental-option"><span data-i18n="symbolMotion">記号をなめらかに動かす</span><input id="symbol-motion" type="checkbox"></label>
-    <label class="setting-row experimental-option"><span data-i18n="structureMotion">分数・√・括弧も動かす</span><input id="structure-motion" type="checkbox"></label>
-    <label class="setting-row experimental-option"><span data-i18n="symbolMorph">四則記号を変形する</span><input id="symbol-morph" type="checkbox"></label>
-    <p id="render-status" role="status" hidden></p>
-    <p id="state-label" role="status"></p>
-    <p><span data-i18n="shortcuts">← → 一時停止中に1秒移動 / Space 一時停止・現在時刻へ / L 現在時刻へ / M 時報 / F 全画面</span></p>
-  </details>
-  <div class="settings-links"><button class="license-link" id="licenses-open" aria-haspopup="dialog" aria-controls="licenses"><span data-i18n="licenses">LICENSE</span></button><a href="https://github.com/necocen/formula-clock" target="_blank" rel="noopener">GitHub ↗</a></div>
-</dialog>
-<dialog class="settings-dialog license-dialog" id="licenses" aria-labelledby="licenses-title">
-  <div class="settings-header"><h2 id="licenses-title"><span data-i18n="licenses">LICENSE</span></h2><button class="settings-close" id="licenses-close" data-i18n-aria-label="closeLicenses" aria-label="ライセンスを閉じる" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-  <div class="license-content" lang="ja"><h1>LICENSE</h1>
-<p>Formula ClockはMathJax 4.1.3で数式を表示します。使用する書体はSTIX Two、Termes、Fira、Eulerで、Eulerの基盤にはLatin Modernを使用しています。ブラウザ用のライブラリとフォントデータはCDNから取得します。共有画像の生成用Workerには、同じ版のMathJaxとフォントデータを同梱しています。</p>
-<p>CDNパッケージはすべて4.1.3です。以下は実際の配布物のライセンスと、フォント内の著作権表示を照合した記録です。</p>
-<h2>MathJax / フォントパッケージ</h2>
-<p>mathjax / @mathjax/src 4.1.3、@mathjax/mathjax-stix2-font 4.1.3、@mathjax/mathjax-termes-font 4.1.3、@mathjax/mathjax-fira-font 4.1.3、@mathjax/mathjax-euler-font-extension 4.1.3、@mathjax/mathjax-modern-font 4.1.3</p>
-<p>Copyright (c) 2017–2026 The MathJax Consortium<br>パッケージのソフトウェア：Apache License 2.0。原書体には下記のライセンスが適用されます。</p>
-<p><a href="https://github.com/mathjax/MathJax-src/blob/4.1.3/ts/mathjax.ts">MathJax著作権表示</a> · <a href="https://docs.mathjax.org/en/v4.1/output/fonts.html">書体構成</a></p>
-<details><summary>Apache License 2.0 — 全文</summary><pre lang="en">
+    <p id="share-status" class="share-status" role="status" aria-live="polite"></p>
+    <dialog class="settings-dialog share-dialog" id="share-dialog" aria-labelledby="share-title">
+      <div class="settings-header">
+        <h2 id="share-title"><span data-i18n="shareTitle">Share</span></h2>
+        <button
+          class="settings-close"
+          id="share-close"
+          data-i18n-aria-label="close"
+          aria-label="閉じる"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+      <p><span data-i18n="shareHelp">このURLをコピーして共有できます。</span></p>
+      <input
+        id="share-url"
+        data-i18n-aria-label="shareUrl"
+        class="share-url"
+        type="url"
+        readonly
+        aria-label="共有URL"
+      />
+      <div class="share-actions">
+        <button id="share-native" class="small-button" data-i18n="shareNative" hidden>
+          共有する</button
+        ><button id="share-copy" class="small-button" data-i18n="shareCopy">リンクをコピー</button>
+      </div>
+    </dialog>
+    <dialog class="settings-dialog" id="settings" aria-labelledby="settings-title">
+      <div class="settings-header">
+        <h2 id="settings-title"><span data-i18n="settings">設定</span></h2>
+        <button
+          class="settings-close"
+          id="settings-close"
+          data-i18n-aria-label="closeSettings"
+          aria-label="設定を閉じる"
+          autofocus
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+      <label class="setting-row"
+        ><span data-i18n="font">フォント</span
+        ><select id="font-choice" data-i18n-aria-label="mathFont" aria-label="数式のフォント">
+          <option value="stix2" selected>STIX Two</option>
+          <option value="termes">Termes</option>
+          <option value="fira">Fira</option>
+          <option value="euler">Euler</option>
+        </select></label
+      >
+      <div class="setting-row">
+        <span id="numeral-label" data-i18n="numerals">数字のスタイル</span>
+        <div
+          class="segmented-control"
+          id="numeral-choice"
+          role="radiogroup"
+          aria-labelledby="numeral-label"
+        >
+          <label><input type="radio" name="numerals" value="lining" /><span>Lining</span></label
+          ><label
+            ><input type="radio" name="numerals" value="oldstyle" checked /><span
+              >Oldstyle</span
+            ></label
+          >
+        </div>
+      </div>
+      <div class="setting-row">
+        <span id="division-label" data-i18n="division">除算のスタイル</span>
+        <div
+          class="segmented-control"
+          id="division-choice"
+          role="radiogroup"
+          aria-labelledby="division-label"
+        >
+          <label
+            ><input type="radio" name="division" value="fraction" checked /><span
+              data-i18n="fraction"
+              >分数</span
+            ></label
+          ><label><input type="radio" name="division" value="inline" /><span>÷</span></label
+          ><label><input type="radio" name="division" value="slash" /><span>/</span></label>
+        </div>
+      </div>
+      <label class="setting-row"
+        ><span data-i18n="volume">音量</span
+        ><input
+          id="volume"
+          data-i18n-aria-label="signalVolume"
+          type="range"
+          min="0"
+          max="100"
+          value="25"
+          aria-label="時報の音量"
+      /></label>
+      <label class="custom-time-label" for="custom-time"
+        ><span data-i18n="setTime">時刻を指定</span></label
+      >
+      <div class="custom-time">
+        <input type="time" id="custom-time" step="1" value="12:34:30" /><button
+          class="small-button"
+          id="custom-go"
+        >
+          <span data-i18n="show">表示</span>
+        </button>
+      </div>
+      <details class="advanced" id="advanced-settings">
+        <summary><span data-i18n="advanced">詳細</span></summary>
+        <label class="setting-row experimental-option"
+          ><span data-i18n="symbolMotion">記号をなめらかに動かす</span
+          ><input id="symbol-motion" type="checkbox"
+        /></label>
+        <label class="setting-row experimental-option"
+          ><span data-i18n="structureMotion">分数・√・括弧も動かす</span
+          ><input id="structure-motion" type="checkbox"
+        /></label>
+        <label class="setting-row experimental-option"
+          ><span data-i18n="symbolMorph">四則記号を変形する</span
+          ><input id="symbol-morph" type="checkbox"
+        /></label>
+        <p id="render-status" role="status" hidden></p>
+        <p id="state-label" role="status"></p>
+        <p>
+          <span data-i18n="shortcuts"
+            >← → 一時停止中に1秒移動 / Space 一時停止・現在時刻へ / L 現在時刻へ / M 時報 / F
+            全画面</span
+          >
+        </p>
+      </details>
+      <div class="settings-links">
+        <button
+          class="license-link"
+          id="licenses-open"
+          aria-haspopup="dialog"
+          aria-controls="licenses"
+        >
+          <span data-i18n="licenses">LICENSE</span></button
+        ><a href="https://github.com/necocen/formula-clock" target="_blank" rel="noopener"
+          >GitHub ↗</a
+        >
+      </div>
+    </dialog>
+    <dialog class="settings-dialog license-dialog" id="licenses" aria-labelledby="licenses-title">
+      <div class="settings-header">
+        <h2 id="licenses-title"><span data-i18n="licenses">LICENSE</span></h2>
+        <button
+          class="settings-close"
+          id="licenses-close"
+          data-i18n-aria-label="closeLicenses"
+          aria-label="ライセンスを閉じる"
+          autofocus
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+      <div class="license-content" lang="ja">
+  <h1>LICENSE</h1>
+  <p>
+    Formula ClockはMathJax 4.1.3で数式を表示します。使用する書体はSTIX
+    Two、Termes、Fira、Eulerで、Eulerの基盤にはLatin
+    Modernを使用しています。ブラウザ用のライブラリとフォントデータはCDNから取得します。共有画像の生成用Workerには、同じ版のMathJaxとフォントデータを同梱しています。
+  </p>
+  <p>
+    CDNパッケージはすべて4.1.3です。以下は実際の配布物のライセンスと、フォント内の著作権表示を照合した記録です。
+  </p>
+  <h2>MathJax / フォントパッケージ</h2>
+  <p>
+    mathjax / @mathjax/src 4.1.3、@mathjax/mathjax-stix2-font 4.1.3、@mathjax/mathjax-termes-font
+    4.1.3、@mathjax/mathjax-fira-font 4.1.3、@mathjax/mathjax-euler-font-extension
+    4.1.3、@mathjax/mathjax-modern-font 4.1.3
+  </p>
+  <p>
+    Copyright (c) 2017–2026 The MathJax Consortium<br />パッケージのソフトウェア：Apache License
+    2.0。原書体には下記のライセンスが適用されます。
+  </p>
+  <p>
+    <a href="https://github.com/mathjax/MathJax-src/blob/4.1.3/ts/mathjax.ts">MathJax著作権表示</a>
+    · <a href="https://docs.mathjax.org/en/v4.1/output/fonts.html">書体構成</a>
+  </p>
+  <details>
+    <summary>Apache License 2.0 — 全文</summary>
+    <pre lang="en">
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -322,8 +1432,21 @@ body.fullscreen .shell{max-width:none;padding-block:16px}body.fullscreen main{pa
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-</pre></details>
-<h2>STIX Two</h2><p>CDNパッケージ：@mathjax/mathjax-stix2-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts)</pre><p>デザイン：Ross Mills, John Hudson &amp; Paul Hanslow, Tiro Typeworks Ltd; with prior portions MicroPress Inc., and Coen Hoffman.</p><p><a href="https://github.com/stipub/stixfonts/blob/master/OFL.txt">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts), with Reserved Font Name &quot;TM Math&quot;. STIX Fonts™ is a trademark of The Institute of Electrical and Electronics Engineers, Inc.
+</pre>
+  </details>
+  <h2>STIX Two</h2>
+  <p>CDNパッケージ：@mathjax/mathjax-stix2-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
+  <pre lang="en">
+Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts)</pre>
+  <p>
+    デザイン：Ross Mills, John Hudson &amp; Paul Hanslow, Tiro Typeworks Ltd; with prior portions
+    MicroPress Inc., and Coen Hoffman.
+  </p>
+  <p><a href="https://github.com/stipub/stixfonts/blob/master/OFL.txt">原書体の参照先</a></p>
+  <details>
+    <summary>適用ライセンス — 全文</summary>
+    <pre lang="en">
+Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts), with Reserved Font Name &quot;TM Math&quot;. STIX Fonts™ is a trademark of The Institute of Electrical and Electronics Engineers, Inc.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
@@ -415,10 +1538,19 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
-</pre></details>
-<h2>Termes / TeX Gyre Termes Math</h2><p>CDNパッケージ：@mathjax/mathjax-termes-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
+</pre>
+  </details>
+  <h2>Termes / TeX Gyre Termes Math</h2>
+  <p>CDNパッケージ：@mathjax/mathjax-termes-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
+  <pre lang="en">
+Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
 Original copyright:
-Copyright 2012--2014 for Tex Gyre Termes Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre><p><a href="https://www.gust.org.pl/projects/e-foundry/tg-math">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">% This is version 1.0, dated 22 June 2009, of the GUST Font License.
+Copyright 2012--2014 for Tex Gyre Termes Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre>
+  <p><a href="https://www.gust.org.pl/projects/e-foundry/tg-math">原書体の参照先</a></p>
+  <details>
+    <summary>適用ライセンス — 全文</summary>
+    <pre lang="en">
+% This is version 1.0, dated 22 June 2009, of the GUST Font License.
 % (GUST is the Polish TeX Users Group, http://www.gust.org.pl)
 %
 % For the most recent version of this license see
@@ -446,10 +1578,19 @@ Copyright 2012--2014 for Tex Gyre Termes Math OTF by B. Jackowski, P. Strzelczyk
 % The latest version of the LaTeX Project Public License is in
 % http://www.latex-project.org/lppl.txt and version 1.3c or later
 % is part of all distributions of LaTeX version 2006/05/20 or later.
-</pre></details>
-<h2>Fira Math</h2><p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
+</pre>
+  </details>
+  <h2>Fira Math</h2>
+  <p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
+  <pre lang="en">
+Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
 Original copyright:
-Copyright (C) 2018, 2019 Xiangdong Zeng</pre><p><a href="https://github.com/firamath/firamath/blob/main/LICENSE">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">Copyright (C) 2018--2023 by Xiangdong Zeng &lt;xdzeng96@gmail.com&gt;
+Copyright (C) 2018, 2019 Xiangdong Zeng</pre>
+  <p><a href="https://github.com/firamath/firamath/blob/main/LICENSE">原書体の参照先</a></p>
+  <details>
+    <summary>適用ライセンス — 全文</summary>
+    <pre lang="en">
+Copyright (C) 2018--2023 by Xiangdong Zeng &lt;xdzeng96@gmail.com&gt;
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
@@ -541,8 +1682,17 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
-</pre></details>
-<h2>Fira Sans（Oldstyle数字）</h2><p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.</pre><p><a href="https://github.com/mozilla/Fira/blob/master/LICENSE">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.
+</pre>
+  </details>
+  <h2>Fira Sans（Oldstyle数字）</h2>
+  <p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
+  <pre lang="en">
+Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.</pre>
+  <p><a href="https://github.com/mozilla/Fira/blob/master/LICENSE">原書体の参照先</a></p>
+  <details>
+    <summary>適用ライセンス — 全文</summary>
+    <pre lang="en">
+Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
@@ -635,11 +1785,23 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
-</pre></details>
-<h2>Euler / Neo Euler</h2><p>CDNパッケージ：@mathjax/mathjax-euler-font-extension 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
+</pre>
+  </details>
+  <h2>Euler / Neo Euler</h2>
+  <p>
+    CDNパッケージ：@mathjax/mathjax-euler-font-extension 4.1.3<br />配布フォント内部の版表示：1.0.0
+  </p>
+  <pre lang="en">
+Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
 Original copyright:
 Copyright (c) 1997, 2009 American Mathematical Society (http://www.ams.org).
-Copyright (c) 2009, 2010 Khaled Hosny (khaledhosny@eglug.org).</pre><p>デザイン：Hermann Zapf</p><p><a href="https://github.com/aliftype/euler-otf">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">Copyright (c) 1997, 2009 American Mathematical Society (http://www.ams.org),
+Copyright (c) 2009, 2010 Khaled Hosny (khaledhosny@eglug.org).</pre>
+  <p>デザイン：Hermann Zapf</p>
+  <p><a href="https://github.com/aliftype/euler-otf">原書体の参照先</a></p>
+  <details>
+    <summary>適用ライセンス — 全文</summary>
+    <pre lang="en">
+Copyright (c) 1997, 2009 American Mathematical Society (http://www.ams.org),
 with Reserved Font Names EUEX10, EUEX7, EUEX8, EUEX9, EUFB10, EUFB5, EUFB7,
 EUFM10, EUFM5, EUFM7, EURB10, EURB5, EURB7, EURM10, EURM5, EURM7, EUSB10,
 EUSB5, EUSB7, EUSM10, EUSM5, EUSM7, CMEX10, CMSY5, CMSY7.
@@ -736,8 +1898,17 @@ COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
-OTHER DEALINGS IN THE FONT SOFTWARE.</pre></details>
-<h2>Latin Modern Math</h2><p>CDNパッケージ：@mathjax/mathjax-modern-font 4.1.3<br>配布フォント内部の版表示：1.0.0</p><pre lang="en">Copyright 2012--2014 for Latin Modern Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre><p><a href="https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt">原書体の参照先</a></p><details><summary>適用ライセンス — 全文</summary><pre lang="en">% This is version 1.0, dated 22 June 2009, of the GUST Font License.
+OTHER DEALINGS IN THE FONT SOFTWARE.</pre>
+  </details>
+  <h2>Latin Modern Math</h2>
+  <p>CDNパッケージ：@mathjax/mathjax-modern-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
+  <pre lang="en">
+Copyright 2012--2014 for Latin Modern Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre>
+  <p><a href="https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt">原書体の参照先</a></p>
+  <details>
+    <summary>適用ライセンス — 全文</summary>
+    <pre lang="en">
+% This is version 1.0, dated 22 June 2009, of the GUST Font License.
 % (GUST is the Polish TeX Users Group, http://www.gust.org.pl)
 %
 % For the most recent version of this license see
@@ -765,8 +1936,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.</pre></details>
 % The latest version of the LaTeX Project Public License is in
 % http://www.latex-project.org/lppl.txt and version 1.3c or later
 % is part of all distributions of LaTeX version 2006/05/20 or later.
-</pre></details>
-<details><summary>GUSTから参照されるLaTeX Project Public License 1.3c — 全文</summary><pre lang="en">The LaTeX Project Public License
+</pre>
+  </details>
+  <details>
+    <summary>GUSTから参照されるLaTeX Project Public License 1.3c — 全文</summary>
+    <pre lang="en">
+The LaTeX Project Public License
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 LPPL Version 1.3c  2008-05-04
@@ -1182,8 +2357,22 @@ Important Recommendations
    entitled to make reasonable conjectures as to which files comprise
    the Work.
 
-</pre></details>
-<h2>resvg-js / 共有画像の生成</h2><p>@resvg/resvg-wasm 2.6.2を改変せず使用しています（Mozilla Public License 2.0）。PNG化はWorkerとビルド時に行い、ブラウザにはWASMを配信しません。OG画像のロゴ文字は、上記ライセンスのFira Mathからアウトライン化しています。</p><p><a href="https://github.com/thx/resvg-js/tree/v2.6.2">使用版のソースコード</a> · <a href="https://github.com/thx/resvg-js/blob/v2.6.2/LICENSE">ライセンス原文</a></p><details><summary>Mozilla Public License 2.0 — 全文</summary><pre lang="en">Mozilla Public License Version 2.0
+</pre>
+  </details>
+  <h2>resvg-js / 共有画像の生成</h2>
+  <p>
+    @resvg/resvg-wasm 2.6.2を改変せず使用しています（Mozilla Public License
+    2.0）。PNG化はWorkerとビルド時に行い、ブラウザにはWASMを配信しません。OG画像のロゴ文字は、上記ライセンスのFira
+    Mathからアウトライン化しています。
+  </p>
+  <p>
+    <a href="https://github.com/thx/resvg-js/tree/v2.6.2">使用版のソースコード</a> ·
+    <a href="https://github.com/thx/resvg-js/blob/v2.6.2/LICENSE">ライセンス原文</a>
+  </p>
+  <details>
+    <summary>Mozilla Public License 2.0 — 全文</summary>
+    <pre lang="en">
+Mozilla Public License Version 2.0
 ==================================
 
 1. Definitions
@@ -1555,11 +2744,21 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 ---------------------------------------------------------
 
   This Source Code Form is "Incompatible With Secondary Licenses", as
-  defined by the Mozilla Public License, v. 2.0.</pre></details><p><small>配布物照合日：2026-09-10。ブラウザはCDNから書体を取得し、サーバー描画用の依存はWorkerに同梱しています。</small></p></div>
-</dialog>
-<noscript><p style="padding:30px;text-align:center">JavaScript is required to display this clock. / この時計の表示にはJavaScriptが必要。</p></noscript>
-
-<script id="browser-code">
+  defined by the Mozilla Public License, v. 2.0.</pre>
+  </details>
+  <p>
+    <small
+      >配布物照合日：2026-09-10。ブラウザはCDNから書体を取得し、サーバー描画用の依存はWorkerに同梱しています。</small
+    >
+  </p>
+  </div>
+    </dialog>
+    <noscript
+      ><p style="padding: 30px; text-align: center">
+        JavaScript is required to display this clock. / この時計の表示にはJavaScriptが必要。
+      </p></noscript
+    >
+    <script id="browser-code">
 "use strict";
 (() => {
   var __defProp = Object.defineProperty;
@@ -1587,22 +2786,37 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     symbolMotion: { ja: "\u8A18\u53F7\u3092\u306A\u3081\u3089\u304B\u306B\u52D5\u304B\u3059", en: "Move symbols smoothly" },
     structureMotion: { ja: "\u5206\u6570\u30FB\u221A\u30FB\u62EC\u5F27\u3082\u52D5\u304B\u3059", en: "Move fractions, roots & brackets" },
     symbolMorph: { ja: "\u56DB\u5247\u8A18\u53F7\u3092\u5909\u5F62\u3059\u308B", en: "Morph arithmetic symbols" },
-    shortcuts: { ja: "\u2190 \u2192 \u4E00\u6642\u505C\u6B62\u4E2D\u306B1\u79D2\u79FB\u52D5 / Space \u4E00\u6642\u505C\u6B62\u30FB\u73FE\u5728\u6642\u523B\u3078 / L \u73FE\u5728\u6642\u523B\u3078 / M \u6642\u5831 / F \u5168\u753B\u9762", en: "\u2190 \u2192 Step 1 second while paused / Space Pause or return to current time / L Current time / M Sound / F Fullscreen" },
+    shortcuts: {
+      ja: "\u2190 \u2192 \u4E00\u6642\u505C\u6B62\u4E2D\u306B1\u79D2\u79FB\u52D5 / Space \u4E00\u6642\u505C\u6B62\u30FB\u73FE\u5728\u6642\u523B\u3078 / L \u73FE\u5728\u6642\u523B\u3078 / M \u6642\u5831 / F \u5168\u753B\u9762",
+      en: "\u2190 \u2192 Step 1 second while paused / Space Pause or return to current time / L Current time / M Sound / F Fullscreen"
+    },
     shortcut: { ja: "{label}\uFF08{key}\uFF09", en: "{label} ({key})" },
     licenses: { ja: "LICENSE", en: "LICENSE" },
     closeLicenses: { ja: "\u30E9\u30A4\u30BB\u30F3\u30B9\u3092\u9589\u3058\u308B", en: "Close licenses" },
     // Sharing: button/dialog labels and the copy notification.
     share: { ja: "\u73FE\u5728\u306E\u8868\u793A\u3092\u5171\u6709", en: "Share this view" },
     shareTitle: { ja: "Share", en: "Share this view" },
-    shareHelp: { ja: "\u3053\u306EURL\u3092\u30B3\u30D4\u30FC\u3057\u3066\u5171\u6709\u3067\u304D\u307E\u3059\u3002", en: "Copy this link to share the current view." },
+    shareHelp: {
+      ja: "\u3053\u306EURL\u3092\u30B3\u30D4\u30FC\u3057\u3066\u5171\u6709\u3067\u304D\u307E\u3059\u3002",
+      en: "Copy this link to share the current view."
+    },
     shareUrl: { ja: "\u5171\u6709URL", en: "Share link" },
     shareCopied: { ja: "\u5171\u6709URL\u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F", en: "Share link copied" },
-    shareFailed: { ja: "\u5171\u6709\u30EA\u30F3\u30AF\u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002", en: "Could not create the share link. Please try again." },
+    shareFailed: {
+      ja: "\u5171\u6709\u30EA\u30F3\u30AF\u3092\u4F5C\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002",
+      en: "Could not create the share link. Please try again."
+    },
     shareNative: { ja: "\u5171\u6709\u3059\u308B", en: "Share" },
     shareCopy: { ja: "\u30EA\u30F3\u30AF\u3092\u30B3\u30D4\u30FC", en: "Copy link" },
     shareUnavailable: { ja: "\u5171\u6709\u30EA\u30F3\u30AF\u3092\u958B\u3051\u307E\u305B\u3093\u3067\u3057\u305F", en: "Could not open this share link" },
-    shareNotFound: { ja: "\u30EA\u30F3\u30AF\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002\u4F5C\u6210\u76F4\u5F8C\u306E\u5834\u5408\u306F\u3001\u5C11\u3057\u5F85\u3063\u3066\u304B\u3089\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002", en: "This link was not found. If it was just created, wait a moment and reload." },
-    shareLoadFailed: { ja: "\u5171\u6709\u30C7\u30FC\u30BF\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u5C11\u3057\u5F85\u3063\u3066\u304B\u3089\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002", en: "Could not load the saved view. Wait a moment and reload." },
+    shareNotFound: {
+      ja: "\u30EA\u30F3\u30AF\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002\u4F5C\u6210\u76F4\u5F8C\u306E\u5834\u5408\u306F\u3001\u5C11\u3057\u5F85\u3063\u3066\u304B\u3089\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      en: "This link was not found. If it was just created, wait a moment and reload."
+    },
+    shareLoadFailed: {
+      ja: "\u5171\u6709\u30C7\u30FC\u30BF\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u5C11\u3057\u5F85\u3063\u3066\u304B\u3089\u518D\u8AAD\u307F\u8FBC\u307F\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+      en: "Could not load the saved view. Wait a moment and reload."
+    },
     reload: { ja: "\u518D\u8AAD\u307F\u8FBC\u307F", en: "Reload" },
     // Sound/fullscreen icon labels and hover titles; failure is a visible notice.
     soundOff: { ja: "\u6642\u5831 OFF", en: "Time signals off" },
@@ -1611,7 +2825,10 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     soundPending: { ja: "\u6642\u5831 ON\uFF08\u753B\u9762\u3092\u64CD\u4F5C\u3059\u308B\u3068\u518D\u958B\uFF09", en: "Time signals on (tap to start)" },
     fullscreen: { ja: "\u5168\u753B\u9762\u8868\u793A", en: "Fullscreen" },
     exitFullscreen: { ja: "\u5168\u753B\u9762\u8868\u793A\u3092\u7D42\u4E86", en: "Exit fullscreen" },
-    fullscreenFailed: { ja: "\u5168\u753B\u9762\u8868\u793A\u306B\u5207\u308A\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F", en: "Could not switch fullscreen mode" },
+    fullscreenFailed: {
+      ja: "\u5168\u753B\u9762\u8868\u793A\u306B\u5207\u308A\u66FF\u3048\u3089\u308C\u307E\u305B\u3093\u3067\u3057\u305F",
+      en: "Could not switch fullscreen mode"
+    },
     // Second ruler: accessible names and per-second hover titles.
     chooseSecond: { ja: "\u79D2\u3092\u9078\u3093\u3067\u30D7\u30EC\u30D3\u30E5\u30FC", en: "Choose a second to preview" },
     previewSecond: { ja: "{seconds}\u79D2\u3092\u30D7\u30EC\u30D3\u30E5\u30FC", en: "Preview second {seconds}" },
@@ -1625,14 +2842,26 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     goLive: { ja: "\u73FE\u5728\u6642\u523B\u3078", en: "Current time" },
     goLiveShortcut: { ja: "\u73FE\u5728\u6642\u523B\u306B\u623B\u308B\uFF08L\uFF09", en: "Return to current time (L)" },
     // Accessible descriptions of the SVG clocks; never drawn as visual text.
-    clockTime: { ja: "{hours}\u6642{minutes}\u5206{seconds}\u79D2", en: "{hours} hours, {minutes} minutes, {seconds} seconds" },
+    clockTime: {
+      ja: "{hours}\u6642{minutes}\u5206{seconds}\u79D2",
+      en: "{hours} hours, {minutes} minutes, {seconds} seconds"
+    },
     clockEquation: { ja: "{time}\u3002{expression} = {seconds}", en: "{time}. {expression} = {seconds}" },
     // Status text inside Settings > Advanced: loading, failures, and midnight.
     preparing: { ja: "Loading", en: "Preparing the clock." },
-    typesettingFailed: { ja: "\u7D44\u7248\u3092\u8AAD\u307F\u8FBC\u3081\u306A\u304B\u3063\u305F\u3002\u901A\u5E38\u306E\u6642\u8A08\u3092\u8868\u793A\u4E2D\u3002", en: "Could not load the formula display. Showing the clock." },
-    formulaFailed: { ja: "\u3053\u306E\u5F0F\u3092\u7D44\u7248\u3067\u304D\u306A\u304B\u3063\u305F\u3002\u901A\u5E38\u306E\u6642\u8A08\u3092\u8868\u793A\u4E2D\u3002", en: "Could not display this formula. Showing the clock." },
+    typesettingFailed: {
+      ja: "\u7D44\u7248\u3092\u8AAD\u307F\u8FBC\u3081\u306A\u304B\u3063\u305F\u3002\u901A\u5E38\u306E\u6642\u8A08\u3092\u8868\u793A\u4E2D\u3002",
+      en: "Could not load the formula display. Showing the clock."
+    },
+    formulaFailed: {
+      ja: "\u3053\u306E\u5F0F\u3092\u7D44\u7248\u3067\u304D\u306A\u304B\u3063\u305F\u3002\u901A\u5E38\u306E\u6642\u8A08\u3092\u8868\u793A\u4E2D\u3002",
+      en: "Could not display this formula. Showing the clock."
+    },
     loadingData: { ja: "Loading", en: "Loading formula data." },
-    dataClockFallback: { ja: "\u5F0F\u30C7\u30FC\u30BF\u3092\u8AAD\u307F\u8FBC\u3081\u306A\u304B\u3063\u305F\u3002\u901A\u5E38\u306E\u6642\u8A08\u3092\u8868\u793A\u4E2D\u3002", en: "Could not load formula data. Showing the clock." },
+    dataClockFallback: {
+      ja: "\u5F0F\u30C7\u30FC\u30BF\u3092\u8AAD\u307F\u8FBC\u3081\u306A\u304B\u3063\u305F\u3002\u901A\u5E38\u306E\u6642\u8A08\u3092\u8868\u793A\u4E2D\u3002",
+      en: "Could not load formula data. Showing the clock."
+    },
     newDayIn: { ja: "\u65B0\u3057\u3044\u4E00\u65E5\u307E\u3067\u3001{seconds}", en: "A new day in {seconds}" },
     newDay: { ja: "\u65B0\u3057\u3044\u4E00\u65E5\u3002", en: "A new day." }
   };
@@ -1645,14 +2874,21 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     const locale = resolveLanguage(language);
     function t(key, values = {}) {
       const message = messages[key]?.[locale] ?? messages[key]?.en ?? key;
-      return message.replace(/\{(\w+)\}/g, (placeholder, name) => Object.hasOwn(values, name) ? String(values[name]) : placeholder);
+      return message.replace(
+        /\{(\w+)\}/g,
+        (placeholder, name) => Object.hasOwn(values, name) ? String(values[name]) : placeholder
+      );
     }
     function apply(document2) {
       document2.documentElement.lang = locale;
-      for (const element of document2.querySelectorAll("[data-i18n]")) element.textContent = t(element.dataset.i18n);
+      for (const element of document2.querySelectorAll("[data-i18n]"))
+        element.textContent = t(element.dataset.i18n);
       for (const attribute of ["title", "aria-label"]) {
         for (const element of document2.querySelectorAll(`[data-i18n-${attribute}]`)) {
-          element.setAttribute(attribute, t(element.getAttribute(`data-i18n-${attribute}`)));
+          element.setAttribute(
+            attribute,
+            t(element.getAttribute(`data-i18n-${attribute}`))
+          );
         }
       }
     }
@@ -1672,15 +2908,40 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     typography: () => typography
   });
   var PROFILES = Object.freeze({
-    stix2: Object.freeze({ id: "stix2", label: "STIX Two", font: "mathjax-stix2", extensions: [] }),
-    termes: Object.freeze({ id: "termes", label: "Termes", font: "mathjax-termes", extensions: [] }),
-    fira: Object.freeze({ id: "fira", label: "Fira", font: "mathjax-fira", extensions: [] }),
-    euler: Object.freeze({ id: "euler", label: "Euler", font: "mathjax-modern", extensions: ["mathjax-euler"] })
+    stix2: Object.freeze({
+      id: "stix2",
+      label: "STIX Two",
+      font: "mathjax-stix2",
+      extensions: []
+    }),
+    termes: Object.freeze({
+      id: "termes",
+      label: "Termes",
+      font: "mathjax-termes",
+      extensions: []
+    }),
+    fira: Object.freeze({
+      id: "fira",
+      label: "Fira",
+      font: "mathjax-fira",
+      extensions: []
+    }),
+    euler: Object.freeze({
+      id: "euler",
+      label: "Euler",
+      font: "mathjax-modern",
+      extensions: ["mathjax-euler"]
+    })
   });
   var NUMERALS = Object.freeze({ lining: "Lining", oldstyle: "Oldstyle" });
-  var DEFAULTS = Object.freeze({ font: "stix2", numerals: "oldstyle", division: "fraction" });
+  var DEFAULTS = Object.freeze({
+    font: "stix2",
+    numerals: "oldstyle",
+    division: "fraction"
+  });
   function typography(font, numerals) {
-    if (!Object.hasOwn(PROFILES, font) || !Object.hasOwn(NUMERALS, numerals)) throw new TypeError("Invalid typography");
+    if (!Object.hasOwn(PROFILES, font) || !Object.hasOwn(NUMERALS, numerals))
+      throw new TypeError("Invalid typography");
     return Object.freeze({
       ...PROFILES[font],
       numerals,
@@ -1692,8 +2953,18 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   function fitFrame(bounds, axisY, width, height, maxFontSize = 112) {
     const axis = height / 2, margin = 15;
     const above = Math.max(1, axisY - bounds.y), below = Math.max(1, bounds.y + bounds.h - axisY);
-    const scale = Math.min(maxFontSize / 1e3, (width - 24) / bounds.w, (axis - margin) / above, (height - margin - axis) / below);
-    return { scale, x: (width - bounds.w * scale) / 2 - bounds.x * scale, y: axis - axisY * scale, axis };
+    const scale = Math.min(
+      maxFontSize / 1e3,
+      (width - 24) / bounds.w,
+      (axis - margin) / above,
+      (height - margin - axis) / below
+    );
+    return {
+      scale,
+      x: (width - bounds.w * scale) / 2 - bounds.x * scale,
+      y: axis - axisY * scale,
+      axis
+    };
   }
   var api2 = { PROFILES, NUMERALS, DEFAULTS, typography, fitFrame };
   var display_default = Object.freeze(api2);
@@ -1736,26 +3007,44 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       let out;
       if (x.op === "lit") {
         const { i, j } = x;
-        if (typeof i !== "number" || typeof j !== "number" || !Number.isInteger(i) || !Number.isInteger(j) || i < 0 || j > 4 || i >= j) throw new TypeError("Invalid digit interval");
-        if (j - i > 1 && code[i] === "0") throw new TypeError("Leading zero in a concatenated number");
+        if (typeof i !== "number" || typeof j !== "number" || !Number.isInteger(i) || !Number.isInteger(j) || i < 0 || j > 4 || i >= j)
+          throw new TypeError("Invalid digit interval");
+        if (j - i > 1 && code[i] === "0")
+          throw new TypeError("Leading zero in a concatenated number");
         for (let k = i; k < j; k++) slots.push(k);
         out = { op: "lit", i, j };
-      } else if (UNARY.has(x.op)) out = { op: x.op, a: visit(x.a, depth + 1) };
-      else if (BINARY.has(x.op)) out = { op: x.op, a: visit(x.a, depth + 1), b: visit(x.b, depth + 1) };
+      } else if (UNARY.has(x.op))
+        out = { op: x.op, a: visit(x.a, depth + 1) };
+      else if (BINARY.has(x.op))
+        out = {
+          op: x.op,
+          a: visit(x.a, depth + 1),
+          b: visit(x.b, depth + 1)
+        };
       else throw new TypeError(`Unknown operation: ${String(x.op)}`);
       const allowed = Object.keys(out);
-      if (Object.keys(x).some((key) => !allowed.includes(key))) throw new TypeError(`Unexpected expression field (${x.op})`);
+      if (Object.keys(x).some((key) => !allowed.includes(key)))
+        throw new TypeError(`Unexpected expression field (${x.op})`);
       active.delete(x);
       return Object.freeze(out);
     }
     const result = visit(ast, 0);
-    if (slots.join(",") !== "0,1,2,3") throw new TypeError("Use each HHMM position exactly once, in order");
+    if (slots.join(",") !== "0,1,2,3")
+      throw new TypeError("Use each HHMM position exactly once, in order");
     return result;
   }
   function options(value = {}) {
     const division = value.division ?? "fraction";
-    if (!["fraction", "inline", "slash"].includes(division)) throw new TypeError("Unknown division style");
-    return { division, oldstyle: !!value.oldstyle, centerOperators: value.centerOperators !== false, symbolMotion: value.symbolMotion === true, structureMotion: value.structureMotion === true, symbolMorph: value.symbolMorph === true };
+    if (!["fraction", "inline", "slash"].includes(division))
+      throw new TypeError("Unknown division style");
+    return {
+      division,
+      oldstyle: !!value.oldstyle,
+      centerOperators: value.centerOperators !== false,
+      symbolMotion: value.symbolMotion === true,
+      structureMotion: value.structureMotion === true,
+      symbolMorph: value.symbolMorph === true
+    };
   }
   function mark(slot, digit, opt) {
     const glyph = opt.oldstyle ? `{\\oldstyle ${digit}}` : digit;
@@ -1767,7 +3056,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   var negative = (opt) => opt.centerOperators ? "\\mathord{\\vcenter{-}}" : "-";
   var relation = (opt) => `\\mathrel{\\cssId{fc-eq}{${center("=", opt)}}}`;
   function precedence(ast, opt) {
-    if (ast.op === "lit" || ast.op === "sqrt" || ast.op === "div" && opt.division === "fraction") return 60;
+    if (ast.op === "lit" || ast.op === "sqrt" || ast.op === "div" && opt.division === "fraction")
+      return 60;
     return { add: 10, sub: 10, mul: 20, div: 20, neg: 30, pow: 40, fact: 50 }[ast.op];
   }
   function expressionTex(ast, code, settings = {}) {
@@ -1824,7 +3114,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         if (precedence(a.a, opt) <= 40 || a.a.op === "div") x = enclose(a.a, x);
         return `{${x}}^{${write(a.b)}}`;
       }
-      if (a.op === "div" && opt.division === "fraction") return structure("frac", a, `\\frac{${write(a.a)}}{${write(a.b)}}`);
+      if (a.op === "div" && opt.division === "fraction")
+        return structure("frac", a, `\\frac{${write(a.a)}}{${write(a.b)}}`);
       const p = precedence(a, opt);
       function child(x, right) {
         const q = precedence(x, opt), tex = write(x);
@@ -1832,7 +3123,12 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         const associative = (a.op === "add" || a.op === "mul") && x.op === a.op && homogeneous(x);
         return q < p || right && (q === p && !associative || x.op === "neg") ? enclose(x, tex) : tex;
       }
-      const glyph = { add: "+", sub: "-", mul: "\\times", div: opt.division === "slash" ? "/" : "\\div" }[a.op];
+      const glyph = {
+        add: "+",
+        sub: "-",
+        mul: "\\times",
+        div: opt.division === "slash" ? "/" : "\\div"
+      }[a.op];
       if (!glyph) throw new TypeError(`Unsupported operation: ${a.op}`);
       return `${child(a.a, false)} ${symbol(a, glyph, "mathbin")} ${child(a.b, true)}`;
     }
@@ -1840,7 +3136,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   }
   function frameTex(ast, code, seconds, settings = {}) {
     assertCode(code);
-    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 59) throw new TypeError("Invalid second");
+    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 59)
+      throw new TypeError("Invalid second");
     const opt = options(settings), ss = String(seconds).padStart(2, "0");
     const right = mark("s0", ss[0], opt) + mark("s1", ss[1], opt);
     if (ast) return `${expressionTex(ast, code, opt)} ${relation(opt)} ${right}`;
@@ -1856,7 +3153,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       if (a.op === "neg") return style.minus + (precedence(a.a, opt) <= 30 ? group(left) : left);
       if (a.op === "fact") return (a.a.op === "lit" ? left : group(left)) + "!";
       const right = write(a.b);
-      if (a.op === "pow") return (precedence(a.a, opt) <= 40 || a.a.op === "sqrt" ? group(left) : left) + "^" + (precedence(a.b, opt) < 30 ? group(right) : right);
+      if (a.op === "pow")
+        return (precedence(a.a, opt) <= 40 || a.a.op === "sqrt" ? group(left) : left) + "^" + (precedence(a.b, opt) < 30 ? group(right) : right);
       const p = precedence(a, opt);
       function child(node, text, isRight) {
         const q = precedence(node, opt);
@@ -1870,12 +3168,27 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     return write(ast);
   }
   function plain(ast, code, options2 = {}) {
-    return expressionText(ast, code, { space: " ", minus: "\u2212", multiply: "\xD7", division: options2.division || "\xF7" });
+    return expressionText(ast, code, {
+      space: " ",
+      minus: "\u2212",
+      multiply: "\xD7",
+      division: options2.division || "\xF7"
+    });
   }
   function compact(ast, code) {
     return expressionText(ast, code, { space: "", minus: "-", multiply: "\xD7", division: "/" });
   }
-  var api3 = { assertCode, validateAst, expressionTex, frameTex, mark, relation, options, plain, compact };
+  var api3 = {
+    assertCode,
+    validateAst,
+    expressionTex,
+    frameTex,
+    mark,
+    relation,
+    options,
+    plain,
+    compact
+  };
   var expression_default = Object.freeze(api3);
 
   // share.ts
@@ -1896,7 +3209,13 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     if (!state || !validTime(state.t) || state.v !== 1 || !Object.hasOwn(PROFILES, state.font) || !Object.hasOwn(NUMERALS, state.numerals) || !["fraction", "inline", "slash"].includes(state.division)) {
       throw new TypeError("Invalid shared clock state");
     }
-    return new URLSearchParams({ v: "1", t: state.t, font: state.font, numerals: state.numerals, division: state.division });
+    return new URLSearchParams({
+      v: "1",
+      t: state.t,
+      font: state.font,
+      numerals: state.numerals,
+      division: state.division
+    });
   }
   function url(origin, state) {
     const result = new URL("/", origin);
@@ -1904,7 +3223,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     return result;
   }
   function snapshot(value) {
-    if (!isRecord(value) || value.v !== 1 || !validTime(value.t) || typeof value.font !== "string" || !Object.hasOwn(PROFILES, value.font) || typeof value.numerals !== "string" || !Object.hasOwn(NUMERALS, value.numerals) || value.division !== "fraction" && value.division !== "inline" && value.division !== "slash" || !Object.hasOwn(value, "ast") || Object.keys(value).some((key) => !["v", "t", "font", "numerals", "division", "ast"].includes(key))) {
+    if (!isRecord(value) || value.v !== 1 || !validTime(value.t) || typeof value.font !== "string" || !Object.hasOwn(PROFILES, value.font) || typeof value.numerals !== "string" || !Object.hasOwn(NUMERALS, value.numerals) || value.division !== "fraction" && value.division !== "inline" && value.division !== "slash" || !Object.hasOwn(value, "ast") || Object.keys(value).some(
+      (key) => !["v", "t", "font", "numerals", "division", "ast"].includes(key)
+    )) {
       throw new TypeError("Invalid shared snapshot");
     }
     return Object.freeze({
@@ -1944,7 +3265,15 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   }
   function localDate(time) {
     if (!validTime(time)) throw new TypeError("Invalid shared time");
-    return new Date(2e3, 0, 15, Number(time.slice(0, 2)), Number(time.slice(2, 4)), Number(time.slice(4)), 0);
+    return new Date(
+      2e3,
+      0,
+      15,
+      Number(time.slice(0, 2)),
+      Number(time.slice(2, 4)),
+      Number(time.slice(4)),
+      0
+    );
   }
   var LinkCache = class {
     constructor(initial = null, request = globalThis.fetch.bind(globalThis), timeoutMs = 15e3) {
@@ -1952,7 +3281,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       this.timeoutMs = timeoutMs;
       if (initial) {
         const saved = view(initial);
-        this.entries.set(JSON.stringify(saved.snapshot), { id: saved.id, promise: Promise.resolve(saved.id), controller: null });
+        this.entries.set(JSON.stringify(saved.snapshot), {
+          id: saved.id,
+          promise: Promise.resolve(saved.id),
+          controller: null
+        });
       }
     }
     request;
@@ -1970,20 +3303,29 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       }
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-      const entry = { id: null, controller, promise: Promise.resolve().then(async () => {
-        controller.signal.throwIfAborted();
-        const response = await this.request("/api/shares", { method: "POST", headers: { "Content-Type": "application/json" }, body: key, signal: controller.signal });
-        if (!response.ok) throw new Error(`Share creation returned ${response.status}`);
-        const result = await response.json();
-        controller.signal.throwIfAborted();
-        if (!isRecord(result) || !validId(result.id)) throw new Error("Invalid share response");
-        entry.id = result.id;
-        entry.controller = null;
-        return result.id;
-      }).catch((error) => {
-        if (this.entries.get(key) === entry) this.entries.delete(key);
-        throw error;
-      }).finally(() => clearTimeout(timeout)) };
+      const entry = {
+        id: null,
+        controller,
+        promise: Promise.resolve().then(async () => {
+          controller.signal.throwIfAborted();
+          const response = await this.request("/api/shares", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: key,
+            signal: controller.signal
+          });
+          if (!response.ok) throw new Error(`Share creation returned ${response.status}`);
+          const result = await response.json();
+          controller.signal.throwIfAborted();
+          if (!isRecord(result) || !validId(result.id)) throw new Error("Invalid share response");
+          entry.id = result.id;
+          entry.controller = null;
+          return result.id;
+        }).catch((error) => {
+          if (this.entries.get(key) === entry) this.entries.delete(key);
+          throw error;
+        }).finally(() => clearTimeout(timeout))
+      };
       this.entries.set(key, entry);
       while (this.entries.size > 12) {
         const oldest = this.entries.keys().next().value;
@@ -1993,13 +3335,27 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       return entry.promise;
     }
     cancelPending() {
-      for (const [key, entry] of this.entries) if (entry.controller) {
-        entry.controller.abort();
-        this.entries.delete(key);
-      }
+      for (const [key, entry] of this.entries)
+        if (entry.controller) {
+          entry.controller.abort();
+          this.entries.delete(key);
+        }
     }
   };
-  var api4 = { parse, params, url, snapshot, id, shortUrl, view, timeLabel, title, card, localDate, LinkCache };
+  var api4 = {
+    parse,
+    params,
+    url,
+    snapshot,
+    id,
+    shortUrl,
+    view,
+    timeLabel,
+    title,
+    card,
+    localDate,
+    LinkCache
+  };
   var share_default = Object.freeze(api4);
 
   // data.ts
@@ -2031,8 +3387,13 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     async getMinute(hhmm, { signal } = {}) {
       assertCode(hhmm);
       checkAbort(signal);
-      if (!Object.hasOwn(this.table.minutes, hhmm)) throw new Error(`Minute ${hhmm} is absent from the dataset`);
-      if (!this.cache.has(hhmm)) this.cache.set(hhmm, normalizeMinute({ schema: SCHEMA, hhmm, seconds: this.table.minutes[hhmm] }, hhmm));
+      if (!Object.hasOwn(this.table.minutes, hhmm))
+        throw new Error(`Minute ${hhmm} is absent from the dataset`);
+      if (!this.cache.has(hhmm))
+        this.cache.set(
+          hhmm,
+          normalizeMinute({ schema: SCHEMA, hhmm, seconds: this.table.minutes[hhmm] }, hhmm)
+        );
       return this.cache.get(hhmm);
     }
   };
@@ -2060,13 +3421,16 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       };
       const cleanup = () => signal.removeEventListener("abort", abort);
       signal.addEventListener("abort", abort, { once: true });
-      task.then((value) => {
-        cleanup();
-        resolve(value);
-      }, (error) => {
-        cleanup();
-        reject(error);
-      });
+      task.then(
+        (value) => {
+          cleanup();
+          resolve(value);
+        },
+        (error) => {
+          cleanup();
+          reject(error);
+        }
+      );
     });
   }
   var DataHTTPError = class extends Error {
@@ -2088,13 +3452,19 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     constructor(manifestUrl, { fetch: fetcher = (...args) => fetch(...args) } = {}) {
       if (typeof fetcher !== "function") throw new TypeError("Expected a fetch function");
       this.fetch = fetcher;
-      this.url = new URL(manifestUrl, typeof document === "undefined" ? void 0 : document.baseURI).href;
+      this.url = new URL(
+        manifestUrl,
+        typeof document === "undefined" ? void 0 : document.baseURI
+      ).href;
     }
     async loadManifest(previous) {
       if (this.manifest && this.manifest !== previous) return this.manifest;
       if (this.manifestTask) return this.manifestTask;
       const task = (async () => {
-        const response = await this.fetch(this.url, { credentials: "same-origin", cache: "no-cache" });
+        const response = await this.fetch(this.url, {
+          credentials: "same-origin",
+          cache: "no-cache"
+        });
         if (!response.ok) throw new DataHTTPError(response.status, this.url);
         const raw = await response.json();
         if (!isRecord(raw) || raw.schema !== "formula-clock-hours/1" || typeof raw.version !== "string" || !/^[a-f0-9]{64}$/.test(raw.version) || !isRecord(raw.hours) || Object.keys(raw.hours).length !== 24) {
@@ -2103,9 +3473,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         const urls = {};
         for (let i = 0; i < 24; i++) {
           const hour = String(i).padStart(2, "0");
-          if (typeof raw.hours[hour] !== "string" || !raw.hours[hour]) throw new TypeError(`Missing hour ${hour}`);
+          if (typeof raw.hours[hour] !== "string" || !raw.hours[hour])
+            throw new TypeError(`Missing hour ${hour}`);
           const url2 = new URL(raw.hours[hour], response.url || this.url);
-          if (!["http:", "https:"].includes(url2.protocol)) throw new TypeError("Hour URLs must use HTTP(S)");
+          if (!["http:", "https:"].includes(url2.protocol))
+            throw new TypeError("Hour URLs must use HTTP(S)");
           urls[hour] = url2.href;
         }
         if (!this.manifest || this.manifest.version !== raw.version) {
@@ -2136,13 +3508,18 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         if (!response.ok) throw new DataHTTPError(response.status, url2);
         const table = await response.json();
         tableHeader(table);
-        if (Object.keys(table.minutes).length !== 60) throw new TypeError(`Hour ${hour} must contain exactly 60 minutes`);
+        if (Object.keys(table.minutes).length !== 60)
+          throw new TypeError(`Hour ${hour} must contain exactly 60 minutes`);
         const records = /* @__PURE__ */ new Map();
         for (let minute = 0; minute < 60; minute++) {
           const hhmm = hour + String(minute).padStart(2, "0");
-          records.set(hhmm, normalizeMinute({ schema: table.schema, hhmm, seconds: table.minutes[hhmm] }, hhmm));
+          records.set(
+            hhmm,
+            normalizeMinute({ schema: table.schema, hhmm, seconds: table.minutes[hhmm] }, hhmm)
+          );
         }
-        if (this.manifest !== manifest) throw new StaleManifestError("The dataset changed during download");
+        if (this.manifest !== manifest)
+          throw new StaleManifestError("The dataset changed during download");
         this.hours.set(key, records);
         while (this.hours.size > 2) this.hours.delete(this.hours.keys().next().value);
         return records;
@@ -2163,11 +3540,13 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         try {
           const records = await abortable(this.loadHour(hhmm.slice(0, 2), manifest), signal);
           checkAbort(signal);
-          if (manifest !== this.manifest) throw new StaleManifestError("The dataset changed during download");
+          if (manifest !== this.manifest)
+            throw new StaleManifestError("The dataset changed during download");
           return records.get(hhmm);
         } catch (error) {
           checkAbort(signal);
-          if (attempt || !(error instanceof StaleManifestError) && !(error instanceof DataHTTPError && error.status === 404)) throw error;
+          if (attempt || !(error instanceof StaleManifestError) && !(error instanceof DataHTTPError && error.status === 404))
+            throw error;
           const next = await abortable(this.loadManifest(manifest), signal);
           if (next.version === manifest.version) throw error;
           manifest = next;
@@ -2187,10 +3566,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     async getMinute(hhmm, { signal } = {}) {
       assertCode(hhmm);
       checkAbort(signal);
-      if (!this.task) this.task = Promise.resolve().then(this.loadTable).then((x) => new InlineProvider(x)).catch((error) => {
-        this.task = null;
-        throw error;
-      });
+      if (!this.task)
+        this.task = Promise.resolve().then(this.loadTable).then((x) => new InlineProvider(x)).catch((error) => {
+          this.task = null;
+          throw error;
+        });
       const provider = await this.task;
       checkAbort(signal);
       return provider.getMinute(hhmm, { signal });
@@ -2203,7 +3583,15 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
     return new Response(stream).json();
   }
-  var api5 = { SCHEMA, normalizeMinute, loadEmbedded, InlineProvider, FetchMinuteProvider, FetchHourProvider, TableProvider };
+  var api5 = {
+    SCHEMA,
+    normalizeMinute,
+    loadEmbedded,
+    InlineProvider,
+    FetchMinuteProvider,
+    FetchHourProvider,
+    TableProvider
+  };
   var data_default = Object.freeze(api5);
 
   // symbols.ts
@@ -2234,7 +3622,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       const used = new Set(matches.filter((index) => index >= 0));
       next.forEach((token, i) => {
         if (matches[i] >= 0) return;
-        const index = previous.findIndex((old, j) => !used.has(j) && !old.exiting && morphPair(old, token));
+        const index = previous.findIndex(
+          (old, j) => !used.has(j) && !old.exiting && morphPair(old, token)
+        );
         if (index >= 0) {
           matches[i] = index;
           used.add(index);
@@ -2334,14 +3724,19 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         const timer = setTimeout(() => finish(new Error("MathJax loading timed out")), 2e4);
         const engineWindow = this.host.contentWindow;
         const engineDocument = this.host.contentDocument;
-        if (!engineWindow || !engineDocument) return finish(new Error("MathJax frame is unavailable"));
+        if (!engineWindow || !engineDocument)
+          return finish(new Error("MathJax frame is unavailable"));
         const config = {
           loader: {
             load: ["[tex]/html"],
             failed: (error) => finish(new Error(`MathJax: ${error instanceof Error ? error.message : String(error)}`))
           },
           tex: { packages: { "[+]": ["html"] } },
-          output: { font: this.profile.font, fontExtensions: this.profile.extensions.slice(), displayOverflow: "overflow" },
+          output: {
+            font: this.profile.font,
+            fontExtensions: this.profile.extensions.slice(),
+            displayOverflow: "overflow"
+          },
           svg: { fontCache: "none" },
           options: { enableMenu: false },
           startup: { typeset: false }
@@ -2435,7 +3830,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       }
     }
     frame(ast, code, seconds, settings = {}) {
-      const tex = frameTex2(ast, code, seconds, { ...settings, oldstyle: this.profile.oldstyle, centerOperators: this.profile.centerOperators });
+      const tex = frameTex2(ast, code, seconds, {
+        ...settings,
+        oldstyle: this.profile.oldstyle,
+        centerOperators: this.profile.centerOperators
+      });
       if (this.cache.has(tex)) {
         const hit = this.cache.get(tex);
         this.cache.delete(tex);
@@ -2458,15 +3857,28 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       if (!this.clockFaceTask) {
         const task = this.tail.then(() => this.boot).then(async () => {
           const glyphs = {};
-          for (const [code, seconds] of [["0123", 45], ["1607", 58], ["0900", 0]]) {
+          for (const [code, seconds] of [
+            ["0123", 45],
+            ["1607", 58],
+            ["0900", 0]
+          ]) {
             const tex = frameTex2(null, code, seconds, this.profile);
             const frame = await this.convert(tex, code, seconds, true);
             for (const token of frame.tokens) glyphs[token.text] = token;
             glyphs[":"] = frame.colons[0];
           }
-          if (!glyphs[":"] || Object.keys(glyphs).length !== 11) throw new Error("Incomplete clock font");
-          const scale = Math.min(1, 480 / Math.max(..."0123456789".split("").map((n) => glyphs[n].bounds.w)));
-          return Object.freeze({ font: this.profile.id, numerals: this.profile.numerals, scale, glyphs: Object.freeze(glyphs) });
+          if (!glyphs[":"] || Object.keys(glyphs).length !== 11)
+            throw new Error("Incomplete clock font");
+          const scale = Math.min(
+            1,
+            480 / Math.max(..."0123456789".split("").map((n) => glyphs[n].bounds.w))
+          );
+          return Object.freeze({
+            font: this.profile.id,
+            numerals: this.profile.numerals,
+            scale,
+            glyphs: Object.freeze(glyphs)
+          });
         });
         this.clockFaceTask = task;
         this.tail = task.catch(() => {
@@ -2475,9 +3887,15 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       return this.clockFaceTask;
     }
     async convert(tex, code, seconds, clockFace = false, division = "fraction") {
-      const node = await this.engine.tex2svgPromise(tex, { display: true, em: 16, ex: 8, containerWidth: 1e5 });
+      const node = await this.engine.tex2svgPromise(tex, {
+        display: true,
+        em: 16,
+        ex: 8,
+        containerWidth: 1e5
+      });
       const svg = node.querySelector("svg");
-      if (!svg || svg.querySelector('[data-mml-node="merror"]')) throw new Error("TeX typesetting failed");
+      if (!svg || svg.querySelector('[data-mml-node="merror"]'))
+        throw new Error("TeX typesetting failed");
       this.staging.append(node);
       try {
         let glyphToken2 = function(paths, metadata) {
@@ -2509,9 +3927,13 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
               [box.x + box.width, box.y],
               [box.x, box.y + box.height],
               [box.x + box.width, box.y + box.height]
-            ]) corners.push(new DOMPoint(x, y).matrixTransform(placed));
-            const values = matrixArray(relative).map((v2) => Math.abs(v2) < 1e-9 ? 0 : Number(v2.toFixed(7)));
-            if (values.join(",") !== "1,0,0,1,0,0") copy.setAttribute("transform", `matrix(${values.join(" ")})`);
+            ])
+              corners.push(new DOMPoint(x, y).matrixTransform(placed));
+            const values = matrixArray(relative).map(
+              (v2) => Math.abs(v2) < 1e-9 ? 0 : Number(v2.toFixed(7))
+            );
+            if (values.join(",") !== "1,0,0,1,0,0")
+              copy.setAttribute("transform", `matrix(${values.join(" ")})`);
             shape.append(copy);
           }
           const minX = Math.min(...corners.map((p) => p.x));
@@ -2522,21 +3944,40 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
           if (!(maxX > minX && maxY > minY) || maxX < v.x - slack || minX > v.x + v.width + slack || maxY < v.y - slack || minY > v.y + v.height + slack) {
             throw new Error(`Glyph outside SVG viewBox ${slot}`);
           }
-          const center2 = new DOMPoint((minX + maxX) / 2, (minY + maxY) / 2).matrixTransform(new DOMMatrix(matrixArray(local)).inverse());
-          return { ...metadata, matrix: matrixArray(local), shape, inkCenter: [center2.x, center2.y], bounds: { x: minX, y: minY, w: maxX - minX, h: maxY - minY } };
+          const center2 = new DOMPoint((minX + maxX) / 2, (minY + maxY) / 2).matrixTransform(
+            new DOMMatrix(matrixArray(local)).inverse()
+          );
+          return {
+            ...metadata,
+            matrix: matrixArray(local),
+            shape,
+            inkCenter: [center2.x, center2.y],
+            bounds: { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+          };
         }, ruleToken2 = function(rect, metadata) {
           const box = rect.getBBox(), ctm = rect.getScreenCTM();
-          if (!ctm || !(box.width > 0 && box.height > 0)) throw new Error("Invalid mathematical rule");
-          const local = new DOMMatrix(matrixArray(inverse.multiply(ctm))).multiply(new DOMMatrix([box.width, 0, 0, box.height, box.x, box.y]));
+          if (!ctm || !(box.width > 0 && box.height > 0))
+            throw new Error("Invalid mathematical rule");
+          const local = new DOMMatrix(matrixArray(inverse.multiply(ctm))).multiply(
+            new DOMMatrix([box.width, 0, 0, box.height, box.x, box.y])
+          );
           if (!finiteMatrix(local)) throw new Error("Non-finite rule coordinates");
           const shape = document.createElementNS(NS, "g"), unit = document.createElementNS(NS, "rect");
           unit.setAttribute("width", "1");
           unit.setAttribute("height", "1");
           shape.append(unit);
           rect.setAttribute("data-fc-extract", "");
-          return { ...metadata, slot: metadata.site, text: metadata.kind, matrix: matrixArray(local), shape };
+          return {
+            ...metadata,
+            slot: metadata.site,
+            text: metadata.kind,
+            matrix: matrixArray(local),
+            shape
+          };
         }, takeGlyph2 = function(path, metadata) {
-          structures.push(glyphToken2([path], { ...metadata, slot: metadata.site, text: metadata.kind }));
+          structures.push(
+            glyphToken2([path], { ...metadata, slot: metadata.site, text: metadata.kind })
+          );
           path.setAttribute("data-fc-extract", "");
         };
         var glyphToken = glyphToken2, ruleToken = ruleToken2, takeGlyph = takeGlyph2;
@@ -2550,12 +3991,23 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         const equality = svg.querySelector("#fc-eq");
         const slots = ["d0", "d1", "d2", "d3", "s0", "s1"];
         if (equality) slots.push("eq");
-        const symbolMarks = new Map([...svg.querySelectorAll('[id^="fc-op-"]')].map((el) => {
-          const [, role, attachment, ordinal] = el.id.match(/^fc-op-\d+-(add|sub|neg|mul|div|fact)-(b[1-3]|u[0-3][1-4])-(\d+)$/);
-          const kinds = { add: "+", sub: "\u2212", neg: "\u2212", mul: "\xD7", div: division === "slash" ? "/" : "\xF7", fact: "!" };
-          const kind = kinds[role];
-          return [el.id.slice(3), { kind, role, site: `${role}-${attachment}-${ordinal}` }];
-        }));
+        const symbolMarks = new Map(
+          [...svg.querySelectorAll('[id^="fc-op-"]')].map((el) => {
+            const [, role, attachment, ordinal] = el.id.match(
+              /^fc-op-\d+-(add|sub|neg|mul|div|fact)-(b[1-3]|u[0-3][1-4])-(\d+)$/
+            );
+            const kinds = {
+              add: "+",
+              sub: "\u2212",
+              neg: "\u2212",
+              mul: "\xD7",
+              div: division === "slash" ? "/" : "\xF7",
+              fact: "!"
+            };
+            const kind = kinds[role];
+            return [el.id.slice(3), { kind, role, site: `${role}-${attachment}-${ordinal}` }];
+          })
+        );
         const symbolOffset = slots.length;
         slots.push(...symbolMarks.keys());
         const tokens = slots.map((slot, i) => {
@@ -2568,32 +4020,44 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
             ...symbol
           });
         });
-        const colons = clockFace ? [...svg.querySelectorAll('path[data-c="3A"]')].map((path, i) => glyphToken2([path], { slot: `colon${i}`, kind: ":", text: ":", font: this.profile.id })) : [];
+        const colons = clockFace ? [...svg.querySelectorAll('path[data-c="3A"]')].map(
+          (path, i) => glyphToken2([path], { slot: `colon${i}`, kind: ":", text: ":", font: this.profile.id })
+        ) : [];
         const structures = [];
         const coreOf = (tag, name) => tag.matches(`[data-mml-node="${name}"]`) ? tag : tag.querySelector(`[data-mml-node="${name}"]`);
-        const ownRules = (core) => [...core.querySelectorAll("rect")].filter((rect) => rect.closest('[data-mml-node="mfrac"],[data-mml-node="msqrt"]') === core);
+        const ownRules = (core) => [...core.querySelectorAll("rect")].filter(
+          (rect) => rect.closest('[data-mml-node="mfrac"],[data-mml-node="msqrt"]') === core
+        );
         const singleGlyph = (path) => path?.hasAttribute("data-glyph-key") && path.closest('[data-mml-node="mo"]')?.querySelectorAll("path").length === 1;
         for (const tag of svg.querySelectorAll('[id^="fc-struct-"]')) {
-          const [, role, attachment, ordinal] = tag.id.match(/^fc-struct-(frac|root|paren)-(b[1-3]|u[0-3][1-4])-(\d+)$/);
+          const [, role, attachment, ordinal] = tag.id.match(
+            /^fc-struct-(frac|root|paren)-(b[1-3]|u[0-3][1-4])-(\d+)$/
+          );
           const site = `${role}-${attachment}-${ordinal}`;
           if (role === "frac") {
             const core = coreOf(tag, "mfrac"), rules = core ? ownRules(core) : [];
-            if (rules.length === 1) structures.push(ruleToken2(rules[0], { kind: "fraction-rule", site, glyphKey: "rule" }));
+            if (rules.length === 1)
+              structures.push(ruleToken2(rules[0], { kind: "fraction-rule", site, glyphKey: "rule" }));
           } else if (role === "root") {
             const core = coreOf(tag, "msqrt");
             if (!core) continue;
-            const paths = [...core.querySelectorAll('path[data-c="221A"]')].filter((path2) => path2.closest('[data-mml-node="msqrt"]') === core);
+            const paths = [...core.querySelectorAll('path[data-c="221A"]')].filter(
+              (path2) => path2.closest('[data-mml-node="msqrt"]') === core
+            );
             const rules = ownRules(core), path = paths[0];
             if (paths.length !== 1 || !singleGlyph(path) || rules.length !== 1) continue;
             const glyphKey = path.getAttribute("data-glyph-key");
             takeGlyph2(path, { kind: "root-sign", site, glyphKey });
             structures.push(ruleToken2(rules[0], { kind: "root-rule", site, glyphKey }));
           } else {
-            const paths = [...tag.querySelectorAll('path[data-c="28"],path[data-c="29"]')].filter((path) => path.closest('[id^="fc-struct-"]') === tag);
-            for (const path of paths) if (singleGlyph(path)) {
-              const kind = path.getAttribute("data-c") === "28" ? "paren-left" : "paren-right";
-              takeGlyph2(path, { kind, site, glyphKey: path.getAttribute("data-glyph-key") });
-            }
+            const paths = [
+              ...tag.querySelectorAll('path[data-c="28"],path[data-c="29"]')
+            ].filter((path) => path.closest('[id^="fc-struct-"]') === tag);
+            for (const path of paths)
+              if (singleGlyph(path)) {
+                const kind = path.getAttribute("data-c") === "28" ? "paren-left" : "paren-right";
+                takeGlyph2(path, { kind, site, glyphKey: path.getAttribute("data-glyph-key") });
+              }
           }
         }
         let axisY = this.typography.equalCenterY;
@@ -2607,7 +4071,19 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         for (const slot of slots) decorations.querySelector(`#fc-${slot}`)?.remove();
         decorations.querySelectorAll("[data-fc-extract]").forEach((el) => el.remove());
         decorations.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
-        return { tex, viewBox, tokens: tokens.slice(0, 6), colons, equality: equality ? tokens[6] : null, symbols: [...tokens.slice(symbolOffset), ...structures], decorations, axisY, typography: this.typography, font: this.profile.id, numerals: this.profile.numerals };
+        return {
+          tex,
+          viewBox,
+          tokens: tokens.slice(0, 6),
+          colons,
+          equality: equality ? tokens[6] : null,
+          symbols: [...tokens.slice(symbolOffset), ...structures],
+          decorations,
+          axisY,
+          typography: this.typography,
+          font: this.profile.id,
+          numerals: this.profile.numerals
+        };
       } finally {
         node.remove();
       }
@@ -2617,7 +4093,15 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
   var typesetter_default = Object.freeze(api7);
 
   // browser.ts
-  Object.assign(window, { FormulaI18n: i18n_default, FormulaDisplay: display_default, FormulaShare: share_default, FormulaExpression: expression_default, FormulaData: data_default, FormulaSymbols: symbols_default, FormulaTypesetter: typesetter_default });
+  Object.assign(window, {
+    FormulaI18n: i18n_default,
+    FormulaDisplay: display_default,
+    FormulaShare: share_default,
+    FormulaExpression: expression_default,
+    FormulaData: data_default,
+    FormulaSymbols: symbols_default,
+    FormulaTypesetter: typesetter_default
+  });
 })();
 
 </script>
@@ -2688,16 +4172,19 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       }
     }
     function setupDialog(dialog, opener, closeButton, openOnClick = true) {
-      if (openOnClick) opener.addEventListener("click", () => {
-        dialog.showModal();
-        closeButton.focus({ preventScroll: true });
-        dialog.scrollTop = 0;
-      });
+      if (openOnClick)
+        opener.addEventListener("click", () => {
+          dialog.showModal();
+          closeButton.focus({ preventScroll: true });
+          dialog.scrollTop = 0;
+        });
       closeButton.addEventListener("click", () => dialog.close());
       dialog.addEventListener("close", () => opener.focus({ preventScroll: true }));
       dialog.addEventListener("keydown", (event) => {
         if (event.key !== "Tab") return;
-        const controls = [...dialog.querySelectorAll("button,input,select,summary,a[href]")].filter((el) => !("disabled" in el && el.disabled) && el.getClientRects().length);
+        const controls = [
+          ...dialog.querySelectorAll("button,input,select,summary,a[href]")
+        ].filter((el) => !("disabled" in el && el.disabled) && el.getClientRects().length);
         const first = controls[0], last = controls.at(-1);
         if (event.shiftKey && document.activeElement === first) {
           event.preventDefault();
@@ -2721,7 +4208,11 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       });
     }
     setupDialog(settingsDialog, settingsButton, $("#settings-close"));
-    setupDialog(licenseDialog, $("#licenses-open"), $("#licenses-close"));
+    setupDialog(
+      licenseDialog,
+      $("#licenses-open"),
+      $("#licenses-close")
+    );
     setupDialog(shareDialog, shareButton, $("#share-close"), false);
     shareButton.hidden = !["http:", "https:"].includes(location.protocol);
     const { normalizeMinute, TableProvider } = FormulaData;
@@ -2779,17 +4270,28 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     });
     function requestSolutions(code) {
       const existing = cache.get(code);
-      if (pending.has(code) || existing && (!existing.error || Date.now() < (existing.retryAfter || 0))) return;
+      if (pending.has(code) || existing && (!existing.error || Date.now() < (existing.retryAfter || 0)))
+        return;
       const revision = dataRevision, currentProvider = provider, controller = new AbortController();
       pending.set(code, controller);
       Promise.resolve().then(() => currentProvider.getMinute(code, { signal: controller.signal })).then((raw) => {
         if (revision !== dataRevision || controller.signal.aborted) return;
         const minute = normalizeMinute(raw, code);
-        cache.set(code, { input: code, solutions: minute.seconds, count: minute.seconds.filter(Boolean).length });
+        cache.set(code, {
+          input: code,
+          solutions: minute.seconds,
+          count: minute.seconds.filter(Boolean).length
+        });
       }).catch((error) => {
         if (revision !== dataRevision || controller.signal.aborted) return;
         console.warn("[Formula Clock] Formula data unavailable.", error);
-        cache.set(code, { input: code, solutions: Array(60).fill(null), count: 0, error: String(error), retryAfter: Date.now() + 5e3 });
+        cache.set(code, {
+          input: code,
+          solutions: Array(60).fill(null),
+          count: 0,
+          error: String(error),
+          retryAfter: Date.now() + 5e3
+        });
       }).finally(() => {
         if (revision !== dataRevision) return;
         if (pending.get(code) === controller) pending.delete(code);
@@ -2798,7 +4300,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       });
     }
     function setDataProvider(next) {
-      if (!next || typeof next.getMinute !== "function") throw new TypeError("Provider needs getMinute(hhmm, {signal})");
+      if (!next || typeof next.getMinute !== "function")
+        throw new TypeError("Provider needs getMinute(hhmm, {signal})");
       leaveSharedView();
       dataRevision++;
       pending.forEach((controller) => controller.abort());
@@ -2841,7 +4344,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       return engines.get(key);
     }
     let typesetter = engineFor(displaySettings.font, displaySettings.numerals);
-    const segmentedChoices = [...settingsDialog.querySelectorAll(".segmented-control input")];
+    const segmentedChoices = [
+      ...settingsDialog.querySelectorAll(".segmented-control input")
+    ];
     function syncMotionControls() {
       $("#symbol-motion").checked = displaySettings.symbolMotion;
       $("#structure-motion").checked = displaySettings.structureMotion;
@@ -2851,9 +4356,19 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     }
     async function setDisplay(changes) {
       const next = { ...displaySettings, ...changes };
-      if (!Object.hasOwn(FormulaTypesetter.PROFILES, next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS, next.numerals) || !["fraction", "inline", "slash"].includes(next.division) || ["symbolMotion", "structureMotion", "symbolMorph"].some((key) => typeof next[key] !== "boolean")) throw new TypeError("Invalid display options");
+      if (!Object.hasOwn(FormulaTypesetter.PROFILES, next.font) || !Object.hasOwn(FormulaTypesetter.NUMERALS, next.numerals) || !["fraction", "inline", "slash"].includes(next.division) || ["symbolMotion", "structureMotion", "symbolMorph"].some(
+        (key) => typeof next[key] !== "boolean"
+      ))
+        throw new TypeError("Invalid display options");
       leaveSharedView(true);
-      displaySettings = { font: next.font, numerals: next.numerals, division: next.division, symbolMotion: next.symbolMotion, structureMotion: next.structureMotion, symbolMorph: next.symbolMorph };
+      displaySettings = {
+        font: next.font,
+        numerals: next.numerals,
+        division: next.division,
+        symbolMotion: next.symbolMotion,
+        structureMotion: next.structureMotion,
+        symbolMorph: next.symbolMorph
+      };
       shareButton.disabled = true;
       syncMotionControls();
       $("#font-choice").value = next.font;
@@ -2888,15 +4403,21 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       input.checked = input.value === displaySettings[input.name];
     });
     $("#font-choice").addEventListener("change", (e) => {
-      setDisplay({ font: e.target.value }).catch(() => {
-      });
+      setDisplay({ font: e.target.value }).catch(
+        () => {
+        }
+      );
     });
     $("#numeral-choice").addEventListener("change", (e) => {
-      setDisplay({ numerals: e.target.value }).catch(() => {
+      setDisplay({
+        numerals: e.target.value
+      }).catch(() => {
       });
     });
     $("#division-choice").addEventListener("change", (e) => {
-      setDisplay({ division: e.target.value }).catch(() => {
+      setDisplay({
+        division: e.target.value
+      }).catch(() => {
       });
     });
     const scene = $("#math-scene"), notationRoot = $("#notation-root"), equalSign = $("#equal-sign");
@@ -2938,20 +4459,32 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     function setPosition(el, target, animated, now) {
       const old = movement.get(el);
       const from = old ? matrixAt(old, now) : target;
-      movement.set(el, { from: animated ? from : target, to: target, started: animated ? now : now - DURATION });
+      movement.set(el, {
+        from: animated ? from : target,
+        to: target,
+        started: animated ? now : now - DURATION
+      });
       el.setAttribute("transform", matrixString(animated ? from : target));
       if (animated && !animationId) animationId = requestAnimationFrame(animatePositions);
     }
     function fadeIn(el, duration, delayed = false) {
       if (reducedMotion.matches) return;
-      el.animate(delayed ? [{ opacity: 0 }, { opacity: 0, offset: 0.18 }, { opacity: 1 }] : [{ opacity: 0.15 }, { opacity: 1 }], { duration, easing: "ease-out" });
+      el.animate(
+        delayed ? [{ opacity: 0 }, { opacity: 0, offset: 0.18 }, { opacity: 1 }] : [{ opacity: 0.15 }, { opacity: 1 }],
+        { duration, easing: "ease-out" }
+      );
     }
     function morphStateAt(record, now) {
       const p = Math.min(1, Math.max(0, (now - record.started) / MORPH_DURATION));
       const k = p * p * (3 - 2 * p), mix = (a, b) => a + (b - a) * k;
       return {
         angle: mix(record.from.angle, record.to.angle),
-        weights: Object.fromEntries(Object.keys(record.parts).map((kind) => [kind, mix(record.from.weights[kind] || 0, kind === record.target ? 1 : 0)])),
+        weights: Object.fromEntries(
+          Object.keys(record.parts).map((kind) => [
+            kind,
+            mix(record.from.weights[kind] || 0, kind === record.target ? 1 : 0)
+          ])
+        ),
         center: record.from.center.map((v, i) => mix(v, record.to.center[i]))
       };
     }
@@ -2959,7 +4492,10 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       const state = morphStateAt(record, now);
       for (const [kind, part] of Object.entries(record.parts)) {
         const angle = state.angle - (kind === "\xD7" ? 45 : 0);
-        part.group.setAttribute("transform", `translate(${state.center.join(" ")}) rotate(${angle}) translate(${-part.center[0]} ${-part.center[1]})`);
+        part.group.setAttribute(
+          "transform",
+          `translate(${state.center.join(" ")}) rotate(${angle}) translate(${-part.center[0]} ${-part.center[1]})`
+        );
         part.group.setAttribute("opacity", String(state.weights[kind]));
       }
       return state;
@@ -2988,7 +4524,13 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         group.append(shape);
         parts[glyph.kind] = { group, shape, center: glyph.inkCenter };
       }
-      const record = { parts, from, to: { angle: token.kind === "\xD7" ? 45 : 0, center: token.inkCenter }, started: now, target: token.kind };
+      const record = {
+        parts,
+        from,
+        to: { angle: token.kind === "\xD7" ? 45 : 0, center: token.inkCenter },
+        started: now,
+        target: token.kind
+      };
       el.replaceChildren(...Object.values(parts).map((part) => part.group));
       el.dataset.morphing = "true";
       el.dataset.value = token.text;
@@ -3021,28 +4563,36 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         record.el.dataset.kind = token.kind;
         record.el.dataset.site = token.site || "";
         record.el.dataset.glyphKey = token.glyphKey || "";
-        placeToken(token, record.el, oldToken && FormulaSymbols.morphPair(oldToken, token) ? oldToken : null);
+        placeToken(
+          token,
+          record.el,
+          oldToken && FormulaSymbols.morphPair(oldToken, token) ? oldToken : null
+        );
       });
-      for (const record of previous) if (!used.has(record)) {
-        const remove = () => {
-          record.el.remove();
-          movement.delete(record.el);
-          morphs.delete(record.el);
-          symbolRecords.delete(record);
-        };
-        if (!animated) {
-          record.animation?.cancel();
-          remove();
-          continue;
+      for (const record of previous)
+        if (!used.has(record)) {
+          const remove = () => {
+            record.el.remove();
+            movement.delete(record.el);
+            morphs.delete(record.el);
+            symbolRecords.delete(record);
+          };
+          if (!animated) {
+            record.animation?.cancel();
+            remove();
+            continue;
+          }
+          if (record.exiting) continue;
+          record.exiting = true;
+          const animation = record.el.animate([{ opacity: 1 }, { opacity: 0 }], {
+            duration: 180,
+            fill: "forwards"
+          });
+          record.animation = animation;
+          animation.onfinish = () => {
+            if (record.animation === animation && record.exiting) remove();
+          };
         }
-        if (record.exiting) continue;
-        record.exiting = true;
-        const animation = record.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
-        record.animation = animation;
-        animation.onfinish = () => {
-          if (record.animation === animation && record.exiting) remove();
-        };
-      }
     }
     function renderStatus(message = "") {
       const status = $("#render-status");
@@ -3070,7 +4620,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         const baseline = 550 - (colon.bounds.y + colon.bounds.h / 2) * face.scale;
         const place = (el, text2, center) => {
           const token = face.glyphs[text2];
-          if (el.dataset.font === font && el.dataset.numerals === numerals && el.dataset.value === text2) return;
+          if (el.dataset.font === font && el.dataset.numerals === numerals && el.dataset.value === text2)
+            return;
           const matrix = token.matrix.map((value) => value * face.scale);
           matrix[4] += center - (token.bounds.x + token.bounds.w / 2) * face.scale;
           matrix[5] += baseline;
@@ -3098,7 +4649,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       const items = [];
       function placeToken(token, el, morphFrom = null) {
         if (morphFrom && animated && view.symbolMorph) startMorph(el, morphFrom, token, positionTime);
-        else if (!animated || !view.symbolMorph || el._shapeKey !== token.shape.innerHTML || el.dataset.value !== token.text) finishMorph(el);
+        else if (!animated || !view.symbolMorph || el._shapeKey !== token.shape.innerHTML || el.dataset.value !== token.text)
+          finishMorph(el);
         if (!animated) el.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
         if (el.dataset.value !== token.text || !el.firstChild || el._shapeKey !== token.shape.innerHTML) {
           el.replaceChildren(token.shape.cloneNode(true));
@@ -3145,10 +4697,30 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       renderSourceTime(frame.font, frame.numerals, code, seconds, !!ast && !loading);
       renderStatus();
       const time = t("clockTime", { hours: code.slice(0, 2), minutes: code.slice(2), seconds });
-      stage.setAttribute("aria-label", ast ? t("clockEquation", { time, expression: FormulaExpression.plain(ast, code), seconds }) : time);
-      latestLayout = { display: { ...view }, ast, code, seconds, mode: ast ? "formula" : "time", tex: frame.tex, items, width: b.w * scale, height: b.h * scale, viewBox: { ...b }, fontSize: scale * 1e3, axisY: axis, localAxisY: frame.axisY, fit: [scale, 0, 0, scale, x, y], typography: frame.typography };
+      stage.setAttribute(
+        "aria-label",
+        ast ? t("clockEquation", { time, expression: FormulaExpression.plain(ast, code), seconds }) : time
+      );
+      latestLayout = {
+        display: { ...view },
+        ast,
+        code,
+        seconds,
+        mode: ast ? "formula" : "time",
+        tex: frame.tex,
+        items,
+        width: b.w * scale,
+        height: b.h * scale,
+        viewBox: { ...b },
+        fontSize: scale * 1e3,
+        axisY: axis,
+        localAxisY: frame.axisY,
+        fit: [scale, 0, 0, scale, x, y],
+        typography: frame.typography
+      };
       displayedFrame = { frame, ast, code, seconds, view };
-      if (sharedAddress && !loading && !engineError) document.title = FormulaShare.title({ v: 1, t: code + pad(seconds), ...view, ast });
+      if (sharedAddress && !loading && !engineError)
+        document.title = FormulaShare.title({ v: 1, t: code + pad(seconds), ...view, ast });
       shareButton.disabled = shareBusy || loading || !!engineError || !snapshotAt(code, seconds) && (!cache.has(code) || !!cache.get(code)?.error);
       preparePausedShare();
       firstFrame = false;
@@ -3165,7 +4737,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       if (lastVisual === key && !instant) return;
       lastVisual = key;
       const serial = ++requestSerial;
-      if (!engine.ready) plainFallback(code, seconds, t(engine.error ? "typesettingFailed" : "preparing"));
+      if (!engine.ready)
+        plainFallback(code, seconds, t(engine.error ? "typesettingFailed" : "preparing"));
       if (engine.error) return;
       engine.frame(ast, code, seconds, view).then((frame) => {
         if (serial !== requestSerial) return;
@@ -3195,8 +4768,14 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       if (!typesetter.ready || preview?.paused || document.hidden) return;
       for (const offset of [1, 2]) {
         const next = new Date(+now + offset * 1e3), code = timeCode(next), result = cache.get(code);
-        if (result) typesetter.frame(result.solutions[next.getSeconds()] || null, code, next.getSeconds(), activeDisplay()).catch(() => {
-        });
+        if (result)
+          typesetter.frame(
+            result.solutions[next.getSeconds()] || null,
+            code,
+            next.getSeconds(),
+            activeDisplay()
+          ).catch(() => {
+          });
       }
     }
     let preview = sharedState ? { epoch: +FormulaShare.localDate(sharedState.t), started: performance.now(), paused: true } : null;
@@ -3279,7 +4858,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         return;
       }
       const failed = (error) => {
-        if (serial !== shareSerial || (isRecord(error) || error instanceof Error) && error.name === "AbortError") return;
+        if (serial !== shareSerial || (isRecord(error) || error instanceof Error) && error.name === "AbortError")
+          return;
         manualShare(url);
       };
       const card = FormulaShare.card(state);
@@ -3290,9 +4870,17 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       }
     }
     function displayedSnapshot() {
-      if (!displayedFrame || shareButton.disabled || shareButton.hidden || document.hidden) return null;
+      if (!displayedFrame || shareButton.disabled || shareButton.hidden || document.hidden)
+        return null;
       const { code, seconds, view, ast } = displayedFrame;
-      return FormulaShare.snapshot({ v: 1, t: code + pad(seconds), font: view.font, numerals: view.numerals, division: view.division, ast });
+      return FormulaShare.snapshot({
+        v: 1,
+        t: code + pad(seconds),
+        font: view.font,
+        numerals: view.numerals,
+        division: view.division,
+        ast
+      });
     }
     function preparePausedShare() {
       const state = preview?.paused ? displayedSnapshot() : null;
@@ -3306,8 +4894,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       shareWarmKey = key;
       const serial = shareSerial;
       shareWarmTimer = setTimeout(() => {
-        if (serial === shareSerial && JSON.stringify(displayedSnapshot()) === key) void shareLinks.prepare(state).catch(() => {
-        });
+        if (serial === shareSerial && JSON.stringify(displayedSnapshot()) === key)
+          void shareLinks.prepare(state).catch(() => {
+          });
       }, 250);
     }
     function prepareShareOnIntent() {
@@ -3320,11 +4909,16 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       for (const offset of [1, 2]) {
         const next = new Date(+now + offset * 1e3), code = timeCode(next), result = cache.get(code);
         if (!result || result.error) continue;
-        void shareLinks.prepare({ ...state, t: code + pad(next.getSeconds()), ast: result.solutions[next.getSeconds()] || null }).catch(() => {
+        void shareLinks.prepare({
+          ...state,
+          t: code + pad(next.getSeconds()),
+          ast: result.solutions[next.getSeconds()] || null
+        }).catch(() => {
         });
       }
     }
-    for (const event of ["pointerenter", "focus", "pointerdown"]) shareButton.addEventListener(event, prepareShareOnIntent);
+    for (const event of ["pointerenter", "focus", "pointerdown"])
+      shareButton.addEventListener(event, prepareShareOnIntent);
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         clearTimeout(shareWarmTimer);
@@ -3336,13 +4930,25 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       void copyShare($("#share-url").value);
     });
     $("#share-native").addEventListener("click", () => {
-      if (activeSnapshot) deliverShare($("#share-url").value, activeSnapshot, shareSerial);
+      if (activeSnapshot)
+        deliverShare($("#share-url").value, activeSnapshot, shareSerial);
     });
     shareButton.addEventListener("click", async () => {
       if (shareButton.disabled || !displayedFrame) return;
       const snapshot = displayedFrame, { code, seconds, view } = snapshot;
-      const state = FormulaShare.snapshot({ v: 1, t: code + pad(seconds), font: view.font, numerals: view.numerals, division: view.division, ast: snapshot.ast });
-      Object.assign(displaySettings, { font: state.font, numerals: state.numerals, division: state.division });
+      const state = FormulaShare.snapshot({
+        v: 1,
+        t: code + pad(seconds),
+        font: view.font,
+        numerals: view.numerals,
+        division: view.division,
+        ast: snapshot.ast
+      });
+      Object.assign(displaySettings, {
+        font: state.font,
+        numerals: state.numerals,
+        division: state.division
+      });
       activeSnapshot = state;
       preview = { epoch: +FormulaShare.localDate(state.t), started: performance.now(), paused: true };
       resetTransport();
@@ -3389,13 +4995,23 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         const next = /* @__PURE__ */ new Date(+now);
         next.setMinutes(next.getMinutes() + 1, 0, 0);
         const minuteStart = +now - seconds * 1e3 - now.getMilliseconds();
-        nextPrefetch = { code: timeCode(next), at: minuteStart + (!preview && now.getMinutes() === 59 ? Math.random() * 3e4 : 0) };
+        nextPrefetch = {
+          code: timeCode(next),
+          at: minuteStart + (!preview && now.getMinutes() === 59 ? Math.random() * 3e4 : 0)
+        };
       }
       if (nextPrefetch && (preview || +now >= nextPrefetch.at)) {
         requestSolutions(nextPrefetch.code);
         nextPrefetch = null;
       }
-      sourceTime.setAttribute("aria-label", t("clockTime", { hours: pad(now.getHours()), minutes: pad(now.getMinutes()), seconds: pad(seconds) }));
+      sourceTime.setAttribute(
+        "aria-label",
+        t("clockTime", {
+          hours: pad(now.getHours()),
+          minutes: pad(now.getMinutes()),
+          seconds: pad(seconds)
+        })
+      );
       const snapshot = snapshotAt(code, seconds), ast = snapshot ? snapshot.ast : result?.solutions[seconds] || null;
       renderExpression(ast, code, seconds, !result);
       prepareNext(now);
@@ -3406,7 +5022,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         el.classList.toggle("past", i < seconds);
         if (i === seconds) el.setAttribute("aria-current", "time");
         else el.removeAttribute("aria-current");
-        const status = t(saved2 ? saved2.ast ? "formulaAvailable" : "noFormula" : result ? result.error ? "dataFailed" : entry ? "formulaAvailable" : "noFormula" : "loading");
+        const status = t(
+          saved2 ? saved2.ast ? "formulaAvailable" : "noFormula" : result ? result.error ? "dataFailed" : entry ? "formulaAvailable" : "noFormula" : "loading"
+        );
         el.title = t("secondStatus", { seconds: pad(i), status });
       });
       const label = $("#state-label");
@@ -3425,7 +5043,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         label.classList.add("quiet");
       } else label.textContent = "";
       if (changed && previousSecond !== null && seconds === 0 && !preview?.paused) {
-        $("#flash").animate([{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0 }], { duration: reducedMotion.matches ? 200 : 1650 });
+        $("#flash").animate([{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0 }], {
+          duration: reducedMotion.matches ? 200 : 1650
+        });
       }
     }
     function scheduleTick() {
@@ -3468,7 +5088,10 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       }
       save() {
         try {
-          localStorage.setItem("formula-clock-audio-v1", JSON.stringify({ enabled: this.enabled, volume: this.volume }));
+          localStorage.setItem(
+            "formula-clock-audio-v1",
+            JSON.stringify({ enabled: this.enabled, volume: this.volume })
+          );
         } catch {
         }
       }
@@ -3512,16 +5135,22 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         }
       }
       paint() {
-        const label = t(!this.enabled ? "soundOff" : this.ready ? "soundOn" : this.error ? "soundError" : "soundPending");
+        const label = t(
+          !this.enabled ? "soundOff" : this.ready ? "soundOn" : this.error ? "soundError" : "soundPending"
+        );
         $("#sound").setAttribute("aria-pressed", String(this.enabled));
         $("#sound").setAttribute("aria-label", label);
         $("#sound").title = t("shortcut", { label, key: "M" });
-        $("#sound-waves").setAttribute("d", this.enabled ? "M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" : "m16 9 6 6m0-6-6 6");
+        $("#sound-waves").setAttribute(
+          "d",
+          this.enabled ? "M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" : "m16 9 6 6m0-6-6 6"
+        );
       }
       setVolume(v) {
         this.volume = Math.max(0, Math.min(1, v));
         this.save();
-        if (this.master && this.ctx) this.master.gain.setTargetAtTime(this.volume * 0.32, this.ctx.currentTime, 0.035);
+        if (this.master && this.ctx)
+          this.master.gain.setTargetAtTime(this.volume * 0.32, this.ctx.currentTime, 0.035);
       }
       tone(frequency, when, duration, strength = 1) {
         if (!this.ctx || !this.master || !this.enabled) return;
@@ -3559,7 +5188,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         this.voices.clear();
       }
       poll() {
-        if (!this.enabled || this.ctx?.state !== "running" || document.hidden || preview?.paused) return;
+        if (!this.enabled || this.ctx?.state !== "running" || document.hidden || preview?.paused)
+          return;
         const now = +getNow(), second = Math.floor(now / 1e3);
         for (const boundary of [second * 1e3, (second + 1) * 1e3]) {
           const delay = (boundary - now) / 1e3;
@@ -3574,7 +5204,12 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
           this.scheduled.set(key, when);
           while (this.scheduled.size > 20) this.scheduled.delete(this.scheduled.keys().next().value);
           this.tone(frequency, when, duration, marker ? 1 : countdown ? 0.72 : 0.5);
-          eventHistory.push({ type: sec === 0 ? "minute" : marker ? "ten-second" : countdown ? "countdown" : "second", time: boundary, frequency, duration });
+          eventHistory.push({
+            type: sec === 0 ? "minute" : marker ? "ten-second" : countdown ? "countdown" : "second",
+            time: boundary,
+            frequency,
+            duration
+          });
           if (eventHistory.length > 30) eventHistory.shift();
         }
       }
@@ -3584,7 +5219,10 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     sound.paint();
     if (sound.enabled) sound.resume();
     $("#sound").addEventListener("click", () => sound.toggle());
-    $("#volume").addEventListener("input", (e) => sound.setVolume(Number(e.target.value) / 100));
+    $("#volume").addEventListener(
+      "input",
+      (e) => sound.setVolume(Number(e.target.value) / 100)
+    );
     $("#go-live").addEventListener("click", goLive);
     $("#custom-go").addEventListener("click", () => {
       const value = $("#custom-time").value;
@@ -3602,7 +5240,10 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         return { enter: () => element.requestFullscreen(), exit: () => document.exitFullscreen() };
       }
       if (document.webkitFullscreenEnabled && typeof element.webkitRequestFullscreen === "function") {
-        return { enter: () => element.webkitRequestFullscreen(), exit: () => document.webkitExitFullscreen() };
+        return {
+          enter: () => element.webkitRequestFullscreen(),
+          exit: () => document.webkitExitFullscreen()
+        };
       }
       return null;
     }
@@ -3635,7 +5276,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     paintFullscreen();
     document.addEventListener("keydown", (e) => {
       const target = e.target;
-      if (settingsDialog.open || licenseDialog.open || shareDialog.open || e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || target instanceof Element && target.closest("input,textarea,select") || target instanceof HTMLElement && target.isContentEditable) return;
+      if (settingsDialog.open || licenseDialog.open || shareDialog.open || e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || target instanceof Element && target.closest("input,textarea,select") || target instanceof HTMLElement && target.isContentEditable)
+        return;
       if (!e.shiftKey && preview?.paused && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
         e.preventDefault();
         stepSecond(e.key === "ArrowLeft" ? -1 : 1);
@@ -3664,7 +5306,13 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     document.addEventListener("keydown", resumeSavedSound);
     function renderResize() {
       const d = getNow(), code = timeCode(d), result = cache.get(code);
-      renderExpression(result?.solutions[d.getSeconds()] || null, code, d.getSeconds(), !result, true);
+      renderExpression(
+        result?.solutions[d.getSeconds()] || null,
+        code,
+        d.getSeconds(),
+        !result,
+        true
+      );
     }
     new ResizeObserver(renderResize).observe(stage);
     reducedMotion.addEventListener?.("change", renderResize);
@@ -3693,7 +5341,23 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       setDisplay,
       setDataProvider,
       get state() {
-        return { display: { ...displaySettings }, dataRevision, dataError: cache.get(timeCode(getNow()))?.error || null, now: getNow().toISOString(), preview: !!preview, paused: preview?.paused || false, layout: latestLayout, coverage: cache.get(timeCode(getNow()))?.count, audio: eventHistory.slice(), soundEnabled: sound.enabled, soundReady: sound.ready, soundVolume: sound.volume, engineReady: typesetter.ready, engineError, typesetCacheSize: typesetter.cache.size };
+        return {
+          display: { ...displaySettings },
+          dataRevision,
+          dataError: cache.get(timeCode(getNow()))?.error || null,
+          now: getNow().toISOString(),
+          preview: !!preview,
+          paused: preview?.paused || false,
+          layout: latestLayout,
+          coverage: cache.get(timeCode(getNow()))?.count,
+          audio: eventHistory.slice(),
+          soundEnabled: sound.enabled,
+          soundReady: sound.ready,
+          soundVolume: sound.volume,
+          engineReady: typesetter.ready,
+          engineError,
+          typesetCacheSize: typesetter.cache.size
+        };
       },
       get digits() {
         return [...digitsEls];
@@ -3732,5 +5396,6 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 })();
 
 </script>
-</body>
+
+  </body>
 </html>

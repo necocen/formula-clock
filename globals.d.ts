@@ -1,4 +1,4 @@
-import type {FormulaProvider,FormulaClockAPI} from './types.ts';
+import type { FormulaProvider, FormulaClockAPI } from './types.ts';
 export {};
 declare global {
   var FormulaI18n: typeof import('./i18n.ts').default;
@@ -13,10 +13,12 @@ declare global {
     webkitFullscreenEnabled?: boolean;
     webkitExitFullscreen?(): Promise<void> | void;
   }
-  interface HTMLElement { webkitRequestFullscreen?(): Promise<void> | void; }
+  interface HTMLElement {
+    webkitRequestFullscreen?(): Promise<void> | void;
+  }
   interface Window {
     FormulaClock: FormulaClockAPI;
     webkitAudioContext?: typeof AudioContext;
-    FORMULA_CLOCK_CONFIG?: {provider?: FormulaProvider};
+    FORMULA_CLOCK_CONFIG?: { provider?: FormulaProvider };
   }
 }

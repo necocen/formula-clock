@@ -31,11 +31,11 @@ type Expr =
 
 `lit` はゼロ始まり、終端を含まない区間 `[i, j)` を表す。`HHMM = "1234"` の場合：
 
-| 構文木 | 表示される数字 | アニメーション上の同一性 |
-|---|---|---|
-| `{ "op": "lit", "i": 0, "j": 1 }` | `1` | HHMMの0番目 |
-| `{ "op": "lit", "i": 0, "j": 2 }` | `12` | 0番目と1番目の2個 |
-| `{ "op": "lit", "i": 2, "j": 4 }` | `34` | 2番目と3番目の2個 |
+| 構文木                            | 表示される数字 | アニメーション上の同一性 |
+| --------------------------------- | -------------- | ------------------------ |
+| `{ "op": "lit", "i": 0, "j": 1 }` | `1`            | HHMMの0番目              |
+| `{ "op": "lit", "i": 0, "j": 2 }` | `12`           | 0番目と1番目の2個        |
+| `{ "op": "lit", "i": 2, "j": 4 }` | `34`           | 2番目と3番目の2個        |
 
 `12` を1個の画像や文字要素にまとめない。TeX生成時にそれぞれの数字へ識別子を付けるため、次の式で `1 + 2` に分かれても同じ2個の数字を使う。
 
@@ -70,8 +70,8 @@ r4の規則は、左から順番に4桁を各1回使うこと。`i < j`、`0 ≤
 ```ts
 interface MinuteRecord {
   schema: 'formula-clock/1';
-  hhmm: string;                  // '0000'～'2359' の有効な時刻
-  seconds: (Expr | null)[];       // 必ず60個、添字が00～59秒
+  hhmm: string; // '0000'～'2359' の有効な時刻
+  seconds: (Expr | null)[]; // 必ず60個、添字が00～59秒
 }
 ```
 
@@ -100,10 +100,7 @@ interface FormulaTable {
 
 ```ts
 interface FormulaProvider {
-  getMinute(
-    hhmm: string,
-    options?: { signal?: AbortSignal }
-  ): Promise<MinuteRecord>;
+  getMinute(hhmm: string, options?: { signal?: AbortSignal }): Promise<MinuteRecord>;
 }
 ```
 
@@ -119,9 +116,7 @@ FormulaClock.setDataProvider(new FormulaData.InlineProvider(table));
 
 ```js
 FormulaClock.setDataProvider(
-  new FormulaData.FetchMinuteProvider(
-    hhmm => `/expressions/${hhmm}.json`
-  )
+  new FormulaData.FetchMinuteProvider((hhmm) => `/expressions/${hhmm}.json`),
 );
 ```
 
@@ -135,7 +130,7 @@ FormulaClock.setDataProvider(
     const response = await fetch('/expressions.json');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
-  })
+  }),
 );
 ```
 
@@ -147,9 +142,7 @@ FormulaClock.setDataProvider(
 
 ```js
 window.FORMULA_CLOCK_CONFIG = {
-  provider: new FormulaData.FetchMinuteProvider(
-    hhmm => `data/minutes/${hhmm}.json`
-  )
+  provider: new FormulaData.FetchMinuteProvider((hhmm) => `data/minutes/${hhmm}.json`),
 };
 ```
 
@@ -159,22 +152,22 @@ window.FORMULA_CLOCK_CONFIG = {
 
 TeX生成は `expression.ts` に集約した。表示上の優先度は次のとおり。
 
-| 弱い → 強い | 表記 |
-|---|---|
-| 1 | `+ −` |
-| 2 | `× ÷ /`（左結合） |
-| 3 | 単項の負号 |
-| 4 | 累乗 |
-| 5 | 階乗 |
-| 6 | 数字、平方根、分数線でまとまった分数 |
+| 弱い → 強い | 表記                                 |
+| ----------- | ------------------------------------ |
+| 1           | `+ −`                                |
+| 2           | `× ÷ /`（左結合）                    |
+| 3           | 単項の負号                           |
+| 4           | 累乗                                 |
+| 5           | 階乗                                 |
+| 6           | 数字、平方根、分数線でまとまった分数 |
 
 分数線は分子・分母の範囲を明示する。`÷` と `/` にはそれがないので、同じ構文木でも必要な括弧が変わる。
 
-| 意味 | ÷での表示 |
-|---|---|
+| 意味          | ÷での表示     |
+| ------------- | ------------- |
 | `a / (b + c)` | `a ÷ (b + c)` |
 | `a / (b / c)` | `a ÷ (b ÷ c)` |
-| `(a / b) / c` | `a ÷ b ÷ c` |
+| `(a / b) / c` | `a ÷ b ÷ c`   |
 | `a / (b × c)` | `a ÷ (b × c)` |
 | `a × (b / c)` | `a × (b ÷ c)` |
 | `a − (b − c)` | `a − (b − c)` |
@@ -223,7 +216,7 @@ await FormulaClock.setDisplay({ font: 'euler', numerals: 'lining', division: 'fr
 時間別JSONは `FormulaTable` の部分集合で、該当時間の60分をすべて含む。
 
 ```js
-new FormulaData.FetchHourProvider('data/manifest.json')
+new FormulaData.FetchHourProvider('data/manifest.json');
 ```
 
 目録の形式は `schema: "formula-clock-hours/1"`、`version`（64桁のSHA-256）、
@@ -256,7 +249,22 @@ new FormulaData.FetchHourProvider('data/manifest.json')
 `SharedSnapshot`の`ast`は正規`formula-clock/1`の式木、または通常時計を表す明示的な`null`。
 
 ```json
-{"v":1,"t":"123421","font":"stix2","numerals":"oldstyle","division":"fraction","ast":{"op":"mul","a":{"op":"add","a":{"op":"lit","i":0,"j":1},"b":{"op":"lit","i":1,"j":2}},"b":{"op":"add","a":{"op":"lit","i":2,"j":3},"b":{"op":"lit","i":3,"j":4}}}}
+{
+  "v": 1,
+  "t": "123421",
+  "font": "stix2",
+  "numerals": "oldstyle",
+  "division": "fraction",
+  "ast": {
+    "op": "mul",
+    "a": {
+      "op": "add",
+      "a": { "op": "lit", "i": 0, "j": 1 },
+      "b": { "op": "lit", "i": 1, "j": 2 }
+    },
+    "b": { "op": "add", "a": { "op": "lit", "i": 2, "j": 3 }, "b": { "op": "lit", "i": 3, "j": 4 } }
+  }
+}
 ```
 
 `t`はASCIIのHHMMSS（00:00:00〜23:59:59）。日付やタイムゾーンを表さない。

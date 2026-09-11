@@ -4,10 +4,15 @@
   "private": true,
   "description": "A mathematical clock with persistent digits, switchable typography, and AST data providers",
   "scripts": {
+    "format": "oxfmt --write",
+    "format:check": "oxfmt --check",
+    "lint": "oxlint --deny-warnings --report-unused-disable-directives",
+    "lint:fix": "npm run lint -- --fix",
+    "check": "npm run format:check && npm run lint && npm run typecheck",
     "build": "npm run typecheck && tsx build.ts",
     "build:external": "npm run typecheck && tsx build.ts --external",
     "generate": "npm run typecheck && tsx tools/generate.ts",
-    "test": "npm run typecheck && node --import tsx tests/expression.test.cjs && node --import tsx tests/data.test.cjs && node --import tsx --test tests/verify-exact.test.cjs tests/hourly.test.cjs tests/build.test.cjs tests/symbols.test.cjs tests/share.test.cjs tests/share-storage.test.mjs tests/i18n.test.cjs tests/og-cache.test.mjs",
+    "test": "npm run check && node --import tsx tests/expression.test.cjs && node --import tsx tests/data.test.cjs && node --import tsx --test tests/verify-exact.test.cjs tests/hourly.test.cjs tests/build.test.cjs tests/symbols.test.cjs tests/share.test.cjs tests/share-storage.test.mjs tests/i18n.test.cjs tests/og-cache.test.mjs",
     "test:og": "node --import tsx --test tests/og-render.test.mjs tests/og-worker.test.mjs",
     "deploy": "wrangler deploy",
     "preview": "wrangler versions upload",
@@ -15,7 +20,7 @@
     "import:data": "npm run typecheck && tsx tools/import-data.ts"
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=22.12.0 <23"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260910.1",
@@ -29,6 +34,8 @@
     "@types/node": "22.20.2",
     "esbuild": "0.28.1",
     "miniflare": "5.20260907.0-alpha",
+    "oxfmt": "0.67.0",
+    "oxlint": "1.82.0",
     "tsx": "4.23.13",
     "typescript": "7.0.2",
     "wrangler": "4.129.1"
