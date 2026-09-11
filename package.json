@@ -15,7 +15,7 @@
     "build:external": "pnpm run typecheck && vite build",
     "generate:licenses": "pnpm run typecheck && tsx tools/licenses.ts",
     "generate": "pnpm run typecheck && tsx tools/generate.ts",
-    "test": "pnpm run check && vitest run --project unit --project build",
+    "test": "vitest run --project unit --project build",
     "test:og": "pnpm run typecheck && vitest run --project og",
     "deploy": "pnpm run build:external && wrangler deploy --config dist/worker/wrangler.json",
     "preview": "pnpm run build:external && wrangler versions upload --config dist/worker/wrangler.json",

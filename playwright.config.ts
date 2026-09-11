@@ -9,7 +9,7 @@ export default defineConfig<ClockTestOptions>({
   // Animation measurements must not compete for CPU across browser suites.
   workers: 1,
   fullyParallel: false,
-  timeout: 900_000,
+  timeout: 300_000,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   outputDir: 'test-results/browser',

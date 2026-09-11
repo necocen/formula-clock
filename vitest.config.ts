@@ -8,8 +8,9 @@ export default defineConfig({
         name,
         environment: 'node',
         include: [`tests/${name}/*.test.ts`],
-        testTimeout: 120_000,
-        hookTimeout: 120_000,
+        // Unit tests wait on SymPy subprocesses; build/og run real Vite builds.
+        testTimeout: name === 'unit' ? 30_000 : 120_000,
+        hookTimeout: name === 'unit' ? 30_000 : 120_000,
         restoreMocks: true,
         fileParallelism: name === 'unit',
         sequence: { groupOrder },

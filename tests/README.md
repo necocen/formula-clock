@@ -18,14 +18,15 @@ pnpmは`.pnpm/python-envs/`に環境を作り、`.venv`をそこへ向けます�
 ## 基本の確認
 
 ```sh
-pnpm test             # 整形・lint・型 → 単体テスト → ビルドテスト
+pnpm run check        # 整形・lint・型チェック
+pnpm test             # 単体テスト → ビルドテスト
 pnpm run test:unit    # AST・全日データ・取得・共有・キャッシュなど
 pnpm run test:watch   # 単体テストを変更時に再実行
 pnpm run test:build   # 単体HTMLと配信用アセットを実際にビルドして検証
 pnpm run test:og      # 配信用ビルド → 画像描画とworkerdの統合テスト
 ```
 
-`vitest.config.ts`で`unit`・`build`・`og`のプロジェクトを定義しています。`pnpm test`は整形・lint・型チェック後に`unit`・`build`を実行します。VitestはViteによってTypeScriptを変換しますが、型チェックは`tsc --noEmit`で別に行います。
+`vitest.config.ts`で`unit`・`build`・`og`のプロジェクトを定義しています。`pnpm test`は`unit`・`build`を実行します。整形・lint・型チェックは`pnpm run check`で別に実行します。VitestはViteによってTypeScriptを変換しますが、型チェックは`tsc --noEmit`で別に行います。
 
 `unit/`は生成物に依存しません。`build/`と`og/`は実行時に必要なビルドを作ります。採用済みの`data/expressions.json`を読み取るだけで、式の再探索は行いません。
 

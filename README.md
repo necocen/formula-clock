@@ -116,7 +116,7 @@ Python連携はpnpmの実験機能で、この版のPythonロックは生成し�
 `pnpm test`はこの`.venv`を使います。別の環境で検証する場合のみ`FORMULA_CLOCK_PYTHON`で明示的に指定できます。
 
 ```sh
-pnpm run typecheck
+pnpm run check
 pnpm test
 pnpm run build
 pnpm run build:external
@@ -125,8 +125,8 @@ pnpm run test:og
 
 単体・ビルド・OG検証はVitest、画面検証はPlaywright Testを使います。VitestのTypeScript変換はViteが担当し、`pnpm run test:watch`で単体テストを変更時に再実行できます。ビルドは[Vite](https://vite.dev/)、Worker・WASM・配布設定は[Cloudflare公式プラグイン](https://developers.cloudflare.com/workers/vite-plugin/)、単体HTMLの埋め込みは[vite-plugin-singlefile](https://github.com/richardtallent/vite-plugin-singlefile)が担当します。圧縮しない埋め込みJSONを調べる場合は`pnpm exec vite build --mode standalone-raw`を使います。
 
-`pnpm run typecheck`はTypeScriptの型チェックだけを実行します。`pnpm test`は最初に`pnpm run check`を実行し、整形・lint・型チェックの失敗を検出します。両ビルドにも型チェックを含めています。
-`pnpm test`は整形・lint・型、単体テスト、単体／配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。
+`pnpm run typecheck`はTypeScriptの型チェックだけを実行します。整形・lint・型の確認は`pnpm run check`、テストの実行は`pnpm test`と役割を分けているため、通常は両方を実行します。両ビルドには型チェックを含めています。
+`pnpm test`は単体テストと単体／配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。
 
 ```sh
 pnpm exec playwright install chromium firefox webkit

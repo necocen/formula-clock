@@ -10,9 +10,9 @@
 - アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行し、PythonはSymPyの厳密計算だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
 - `src/browser/main.ts`は`bootstrap.ts`・`provider.ts`・`app.ts`をこの順で読み込む。ビルドはVite、Worker・WASM・配布設定はCloudflare公式プラグイン、単体HTMLの埋め込みはvite-plugin-singlefileを使う。`tools/vite-clock.ts`には式データとライセンス固有の処理だけを置き、独自バンドラーやWASMローダーを追加しない。
 - `dist/` は生成物。単体HTMLは`dist/standalone/index.html`、配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。`public/data/`もVite起動時に生成する入力でGit管理外。
-- 整形はOxfmt、lintはOxlint。編集後に`pnpm run format`で原本を整形し、`pnpm run check`で整形・lint・型を確認する。`pnpm test`にも同じ確認を含む。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
+- 整形はOxfmt、lintはOxlint。編集後に`pnpm run format`で原本を整形し、`pnpm run check`で整形・lint・型を確認する。`pnpm test`はテスト実行のみで、この確認を含まない。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
 - パッケージ管理はpnpm 12.4.1。`pnpm install`でNode.js 22.23.2とJavaScript・Pythonの依存を準備する。Python 3.11以上の本体は別途必要。JavaScriptは`pnpm-lock.yaml`、テスト用Pythonは`pyproject.toml` / `pylock.toml`で管理し、`.venv`と`.pnpm/`は生成物としてGitへ入れない。npmやpipで別の依存環境・ロックファイルを作らない。Python連携は実験機能でロックがOS・Python環境に依存するため、環境変更時は通常インストールで更新し、同じ環境の再現には`--frozen-lockfile`を使う。
-- ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`pnpm test` / `pnpm run build` / `pnpm run build:external` が基本の確認コマンド（いずれも型チェックを含む）。`pnpm run typecheck`でも単独で確認できる。共有画像の変更時は `pnpm run test:og` も実行する。
+- ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`pnpm run check` / `pnpm test` / `pnpm run build` / `pnpm run build:external` が基本の確認コマンド（両ビルドは型チェックを含む）。`pnpm run typecheck`でも単独で確認できる。共有画像の変更時は `pnpm run test:og` も実行する。
 - `pnpm run generate` は全日データの再探索。起動・表示変更だけなら実行しない。外部の検証済みデータは`pnpm run import:data DIRECTORY`で24時間分を取り込み、`data/README.md`の出典も更新する。`pnpm test`の厳密検証にはpnpmが準備するSymPyを使う。
 - 既にユーザーが評価しているUIを、依頼なしに全面改装しない。
 
