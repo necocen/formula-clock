@@ -1,0 +1,6 @@
+python:
+  enabled: true
+
+allowBuilds:
+  esbuild: true
+  workerd: true

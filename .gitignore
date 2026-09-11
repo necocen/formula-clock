@@ -1,6 +1,7 @@
 # Dependencies and local runtimes
 /node_modules/
-/.venv/
+/.venv
+/.pnpm/
 
 # Reproducible build output (including the former root build)
 /dist/

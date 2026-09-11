@@ -43,5 +43,5 @@ console.log({
   jsonBytes: Buffer.byteLength(json),
 });
 console.log(
-  'Run npm run build and npm test to verify exact values and regenerate the standalone app.',
+  'Run pnpm run build and pnpm test to verify exact values and regenerate the standalone app.',
 );

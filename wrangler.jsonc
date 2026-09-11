@@ -9,7 +9,7 @@
   "no_bundle": true,
   "find_additional_modules": true,
   "rules": [{ "type": "CompiledWasm", "globs": ["**/*.wasm"], "fallthrough": false }],
-  "build": { "command": "npm run build:external" },
+  "build": { "command": "pnpm run build:external" },
   "observability": { "enabled": true },
   "r2_buckets": [
     {

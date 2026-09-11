@@ -12,7 +12,10 @@ export function pythonJson(script: URL, input: unknown, args: string[] = []): un
     '.venv',
     process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
   );
-  const python = process.env.FORMULA_CLOCK_PYTHON || (fs.existsSync(venv) ? venv : 'python3');
+  const python = process.env.FORMULA_CLOCK_PYTHON || venv;
+  if (!process.env.FORMULA_CLOCK_PYTHON && !fs.existsSync(venv)) {
+    throw new Error('Python test environment is missing. Run pnpm install.');
+  }
   const result = spawnSync(python, [fileURLToPath(script), ...args], {
     input: JSON.stringify(input),
     encoding: 'utf8',
@@ -21,7 +24,7 @@ export function pythonJson(script: URL, input: unknown, args: string[] = []): un
   });
   if (result.error || result.status !== 0) {
     throw new Error(
-      `Python verification failed. Install requirements-test.txt.\n${result.error || result.stderr}`,
+      `Python verification failed. Run pnpm install to prepare the test environment.\n${result.error || result.stderr}`,
     );
   }
   return JSON.parse(result.stdout);

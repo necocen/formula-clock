@@ -5,13 +5,13 @@
 
 ## ビルドと配信
 
-Node.js 22系で `npm ci` を実行する。
+pnpm 12.4.1とPython 3.11以上を用意し、`pnpm install`を実行する。Node.js 22.23.2と依存環境はpnpmが準備する。同じOS・Python環境の再現には`pnpm install --frozen-lockfile`を使う。
 
-- `npm run build`：単体HTMLの`dist/standalone/index.html`を生成する。画像生成コードやWASMは含めない。
-- `npm run build:external`：静的サイトの`dist/site/`とWorkerの`dist/worker/`を生成する。
-- `npm run dev`：ローカルのWorker、ASSETS、KV、R2を起動する。
-- `npm run preview`：Cloudflareへプレビュー可能なWorkerバージョンをアップロードする。本番の配信バージョンは切り替えない。
-- `npm run deploy`：既存Workerへ公開する。Wranglerのビルド設定が配信用ビルドを実行する。
+- `pnpm run build`：単体HTMLの`dist/standalone/index.html`を生成する。画像生成コードやWASMは含めない。
+- `pnpm run build:external`：静的サイトの`dist/site/`とWorkerの`dist/worker/`を生成する。
+- `pnpm run dev`：ローカルのWorker、ASSETS、KV、R2を起動する。
+- `pnpm run preview`：Cloudflareへプレビュー可能なWorkerバージョンをアップロードする。本番の配信バージョンは切り替えない。
+- `pnpm run deploy`：既存Workerへ公開する。Wranglerのビルド設定が配信用ビルドを実行する。
 
 Wranglerの`main`はビルド済みWorker、`ASSETS`は`dist/site/`。
 Workerを先に呼ぶパスは`/`・`/og.png`・`/s/*`・`/api/shares`。時間別JSONなどは従来の静的配信を使う。
@@ -27,8 +27,8 @@ MathJax本体・4書体とEuler拡張は4.1.3、resvg WASMは2.6.2に固定す�
 バージョンのプレビューURLは、そのバージョンの通常のbindingを使う。
 
 ```sh
-npx wrangler kv namespace create formula-clock-shares
-npx wrangler kv namespace create formula-clock-shares-preview
+pnpm exec wrangler kv namespace create formula-clock-shares
+pnpm exec wrangler kv namespace create formula-clock-shares-preview
 ```
 
 移設時は作成結果のIDを`wrangler.jsonc`の`id`・`preview_id`へ設定する。
@@ -63,10 +63,10 @@ ID発行中の通知は表示しない。発行の失敗では画面を停止し
 新しいアカウントへ移す場合の作成手順：
 
 ```sh
-npx wrangler r2 bucket create formula-clock-og
-npx wrangler r2 bucket create formula-clock-og-preview
-npx wrangler r2 bucket lifecycle add formula-clock-og og-30-days og/ --expire-days 30
-npx wrangler r2 bucket lifecycle add formula-clock-og-preview og-30-days og/ --expire-days 30
+pnpm exec wrangler r2 bucket create formula-clock-og
+pnpm exec wrangler r2 bucket create formula-clock-og-preview
+pnpm exec wrangler r2 bucket lifecycle add formula-clock-og og-30-days og/ --expire-days 30
+pnpm exec wrangler r2 bucket lifecycle add formula-clock-og-preview og-30-days og/ --expire-days 30
 ```
 
 公開R2 URLやカスタムドメインは設定しない。オブジェクトはWorkerが読む。
@@ -102,14 +102,14 @@ SNS側が一度取得したカードを独自に保持する場合、その更�
 ## 検証
 
 ```sh
-npm test
-npm run build
-npm run build:external
-npm run test:og
-npm run test:browser -- share
-npm run test:browser -- kv-share --browser chromium
-npm run test:browser -- og-parity
-npm run test:browser -- clock --url http://127.0.0.1:8787/ --screenshots
+pnpm test
+pnpm run build
+pnpm run build:external
+pnpm run test:og
+pnpm run test:browser share
+pnpm run test:browser kv-share --browser chromium
+pnpm run test:browser og-parity
+pnpm run test:browser clock --url http://127.0.0.1:8787/ --screenshots
 ```
 
 `test:og`の描画テストは240ケースのPNG・測定値を`test-results/og/`へ保存する。

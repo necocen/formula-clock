@@ -13,7 +13,7 @@ const sources = [
   'src/shared/expression.ts',
   'src/shared/data.ts',
   'data/expressions.json',
-  'package-lock.json',
+  'pnpm-lock.yaml',
   'src/worker/index.ts',
   'src/worker/handler.ts',
   'src/worker/shares.ts',

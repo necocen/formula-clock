@@ -7,18 +7,18 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "lint": "oxlint --deny-warnings --report-unused-disable-directives",
-    "lint:fix": "npm run lint -- --fix",
-    "check": "npm run format:check && npm run lint && npm run typecheck",
-    "build": "npm run typecheck && tsx tools/build.ts",
-    "build:external": "npm run typecheck && tsx tools/build.ts --external",
-    "generate:licenses": "npm run typecheck && tsx tools/licenses.ts",
-    "generate": "npm run typecheck && tsx tools/generate.ts",
-    "test": "npm run check && npm run test:unit && npm run test:build",
-    "test:og": "npm run build:external && node --import tsx --test tests/og/*.test.ts",
+    "lint:fix": "pnpm run lint --fix",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck",
+    "build": "pnpm run typecheck && tsx tools/build.ts",
+    "build:external": "pnpm run typecheck && tsx tools/build.ts --external",
+    "generate:licenses": "pnpm run typecheck && tsx tools/licenses.ts",
+    "generate": "pnpm run typecheck && tsx tools/generate.ts",
+    "test": "pnpm run check && pnpm run test:unit && pnpm run test:build",
+    "test:og": "pnpm run build:external && node --import tsx --test tests/og/*.test.ts",
     "deploy": "wrangler deploy",
     "preview": "wrangler versions upload",
     "typecheck": "tsc --noEmit",
-    "import:data": "npm run typecheck && tsx tools/import-data.ts",
+    "import:data": "pnpm run typecheck && tsx tools/import-data.ts",
     "dev": "wrangler dev --local",
     "test:unit": "node --import tsx --test tests/unit/*.test.ts",
     "test:build": "node --import tsx --test tests/build/*.test.ts",
@@ -46,5 +46,13 @@
     "typescript": "7.0.2",
     "wrangler": "4.129.1"
   },
-  "type": "module"
+  "type": "module",
+  "packageManager": "pnpm@12.4.1",
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "22.23.2",
+      "onFail": "download"
+    }
+  }
 }

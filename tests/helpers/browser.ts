@@ -64,7 +64,7 @@ export function browserArgs(suiteUrl: string, config: SuiteConfig): BrowserOptio
   const { values } = parseArgs({ args, options, strict: true });
   if (values.help) {
     console.log(
-      `Usage: npm run test:browser -- ${suiteName} [options]\nBrowsers: ${config.browsers.join(', ')} (default: chromium)\n\n` +
+      `Usage: pnpm run test:browser ${suiteName} [options]\nBrowsers: ${config.browsers.join(', ')} (default: chromium)\n\n` +
         Object.entries(options)
           .map(([name, spec]) => `  --${name}${spec.type === 'string' ? ' VALUE' : ''}`)
           .join('\n'),

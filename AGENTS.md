@@ -6,13 +6,14 @@
 ## 編集とビルド
 
 - `src/browser/app.html` / `src/shared/i18n.ts` / `src/shared/display.ts` / `src/shared/share.ts` / `src/shared/expression.ts` / `src/shared/data.ts` / `src/browser/typesetter.ts` / `src/shared/symbols.ts` / `src/browser/app.ts` が表示アプリの原本。`src/browser/app.html`は画面・CSSを持つ完全なHTMLで、ビルド時に`<!-- clock-licenses -->`へライセンス表示、`<!-- clock-scripts -->`へスクリプトを挿入する。共有画像と配信処理は `src/worker/`。
-- ライセンスの取得先・SHA-256・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。本文は取得してGit管理外の`licenses/texts/`へキャッシュする。通常ビルドでも自動生成し、`npm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版とハッシュを更新する。
+- ライセンスの取得先・SHA-256・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。本文は取得してGit管理外の`licenses/texts/`へキャッシュする。通常ビルドでも自動生成し、`pnpm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版とハッシュを更新する。
 - アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。テストは`node:test`とNode版Playwrightで実行し、PythonはSymPyの厳密計算とfontToolsの字形抽出だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
 - `src/browser/bootstrap.ts` が公開グローバルを準備した後にプロバイダー設定、`src/browser/app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
 - `dist/` は生成物。単体HTMLは`dist/standalone/index.html`、配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。
-- 整形はOxfmt、lintはOxlint。編集後に`npm run format`で原本を整形し、`npm run check`で整形・lint・型を確認する。`npm test`にも同じ確認を含む。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
-- Node.js 22系。ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`npm test` / `npm run build` / `npm run build:external` が基本の確認コマンド（いずれも型チェックを含む）。`npm run typecheck`でも単独で確認できる。共有画像の変更時は `npm run test:og` も実行する。
-- `npm run generate` は全日データの再探索。起動・表示変更だけなら実行しない。外部の検証済みデータは`npm run import:data -- DIRECTORY`で24時間分を取り込み、`data/README.md`の出典も更新する。`npm test`の厳密検証には`requirements-test.txt`のSymPyを使う。
+- 整形はOxfmt、lintはOxlint。編集後に`pnpm run format`で原本を整形し、`pnpm run check`で整形・lint・型を確認する。`pnpm test`にも同じ確認を含む。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
+- パッケージ管理はpnpm 12.4.1。`pnpm install`でNode.js 22.23.2とJavaScript・Pythonの依存を準備する。Python 3.11以上の本体は別途必要。JavaScriptは`pnpm-lock.yaml`、テスト用Pythonは`pyproject.toml` / `pylock.toml`で管理し、`.venv`と`.pnpm/`は生成物としてGitへ入れない。npmやpipで別の依存環境・ロックファイルを作らない。Python連携は実験機能でロックがOS・Python環境に依存するため、環境変更時は通常インストールで更新し、同じ環境の再現には`--frozen-lockfile`を使う。
+- ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`pnpm test` / `pnpm run build` / `pnpm run build:external` が基本の確認コマンド（いずれも型チェックを含む）。`pnpm run typecheck`でも単独で確認できる。共有画像の変更時は `pnpm run test:og` も実行する。
+- `pnpm run generate` は全日データの再探索。起動・表示変更だけなら実行しない。外部の検証済みデータは`pnpm run import:data DIRECTORY`で24時間分を取り込み、`data/README.md`の出典も更新する。`pnpm test`の厳密検証にはpnpmが準備するSymPyを使う。
 - 既にユーザーが評価しているUIを、依頼なしに全面改装しない。
 
 ## 維持する動作
@@ -55,7 +56,7 @@
 
 ## 検証と報告
 
-- `npm test` はデータとTeX生成の検証であり、配布フォントのロード検証ではない。
+- `pnpm test` はデータとTeX生成の検証であり、配布フォントのロード検証ではない。
 - `tests/browser/clock.test.ts` の既定はMathJax 4のCDN経路。
 - `--local-mathjax` や `tests/compat/stix2.test.ts` の成功を、MathJax 4＋CDNの成功として報告しない。
 - 以前のテスト結果を再実行した結果として扱わない。使用エンジン、書体、ブラウザ、実行コマンドを記録する。

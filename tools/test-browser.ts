@@ -39,7 +39,7 @@ const env = {
 if (args.includes('--help') || args.includes('-h')) {
   if (suite === 'all')
     console.log(
-      'Usage: npm run test:browser -- all [--browser chromium|webkit] [--url URL] [--output-dir DIRECTORY]\n\nStart the local Worker and run npm run test:og before running all browser suites.',
+      'Usage: pnpm run test:browser all [--browser chromium|webkit] [--url URL] [--output-dir DIRECTORY]\n\nStart the local Worker and run pnpm run test:og before running all browser suites.',
     );
   else run(['--import', 'tsx', files[0]], env);
   process.exit(0);

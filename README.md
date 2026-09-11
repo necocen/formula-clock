@@ -5,11 +5,11 @@
 
 ## 起動
 
-Node.js 22系の22.12.0以上を使用します（推奨版は`.node-version`）。アプリ・Worker・ビルドツールのソースはTypeScriptです。
+pnpm 12.4.1とPython 3.11以上を用意します。pnpm未導入の場合は[公式のインストール手順](https://pnpm.io/installation)を参照してください。`pnpm install`がNode.js 22.23.2とJavaScript・Pythonの依存を準備します。アプリ・Worker・ビルドツールのソースはTypeScriptです。
 
 ```sh
-npm ci
-npm run build
+pnpm install
+pnpm run build
 ```
 
 生成された`dist/standalone/index.html`をブラウザで開けます。MathJax 4.1.3とフォントはCDNから読み込むため、インターネット接続が必要です。
@@ -17,8 +17,8 @@ npm run build
 共有URLとOG画像を含むサイトをローカルで動かす場合：
 
 ```sh
-npm run build:external
-npm run dev
+pnpm run build:external
+pnpm run dev
 ```
 
 `dist/site/`に配信用HTMLと24時間分のJSON、`dist/worker/`にOG画像生成用Workerを生成します。
@@ -64,7 +64,7 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 言語によって時計の数値・フォント・共有URL・保存設定は変わりません。
 
 ライセンス画面の説明は日本語のみで、ライセンス原文をそのまま掲載します。
-出典・取得先・SHA-256・確認済みバージョンは`licenses/`で管理し、本文は初回ビルド時に取得してGit管理外の`licenses/texts/`へキャッシュします。`npm run generate:licenses`でライセンス部分だけを生成できます。更新手順は[ライセンス表示の管理](licenses/README.md)を参照してください。
+出典・取得先・SHA-256・確認済みバージョンは`licenses/`で管理し、本文は初回ビルド時に取得してGit管理外の`licenses/texts/`へキャッシュします。`pnpm run generate:licenses`でライセンス部分だけを生成できます。更新手順は[ライセンス表示の管理](licenses/README.md)を参照してください。
 
 ## ディレクトリ構成
 
@@ -91,58 +91,55 @@ dist/            ビルド出力（Git管理外）
 test-results/    実行結果・スクリーンショット（Git管理外）
 ```
 
-`src/browser/app.html`が画面の原本です。ビルドは`<!-- clock-licenses -->`へライセンス表示、`<!-- clock-scripts -->`へ公開APIの準備・データ設定・アプリを順に挿入し、単体版を`dist/standalone/index.html`、配信版を`dist/site/index.html`へ生成します。原本を編集して`npm run build`で更新してください。
+`src/browser/app.html`が画面の原本です。ビルドは`<!-- clock-licenses -->`へライセンス表示、`<!-- clock-scripts -->`へ公開APIの準備・データ設定・アプリを順に挿入し、単体版を`dist/standalone/index.html`、配信版を`dist/site/index.html`へ生成します。原本を編集して`pnpm run build`で更新してください。
 
 `dist/`と`test-results/`は削除・再生成できるためGitへ入れません。`data/expressions.json`は採用済みの入力データ、`docs/images/`は説明用の見本なのでGit管理します。テスト結果を`tests/`へ出力しないでください。
 
-`npm run generate`は全日の式を再探索し、現在の採用データを上書きします。通常の表示変更やビルドには不要です。外部データは`npm run import:data -- DIRECTORY`で取り込みます。出典と手順は[data/README.md](data/README.md)を参照してください。
+`pnpm run generate`は全日の式を再探索し、現在の採用データを上書きします。通常の表示変更やビルドには不要です。外部データは`pnpm run import:data DIRECTORY`で取り込みます。出典と手順は[data/README.md](data/README.md)を参照してください。
 
 ## 検証
 
 整形は[Oxfmt](https://oxc.rs/docs/guide/usage/formatter)、lintは[Oxlint](https://oxc.rs/docs/guide/usage/linter)を使います。
 TypeScript・JavaScriptの原本とテスト、HTML内のCSS、JSON設定、Markdownを整形します。2スペース・シングルクォート・100文字幅を基準にし、importの自動並べ替えは行いません。
-生成物・採用済み式データ・形式サンプル・ロックファイルは整形対象外です。HTMLやTypeScriptの整形後は`npm run build`で出力を更新します。
+生成物・採用済み式データ・形式サンプル・ロックファイルは整形対象外です。HTMLやTypeScriptの整形後は`pnpm run build`で出力を更新します。
 
 ```sh
-npm run format       # 原本を一括整形
-npm run lint:fix     # 安全なlint自動修正（残った指摘は手で修正）
-npm run check        # 整形確認・lint・TypeScript型チェック
+pnpm run format       # 原本を一括整形
+pnpm run lint:fix     # 安全なlint自動修正（残った指摘は手で修正）
+pnpm run check        # 整形確認・lint・TypeScript型チェック
 ```
 
-`npm run format:check`と`npm run lint`も単独で実行できます。Oxlintはcorrectnessルールと、厳密な比較・`const`の使用・`var`の禁止をチェックし、警告も失敗として扱います。`null`と`undefined`をまとめて判定する`== null` / `!= null`は許可します。型チェックは既存の`tsc --noEmit`で行います。
+`pnpm run format:check`と`pnpm run lint`も単独で実行できます。Oxlintはcorrectnessルールと、厳密な比較・`const`の使用・`var`の禁止をチェックし、警告も失敗として扱います。`null`と`undefined`をまとめて判定する`== null` / `!= null`は許可します。型チェックは既存の`tsc --noEmit`で行います。
 
-値の厳密検証にはPythonとSymPyを使います。開発用の依存を初回に準備してください（ビルド・配布アプリには不要です）。
+JavaScript依存は`package.json`と`pnpm-lock.yaml`、テスト用のSymPy・fontToolsは`pyproject.toml`と`pylock.toml`で管理します。`packageManager`でpnpm、`devEngines.runtime`でNode.jsの版も固定しています。同じOS・Python環境では`pnpm install --frozen-lockfile`で両方を再現できます。
+
+Python連携はpnpmの実験機能で、この版のPythonロックは生成したOS・Python環境に対応します。環境が異なる場合は通常の`pnpm install`でPythonロックを更新します。Python本体は別途用意し、仮想環境と依存はpnpmに管理させます。`.venv`は`.pnpm/python-envs/`を指すリンクとして自動生成され、どちらもGit管理外です。以前の手作業で作った`.venv`がある場合は別名へ移してからインストールしてください。詳細は[テストの準備](tests/README.md)に記載しています。
+
+`pnpm test`はこの`.venv`を使います。別の環境で検証する場合のみ`FORMULA_CLOCK_PYTHON`で明示的に指定できます。
 
 ```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements-test.txt
+pnpm run typecheck
+pnpm test
+pnpm run build
+pnpm run build:external
+pnpm run test:og
 ```
 
-`npm test`は`.venv`のPythonを優先し、なければ`python3`を使います。`FORMULA_CLOCK_PYTHON`で指定することもできます。
+`pnpm run typecheck`はTypeScriptの型チェックだけを実行します。`pnpm test`は最初に`pnpm run check`を実行し、整形・lint・型チェックの失敗を検出します。両ビルドにも型チェックを含めています。
+`pnpm test`は整形・lint・型、単体テスト、単体／配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。
 
 ```sh
-npm run typecheck
-npm test
-npm run build
-npm run build:external
-npm run test:og
-```
-
-`npm run typecheck`はTypeScriptの型チェックだけを実行します。`npm test`は最初に`npm run check`を実行し、整形・lint・型チェックの失敗を検出します。両ビルドにも型チェックを含めています。
-`npm test`は整形・lint・型、単体テスト、単体／配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。
-
-```sh
-npx playwright install chromium webkit
-npm run test:browser -- clock --browser chromium
+pnpm exec playwright install chromium webkit
+pnpm run test:browser clock --browser chromium
 ```
 
 ブラウザテストの既定はMathJax 4.1.3のCDN経路です。`--local-mathjax`を使う互換テストとは区別してください。
 HTTP配信の共有・多言語UIは、ローカルWorkerを起動して確認できます。
 
 ```sh
-npm run test:browser -- share --browser chromium
-npm run test:browser -- i18n --browser chromium
-npm run test:browser -- transport --browser chromium
+pnpm run test:browser share --browser chromium
+pnpm run test:browser i18n --browser chromium
+pnpm run test:browser transport --browser chromium
 ```
 
 ログ・実行結果JSON・確認用スクリーンショットは、Git対象外の`test-results/`に保存します。

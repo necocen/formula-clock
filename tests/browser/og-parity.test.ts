@@ -17,7 +17,7 @@ test('og-parity', { timeout: 900000 }, async (t) => {
   const output = args.outputDir;
   const server: unknown = JSON.parse(fs.readFileSync(args.renderResults, 'utf8'));
   assert.ok(isRecord(server) && Array.isArray(server.cases));
-  assert.equal(server.cases.length, 240, 'Run npm run test:og to produce the full reference set');
+  assert.equal(server.cases.length, 240, 'Run pnpm run test:og to produce the full reference set');
   const cases: unknown[] = [];
   const errors: string[] = [];
   const requests: string[] = [];
