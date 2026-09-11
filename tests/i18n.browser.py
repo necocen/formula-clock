@@ -15,7 +15,7 @@ args.output_dir.mkdir(parents=True, exist_ok=True)
 report = {'at': datetime.now(timezone.utc).isoformat(), 'command': sys.argv,
           'browser': args.browser, 'playwright': version('playwright'), 'checks': [], 'errors': []}
 saved = {'font':'fira','numerals':'lining','division':'inline','symbolMotion':True,'structureMotion':True,'symbolMorph':False}
-legal = [html.unescape(text).removeprefix('\n') for text in re.findall(r'<pre(?: [^>]*)?>(.*?)</pre>', (ROOT/'licenses.html').read_text(), re.S)]
+legal = [html.unescape(text).removeprefix('\n') for text in re.findall(r'<pre(?: [^>]*)?>(.*?)</pre>', (ROOT/'app.html').read_text(), re.S)]
 query = '?v=1&t=123430&font=stix2&numerals=oldstyle&division=fraction'
 license_content = None
 

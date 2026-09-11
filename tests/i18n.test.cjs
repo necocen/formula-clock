@@ -34,9 +34,7 @@ test('both languages cover all UI keys and use the same interpolation values', (
     assert.ok(entry.en.length, key);
     assert.deepEqual(placeholders(entry.ja), placeholders(entry.en), key);
   }
-  for (const name of ['_head.html', 'licenses.html']) {
-    const html = fs.readFileSync(path.join(__dirname, '..', name), 'utf8');
-    for (const match of html.matchAll(/data-i18n(?:-(?:aria-label|title))?="([^"]+)"/g))
-      assert.ok(Object.hasOwn(I18n.messages, match[1]), match[1]);
-  }
+  const html = fs.readFileSync(path.join(__dirname, '..', 'app.html'), 'utf8');
+  for (const match of html.matchAll(/data-i18n(?:-(?:aria-label|title))?="([^"]+)"/g))
+    assert.ok(Object.hasOwn(I18n.messages, match[1]), match[1]);
 });

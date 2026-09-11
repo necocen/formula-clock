@@ -1,78 +1,1234 @@
 <!doctype html>
 <html lang="ja">
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LICENSE · Formula Clock</title>
-  <style>
-    html {
-      color-scheme: dark;
-      background: #111318;
-      color: #e3e5eb;
-      font:
-        16px/1.8 system-ui,
-        sans-serif;
-    }
-    body {
-      max-width: 850px;
-      margin: 0 auto;
-      padding: 36px 24px 80px;
-    }
-    a {
-      color: #aebff9;
-    }
-    h1 {
-      font-size: 1.6rem;
-    }
-    h2 {
-      font-size: 1.15rem;
-      margin-top: 2.5em;
-    }
-    pre {
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      font:
-        12px/1.6 ui-monospace,
-        monospace;
-      color: #bcc1cf;
-    }
-    small {
-      color: #a3a9b7;
-    }
-    summary {
-      cursor: pointer;
-      padding: 12px 0;
-    }
-    details {
-      border-bottom: 1px solid #30343d;
-    }
-  </style>
-  <a href="./">← 時計へ戻る</a
-  ><!-- licenses-content:start -->
-  <h1>LICENSE</h1>
-  <p>
-    Formula ClockはMathJax 4.1.3で数式を表示します。使用する書体はSTIX
-    Two、Termes、Fira、Eulerで、Eulerの基盤にはLatin
-    Modernを使用しています。ブラウザ用のライブラリとフォントデータはCDNから取得します。共有画像の生成用Workerには、同じ版のMathJaxとフォントデータを同梱しています。
-  </p>
-  <p>
-    CDNパッケージはすべて4.1.3です。以下は実際の配布物のライセンスと、フォント内の著作権表示を照合した記録です。
-  </p>
-  <h2>MathJax / フォントパッケージ</h2>
-  <p>
-    mathjax / @mathjax/src 4.1.3、@mathjax/mathjax-stix2-font 4.1.3、@mathjax/mathjax-termes-font
-    4.1.3、@mathjax/mathjax-fira-font 4.1.3、@mathjax/mathjax-euler-font-extension
-    4.1.3、@mathjax/mathjax-modern-font 4.1.3
-  </p>
-  <p>
-    Copyright (c) 2017–2026 The MathJax Consortium<br />パッケージのソフトウェア：Apache License
-    2.0。原書体には下記のライセンスが適用されます。
-  </p>
-  <p>
-    <a href="https://github.com/mathjax/MathJax-src/blob/4.1.3/ts/mathjax.ts">MathJax著作権表示</a>
-    · <a href="https://docs.mathjax.org/en/v4.1/output/fonts.html">書体構成</a>
-  </p>
-  <details>
-    <summary>Apache License 2.0 — 全文</summary>
-    <pre lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111311" />
+    <meta
+      name="description"
+      content="A clock that displays a different mathematical expression every second."
+    />
+    <meta name="formula-clock-build" content="r6-minimal" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Formula Clock" />
+    <meta
+      property="og:description"
+      content="A clock that displays a different mathematical expression every second."
+    />
+    <meta property="og:image" content="/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Formula Clock" />
+    <meta name="twitter:image" content="/og-default.png" />
+    <title>Formula Clock</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111311'/%3E%3Ccircle cx='10' cy='10' r='4' fill='%23eea28c'/%3E%3Ccircle cx='22' cy='10' r='4' fill='%23e4c782'/%3E%3Ccircle cx='10' cy='22' r='4' fill='%239acbbb'/%3E%3Ccircle cx='22' cy='22' r='4' fill='%23b8ace1'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111311;
+        --fg: #edece4;
+        --muted: #92978e;
+        --dim: #636b61;
+        --line: #30362c;
+        --c0: #eea28c;
+        --c1: #e4c782;
+        --c2: #9acbbb;
+        --c3: #b8ace1;
+        --sans:
+          Inter, 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+        --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--sans);
+        font-weight: 400;
+        -webkit-font-smoothing: antialiased;
+      }
+      body:before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(ellipse at 48% 38%, #2b332323, transparent 64%);
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button,
+      a,
+      input,
+      select,
+      summary {
+        touch-action: manipulation;
+      }
+      button {
+        color: inherit;
+        cursor: pointer;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      summary:focus-visible,
+      select:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--c2);
+        outline-offset: 4px;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.35;
+      }
+      button svg {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      button[aria-pressed='true'] {
+        border-color: #687762;
+        background: #283125;
+      }
+      button:hover:not(:disabled) {
+        background: #252c22;
+        color: #fff;
+      }
+      ::selection {
+        background: #83977b55;
+      }
+      .shell {
+        position: relative;
+        max-width: 1520px;
+        min-height: 100svh;
+        margin: auto;
+        padding: 28px 50px;
+        display: flex;
+        flex-direction: column;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        min-height: 40px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-size: 12px;
+        font-weight: 550;
+        letter-spacing: 2.3px;
+        white-space: nowrap;
+      }
+      .brand-mark {
+        display: grid;
+        grid-template-columns: repeat(2, 3px);
+        gap: 4px;
+      }
+      .brand-mark i {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--c0);
+      }
+      .brand-mark i:nth-child(2) {
+        background: var(--c1);
+      }
+      .brand-mark i:nth-child(3) {
+        background: var(--c2);
+      }
+      .brand-mark i:nth-child(4) {
+        background: var(--c3);
+      }
+      .tools {
+        display: flex;
+        gap: 8px;
+      }
+      .tool {
+        display: inline-flex;
+        justify-content: center;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--line);
+        background: transparent;
+        border-radius: 7px;
+        padding: 11px 12px;
+        font-size: 11px;
+        line-height: 1;
+        min-height: 40px;
+        transition:
+          background 0.2s,
+          border-color 0.2s;
+      }
+      .tool.icon-only {
+        width: 40px;
+        padding: 10px;
+      }
+      .tool[aria-pressed='true'] {
+        color: var(--c2);
+      }
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        width: 100%;
+        padding: 56px 0 64px;
+      }
+      .clock-top {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 8px;
+      }
+      .source-time {
+        display: block;
+        width: 4.2em;
+        height: 1.1em;
+        font-size: 24px;
+        opacity: 1;
+        visibility: visible;
+        transition:
+          opacity 300ms ease,
+          visibility 0s;
+      }
+      .source-clock {
+        display: block;
+        width: 100%;
+        height: 100%;
+        fill: currentColor;
+        stroke: currentColor;
+        stroke-width: 0;
+        overflow: visible;
+      }
+      .source-time [data-digit='0'] {
+        color: var(--c0);
+      }
+      .source-time [data-digit='1'] {
+        color: var(--c1);
+      }
+      .source-time [data-digit='2'] {
+        color: var(--c2);
+      }
+      .source-time [data-digit='3'] {
+        color: var(--c3);
+      }
+      .source-time .colon {
+        color: #71786c;
+      }
+      .source-time .src-second {
+        color: var(--muted);
+      }
+      .source-time[hidden] {
+        display: block;
+        opacity: 0;
+        visibility: hidden;
+        transition:
+          opacity 300ms ease,
+          visibility 0s 300ms;
+      }
+      .stage-wrap {
+        position: relative;
+        margin: 8px 0 0;
+      }
+      .stage {
+        height: 242px;
+        width: 100%;
+        position: relative;
+        overflow: visible;
+        isolation: isolate;
+      }
+      .stage:before {
+        content: '';
+        position: absolute;
+        left: 12%;
+        right: 12%;
+        top: 17%;
+        bottom: 10%;
+        border-radius: 50%;
+        background: radial-gradient(ellipse, #8aa7770c, transparent 68%);
+        pointer-events: none;
+      }
+      .math-scene {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        visibility: hidden;
+        user-select: none;
+      }
+      .math-scene .digit,
+      .answer-digit {
+        fill: currentColor;
+        stroke: currentColor;
+        stroke-width: 0;
+        transition:
+          opacity 440ms ease,
+          filter 440ms ease;
+      }
+      .digit[data-digit='0'] {
+        color: var(--c0);
+      }
+      .digit[data-digit='1'] {
+        color: var(--c1);
+      }
+      .digit[data-digit='2'] {
+        color: var(--c2);
+      }
+      .digit[data-digit='3'] {
+        color: var(--c3);
+      }
+      .answer-digit {
+        color: var(--fg);
+      }
+      #operator-root {
+        fill: currentColor;
+        stroke: currentColor;
+        stroke-width: 0;
+        color: #c3c8ba;
+      }
+      #equal-sign {
+        fill: currentColor;
+        stroke: currentColor;
+        stroke-width: 0;
+        color: #c3c8ba;
+        opacity: 0;
+        transition: opacity 440ms ease;
+      }
+      #notation-root {
+        color: #c3c8ba;
+        transition: opacity 440ms ease;
+      }
+      .stage.resting .digit {
+        opacity: 0.48;
+        filter: saturate(0.38);
+      }
+      .stage.resting .answer-digit {
+        opacity: 0.48;
+      }
+      .stage.resting #notation-root {
+        opacity: 0.44;
+      }
+      .stage.loading .digit {
+        opacity: 0.6;
+      }
+      .math-staging {
+        position: fixed;
+        left: -100000px;
+        top: 0;
+        visibility: hidden;
+        pointer-events: none;
+        width: 20000px;
+        font-size: 16px;
+        contain: layout style;
+        z-index: -1;
+      }
+      .math-staging mjx-container {
+        margin: 0 !important;
+      }
+      .plain-time {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: var(--mono);
+        font-size: clamp(28px, 6vw, 78px);
+        letter-spacing: 1px;
+        opacity: 0.48;
+        filter: saturate(0.38);
+        white-space: nowrap;
+      }
+      .plain-time[hidden] {
+        display: none;
+      }
+      .plain-time span:nth-child(1) {
+        color: var(--c0);
+      }
+      .plain-time span:nth-child(2) {
+        color: var(--c1);
+      }
+      .plain-time span:nth-child(4) {
+        color: var(--c2);
+      }
+      .plain-time span:nth-child(5) {
+        color: var(--c3);
+      }
+      .plain-time span:nth-child(3),
+      .plain-time span:nth-child(6) {
+        margin: 0 0.08em;
+        color: var(--muted);
+      }
+      .state-label {
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: var(--muted);
+        letter-spacing: 1.4px;
+      }
+      .state-label.quiet {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 4px;
+        color: #737c6a;
+      }
+      .state-label.counting {
+        color: var(--c1);
+        font-size: 12px;
+        letter-spacing: 2px;
+      }
+      .flash {
+        position: absolute;
+        inset: 0;
+        border-radius: 20px;
+        background: radial-gradient(ellipse, #c4d0ae18, transparent 66%);
+        pointer-events: none;
+        opacity: 0;
+      }
+      .a11y {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .stage {
+        height: clamp(242px, 32svh, 360px);
+      }
+      .minute {
+        max-width: 710px;
+        width: calc(100% - 50px);
+        margin: 28px auto 0;
+      }
+      .ruler {
+        height: 32px;
+        display: grid;
+        grid-template-columns: repeat(60, 1fr);
+        align-items: center;
+        gap: 4px;
+      }
+      .tick {
+        position: relative;
+        background: transparent;
+        padding: 0;
+        height: 32px;
+        border: 0;
+        border-radius: 2px;
+      }
+      .tick:before {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 12px;
+        width: 2px;
+        height: 7px;
+        transform: translateX(-50%);
+        background: #30372b;
+        transition:
+          background 0.3s,
+          height 0.3s,
+          top 0.3s;
+      }
+      .tick.major:before {
+        height: 12px;
+        top: 9px;
+      }
+      .tick.solved:before {
+        background: #7c8970;
+      }
+      .tick.past:before {
+        opacity: 0.55;
+      }
+      .tick.current:before {
+        height: 22px;
+        top: 4px;
+        background: var(--fg);
+        box-shadow: 0 0 10px #d5dbc333;
+      }
+      .tick:hover:before {
+        background: var(--c2);
+        height: 20px;
+        top: 5px;
+      }
+      .ruler-labels {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--dim);
+      }
+      .transport {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 16px;
+        height: 38px;
+        margin-top: 18px;
+      }
+      .transport[hidden] {
+        display: flex;
+        visibility: hidden;
+      }
+      .transport button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 10px;
+        padding: 10px;
+        border-radius: 4px;
+        letter-spacing: 0.5px;
+      }
+      .transport .live-return {
+        color: var(--c2);
+        white-space: nowrap;
+      }
+      .transport .seek-hint {
+        color: var(--dim);
+        font-size: 10px;
+      }
+      .settings-dialog {
+        position: fixed;
+        inset: 80px 28px auto auto;
+        margin: 0;
+        width: 350px;
+        max-width: calc(100vw - 32px);
+        max-height: calc(100svh - 100px);
+        overflow: auto;
+        overscroll-behavior: contain;
+        background: #181d17;
+        border: 1px solid #394232;
+        border-radius: 12px;
+        color: var(--fg);
+        padding: 22px;
+        box-shadow: 0 16px 70px #0005;
+        font-size: 12px;
+      }
+      .settings-dialog::backdrop {
+        background: #0003;
+      }
+      .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .settings-header h2 {
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 1px;
+        margin: 0;
+      }
+      .settings-close {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        color: var(--muted);
+      }
+      .setting-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin: 16px 0;
+        color: var(--muted);
+      }
+      .setting-row select {
+        color: var(--fg);
+        background: #111710;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 8px;
+        max-width: 180px;
+      }
+      .setting-row input[type='range'] {
+        width: 160px;
+        accent-color: var(--c2);
+      }
+      .experimental-option {
+        margin-top: 22px;
+        font-size: 11px;
+      }
+      .experimental-option:has(input:disabled) {
+        opacity: 0.45;
+      }
+      .experimental-option input {
+        accent-color: var(--c2);
+        width: 16px;
+        height: 16px;
+      }
+      .custom-time-label {
+        display: block;
+        margin: 22px 0 9px;
+        color: var(--muted);
+      }
+      .custom-time {
+        display: flex;
+        gap: 8px;
+      }
+      .custom-time input {
+        background: #111710;
+        color: var(--fg);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 8px;
+        min-width: 0;
+        flex: 1;
+        font-family: var(--mono);
+      }
+      .settings-dialog .small-button {
+        border: 1px solid var(--line);
+        background: transparent;
+        border-radius: 5px;
+        padding: 8px 10px;
+        font-size: 11px;
+      }
+      .advanced {
+        margin-top: 22px;
+        border-top: 1px solid var(--line);
+        padding-top: 16px;
+      }
+      .advanced summary {
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px 0;
+      }
+      .advanced p {
+        font-size: 10px;
+        line-height: 1.8;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+      .settings-links {
+        display: flex;
+        gap: 18px;
+        margin-top: 22px;
+      }
+      .settings-links a,
+      .license-link {
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--muted);
+        font-size: 10px;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      .settings-dialog.license-dialog {
+        inset: 0;
+        margin: auto;
+        width: 760px;
+        max-height: calc(100svh - 48px);
+        padding: 0;
+      }
+      .license-dialog .settings-header {
+        position: sticky;
+        top: 0;
+        margin: 0;
+        padding: 16px 22px;
+        background: #181d17;
+        border-bottom: 1px solid var(--line);
+        z-index: 1;
+      }
+      .license-content {
+        padding: 0 24px 24px;
+        font-size: 12px;
+        line-height: 1.8;
+        overflow-wrap: anywhere;
+      }
+      .license-content h2 {
+        font-size: 14px;
+        margin-top: 28px;
+      }
+      .license-content a {
+        color: var(--c2);
+      }
+      .license-content pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font: 11px/1.7 var(--mono);
+        color: var(--muted);
+      }
+      .license-content summary {
+        cursor: pointer;
+        padding: 12px 0;
+      }
+      .license-content details {
+        border-bottom: 1px solid var(--line);
+      }
+      .math-engine-frame {
+        position: fixed;
+        left: -100000px;
+        top: 0;
+        width: 300px;
+        height: 200px;
+        visibility: hidden;
+        pointer-events: none;
+        border: 0;
+      }
+      .segmented-control {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        width: 180px;
+        flex-shrink: 0;
+        gap: 2px;
+        padding: 3px;
+        background: #111710;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+      }
+      .segmented-control label {
+        position: relative;
+        cursor: pointer;
+      }
+      .segmented-control input {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .segmented-control span {
+        display: block;
+        border-radius: 4px;
+        padding: 6px 9px;
+        text-align: center;
+        line-height: 18px;
+        color: var(--muted);
+      }
+      .segmented-control input:hover + span {
+        color: var(--fg);
+      }
+      .segmented-control input:checked + span {
+        background: #35402f;
+        color: var(--fg);
+        box-shadow: 0 1px 3px #0005;
+      }
+      .segmented-control input:focus-visible + span {
+        outline: 2px solid var(--c2);
+        outline-offset: 1px;
+      }
+      #division-choice span {
+        padding-inline: 2px;
+      }
+      @media (max-width: 760px) {
+        .shell {
+          padding: 22px;
+        }
+        .brand {
+          font-size: 10px;
+          letter-spacing: 1.8px;
+        }
+        .tools {
+          gap: 6px;
+        }
+        main {
+          padding: 40px 0 48px;
+        }
+        .minute {
+          width: 100%;
+          margin-top: 22px;
+        }
+        .ruler {
+          gap: 2px;
+        }
+        .source-time {
+          font-size: 22px;
+        }
+        .settings-dialog {
+          right: 16px;
+          top: 76px;
+          max-height: calc(100svh - 92px);
+        }
+      }
+      @media (max-width: 480px) {
+        .shell {
+          padding: 18px 16px;
+        }
+        .brand {
+          font-size: 9px;
+          letter-spacing: 1.4px;
+          gap: 8px;
+        }
+        .tool {
+          padding: 10px;
+          min-width: 40px;
+        }
+        .tools {
+          gap: 5px;
+        }
+        .stage {
+          height: 226px;
+        }
+        .transport {
+          gap: 10px;
+        }
+        .transport button {
+          padding: 10px 7px;
+        }
+        .setting-row select {
+          max-width: 165px;
+        }
+        .segmented-control {
+          width: 165px;
+        }
+        .settings-dialog {
+          padding: 20px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *:before {
+          scroll-behavior: auto !important;
+        }
+        .source-time,
+        .math-scene .digit,
+        .answer-digit,
+        #equal-sign,
+        #notation-root {
+          transition: none !important;
+        }
+      }
+      .tools #share {
+        margin-inline-start: 8px;
+      }
+      .tool:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .tool[hidden] {
+        display: none;
+      }
+      .share-status {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        margin: 0;
+        padding: 10px 16px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #181d17;
+        color: var(--fg);
+        font-size: 12px;
+        z-index: 2;
+        white-space: nowrap;
+      }
+      .share-status:empty {
+        display: none;
+      }
+      .share-dialog {
+        inset: 0;
+        margin: auto;
+        width: 460px;
+      }
+      .share-dialog p {
+        color: var(--muted);
+        line-height: 1.8;
+      }
+      .share-url {
+        width: 100%;
+        padding: 10px;
+        background: var(--bg);
+        color: var(--fg);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        font: 12px var(--mono);
+      }
+      @media (max-width: 480px) {
+        .topbar {
+          gap: 8px;
+        }
+        .tools {
+          gap: 4px;
+        }
+        .tool.icon-only {
+          width: 36px;
+          min-width: 36px;
+          padding: 8px;
+        }
+      }
+      .advanced .state-label {
+        height: auto;
+        min-height: 26px;
+        text-align: center;
+      }
+      @media (max-width: 360px) {
+        .segmented-control {
+          width: 144px;
+        }
+        #division-choice span {
+          font-size: 11px;
+        }
+      }
+      .share-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .share-status {
+        width: max-content;
+        max-width: calc(100vw - 32px);
+        white-space: normal;
+        text-align: center;
+      }
+      body.fullscreen .shell {
+        max-width: none;
+        padding-block: 16px;
+      }
+      body.fullscreen main {
+        padding: 20px 0;
+      }
+      body.fullscreen .stage {
+        height: clamp(120px, calc(100svh - 280px), 66svh);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>FORMULA
+          CLOCK
+        </div>
+        <div class="tools">
+          <button
+            class="tool icon-only"
+            id="settings-open"
+            data-i18n-aria-label="settings"
+            aria-label="設定"
+            aria-haspopup="dialog"
+            aria-controls="settings"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h9m4 0h3M4 17h3m4 0h9" />
+              <circle cx="15" cy="7" r="2" />
+              <circle cx="9" cy="17" r="2" />
+            </svg>
+          </button>
+          <button
+            class="tool icon-only"
+            id="sound"
+            data-i18n-aria-label="soundOff"
+            aria-pressed="false"
+            aria-label="時報 OFF"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M11 5 6 9H3v6h3l5 4Z" />
+              <path id="sound-waves" d="m16 9 6 6m0-6-6 6" />
+            </svg>
+          </button>
+          <button
+            class="tool icon-only"
+            id="fullscreen"
+            data-i18n-aria-label="fullscreen"
+            hidden
+            aria-pressed="false"
+            aria-label="全画面表示"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
+            </svg>
+          </button>
+          <button
+            class="tool icon-only"
+            id="share"
+            data-i18n-aria-label="share"
+            data-i18n-title="share"
+            disabled
+            aria-label="現在の表示を共有"
+            title="現在の表示を共有"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 16V3m-4 4 4-4 4 4M7 11H4v10h16V11h-3" />
+            </svg>
+          </button>
+        </div>
+      </header>
+      <main>
+        <h1 class="a11y">Formula Clock</h1>
+        <div class="clock-top">
+          <div class="source-time" id="source-time" hidden role="img">
+            <svg class="source-clock" viewBox="0 0 4200 1100" aria-hidden="true">
+              <g class="source-digit" data-digit="0"></g>
+              <g class="source-digit" data-digit="1"></g>
+              <g class="colon"></g>
+              <g class="source-digit" data-digit="2"></g>
+              <g class="source-digit" data-digit="3"></g>
+              <g class="colon"></g>
+              <g class="src-second" id="source-second">
+                <g class="source-digit" data-second="0"></g>
+                <g class="source-digit" data-second="1"></g>
+              </g>
+            </svg>
+          </div>
+        </div>
+        <div class="stage-wrap">
+          <div class="stage" id="stage" role="img" aria-label="Formula Clock">
+            <div class="flash" id="flash"></div>
+            <svg
+              id="math-scene"
+              class="math-scene"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <g id="notation-root"></g>
+              <g id="operator-root"></g>
+              <g id="equal-sign"></g>
+              <g class="digit" data-digit="0"></g>
+              <g class="digit" data-digit="1"></g>
+              <g class="digit" data-digit="2"></g>
+              <g class="digit" data-digit="3"></g>
+              <g class="answer-digit" data-second="0"></g>
+              <g class="answer-digit" data-second="1"></g>
+            </svg>
+            <div id="plain-time" class="plain-time" aria-hidden="true">
+              <span>0</span><span>0</span><span>:</span><span>0</span><span>0</span><span>:</span
+              ><span>0</span><span>0</span>
+            </div>
+          </div>
+        </div>
+        <div class="minute">
+          <div
+            class="ruler"
+            id="ruler"
+            data-i18n-aria-label="chooseSecond"
+            aria-label="秒を選んでプレビュー"
+          ></div>
+          <div class="ruler-labels" aria-hidden="true">
+            <span>00</span><span>15</span><span>30</span><span>45</span><span>59</span>
+          </div>
+        </div>
+        <div class="transport" id="transport" hidden>
+          <span class="seek-hint" data-i18n="seekHint">← → 1秒ずつ移動</span
+          ><button
+            class="live-return"
+            id="go-live"
+            data-i18n-title="goLiveShortcut"
+            title="現在時刻に戻る（L）"
+          >
+            <span data-i18n="goLive">現在時刻へ</span>
+          </button>
+        </div>
+      </main>
+    </div>
+    <p id="share-status" class="share-status" role="status" aria-live="polite"></p>
+    <dialog class="settings-dialog share-dialog" id="share-dialog" aria-labelledby="share-title">
+      <div class="settings-header">
+        <h2 id="share-title"><span data-i18n="shareTitle">Share</span></h2>
+        <button
+          class="settings-close"
+          id="share-close"
+          data-i18n-aria-label="close"
+          aria-label="閉じる"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+      <p><span data-i18n="shareHelp">このURLをコピーして共有できます。</span></p>
+      <input
+        id="share-url"
+        data-i18n-aria-label="shareUrl"
+        class="share-url"
+        type="url"
+        readonly
+        aria-label="共有URL"
+      />
+      <div class="share-actions">
+        <button id="share-native" class="small-button" data-i18n="shareNative" hidden>
+          共有する</button
+        ><button id="share-copy" class="small-button" data-i18n="shareCopy">リンクをコピー</button>
+      </div>
+    </dialog>
+    <dialog class="settings-dialog" id="settings" aria-labelledby="settings-title">
+      <div class="settings-header">
+        <h2 id="settings-title"><span data-i18n="settings">設定</span></h2>
+        <button
+          class="settings-close"
+          id="settings-close"
+          data-i18n-aria-label="closeSettings"
+          aria-label="設定を閉じる"
+          autofocus
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+      <label class="setting-row"
+        ><span data-i18n="font">フォント</span
+        ><select id="font-choice" data-i18n-aria-label="mathFont" aria-label="数式のフォント">
+          <option value="stix2" selected>STIX Two</option>
+          <option value="termes">Termes</option>
+          <option value="fira">Fira</option>
+          <option value="euler">Euler</option>
+        </select></label
+      >
+      <div class="setting-row">
+        <span id="numeral-label" data-i18n="numerals">数字のスタイル</span>
+        <div
+          class="segmented-control"
+          id="numeral-choice"
+          role="radiogroup"
+          aria-labelledby="numeral-label"
+        >
+          <label><input type="radio" name="numerals" value="lining" /><span>Lining</span></label
+          ><label
+            ><input type="radio" name="numerals" value="oldstyle" checked /><span
+              >Oldstyle</span
+            ></label
+          >
+        </div>
+      </div>
+      <div class="setting-row">
+        <span id="division-label" data-i18n="division">除算のスタイル</span>
+        <div
+          class="segmented-control"
+          id="division-choice"
+          role="radiogroup"
+          aria-labelledby="division-label"
+        >
+          <label
+            ><input type="radio" name="division" value="fraction" checked /><span
+              data-i18n="fraction"
+              >分数</span
+            ></label
+          ><label><input type="radio" name="division" value="inline" /><span>÷</span></label
+          ><label><input type="radio" name="division" value="slash" /><span>/</span></label>
+        </div>
+      </div>
+      <label class="setting-row"
+        ><span data-i18n="volume">音量</span
+        ><input
+          id="volume"
+          data-i18n-aria-label="signalVolume"
+          type="range"
+          min="0"
+          max="100"
+          value="25"
+          aria-label="時報の音量"
+      /></label>
+      <label class="custom-time-label" for="custom-time"
+        ><span data-i18n="setTime">時刻を指定</span></label
+      >
+      <div class="custom-time">
+        <input type="time" id="custom-time" step="1" value="12:34:30" /><button
+          class="small-button"
+          id="custom-go"
+        >
+          <span data-i18n="show">表示</span>
+        </button>
+      </div>
+      <details class="advanced" id="advanced-settings">
+        <summary><span data-i18n="advanced">詳細</span></summary>
+        <label class="setting-row experimental-option"
+          ><span data-i18n="symbolMotion">記号をなめらかに動かす</span
+          ><input id="symbol-motion" type="checkbox"
+        /></label>
+        <label class="setting-row experimental-option"
+          ><span data-i18n="structureMotion">分数・√・括弧も動かす</span
+          ><input id="structure-motion" type="checkbox"
+        /></label>
+        <label class="setting-row experimental-option"
+          ><span data-i18n="symbolMorph">四則記号を変形する</span
+          ><input id="symbol-morph" type="checkbox"
+        /></label>
+        <p id="render-status" role="status" hidden></p>
+        <p id="state-label" role="status"></p>
+        <p>
+          <span data-i18n="shortcuts"
+            >← → 一時停止中に1秒移動 / Space 一時停止・現在時刻へ / L 現在時刻へ / M 時報 / F
+            全画面</span
+          >
+        </p>
+      </details>
+      <div class="settings-links">
+        <button
+          class="license-link"
+          id="licenses-open"
+          aria-haspopup="dialog"
+          aria-controls="licenses"
+        >
+          <span data-i18n="licenses">LICENSE</span></button
+        ><a href="https://github.com/necocen/formula-clock" target="_blank" rel="noopener"
+          >GitHub ↗</a
+        >
+      </div>
+    </dialog>
+    <dialog class="settings-dialog license-dialog" id="licenses" aria-labelledby="licenses-title">
+      <div class="settings-header">
+        <h2 id="licenses-title"><span data-i18n="licenses">LICENSE</span></h2>
+        <button
+          class="settings-close"
+          id="licenses-close"
+          data-i18n-aria-label="closeLicenses"
+          aria-label="ライセンスを閉じる"
+          autofocus
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+      <div class="license-content" lang="ja">
+        <p>
+          Formula ClockはMathJax 4.1.3で数式を表示します。使用する書体はSTIX
+          Two、Termes、Fira、Eulerで、Eulerの基盤にはLatin
+          Modernを使用しています。ブラウザ用のライブラリとフォントデータはCDNから取得します。共有画像の生成用Workerには、同じ版のMathJaxとフォントデータを同梱しています。
+        </p>
+        <p>
+          CDNパッケージはすべて4.1.3です。以下は実際の配布物のライセンスと、フォント内の著作権表示を照合した記録です。
+        </p>
+        <h2>MathJax / フォントパッケージ</h2>
+        <p>
+          mathjax / @mathjax/src 4.1.3、@mathjax/mathjax-stix2-font
+          4.1.3、@mathjax/mathjax-termes-font 4.1.3、@mathjax/mathjax-fira-font
+          4.1.3、@mathjax/mathjax-euler-font-extension 4.1.3、@mathjax/mathjax-modern-font 4.1.3
+        </p>
+        <p>
+          Copyright (c) 2017–2026 The MathJax Consortium<br />パッケージのソフトウェア：Apache
+          License 2.0。原書体には下記のライセンスが適用されます。
+        </p>
+        <p>
+          <a href="https://github.com/mathjax/MathJax-src/blob/4.1.3/ts/mathjax.ts"
+            >MathJax著作権表示</a
+          >
+          · <a href="https://docs.mathjax.org/en/v4.1/output/fonts.html">書体構成</a>
+        </p>
+        <details>
+          <summary>Apache License 2.0 — 全文</summary>
+          <pre lang="en">
                                  Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -275,19 +1431,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 </pre>
-  </details>
-  <h2>STIX Two</h2>
-  <p>CDNパッケージ：@mathjax/mathjax-stix2-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
-  <pre lang="en">
+        </details>
+        <h2>STIX Two</h2>
+        <p>CDNパッケージ：@mathjax/mathjax-stix2-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
+        <pre lang="en">
 Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts)</pre>
-  <p>
-    デザイン：Ross Mills, John Hudson &amp; Paul Hanslow, Tiro Typeworks Ltd; with prior portions
-    MicroPress Inc., and Coen Hoffman.
-  </p>
-  <p><a href="https://github.com/stipub/stixfonts/blob/master/OFL.txt">原書体の参照先</a></p>
-  <details>
-    <summary>適用ライセンス — 全文</summary>
-    <pre lang="en">
+        <p>
+          デザイン：Ross Mills, John Hudson &amp; Paul Hanslow, Tiro Typeworks Ltd; with prior
+          portions MicroPress Inc., and Coen Hoffman.
+        </p>
+        <p><a href="https://github.com/stipub/stixfonts/blob/master/OFL.txt">原書体の参照先</a></p>
+        <details>
+          <summary>適用ライセンス — 全文</summary>
+          <pre lang="en">
 Copyright 2001-2021 The STIX Fonts Project Authors (https://github.com/stipub/stixfonts), with Reserved Font Name &quot;TM Math&quot;. STIX Fonts™ is a trademark of The Institute of Electrical and Electronics Engineers, Inc.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -381,17 +1537,19 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 </pre>
-  </details>
-  <h2>Termes / TeX Gyre Termes Math</h2>
-  <p>CDNパッケージ：@mathjax/mathjax-termes-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
-  <pre lang="en">
+        </details>
+        <h2>Termes / TeX Gyre Termes Math</h2>
+        <p>
+          CDNパッケージ：@mathjax/mathjax-termes-font 4.1.3<br />配布フォント内部の版表示：1.0.0
+        </p>
+        <pre lang="en">
 Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
 Original copyright:
 Copyright 2012--2014 for Tex Gyre Termes Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre>
-  <p><a href="https://www.gust.org.pl/projects/e-foundry/tg-math">原書体の参照先</a></p>
-  <details>
-    <summary>適用ライセンス — 全文</summary>
-    <pre lang="en">
+        <p><a href="https://www.gust.org.pl/projects/e-foundry/tg-math">原書体の参照先</a></p>
+        <details>
+          <summary>適用ライセンス — 全文</summary>
+          <pre lang="en">
 % This is version 1.0, dated 22 June 2009, of the GUST Font License.
 % (GUST is the Polish TeX Users Group, http://www.gust.org.pl)
 %
@@ -421,17 +1579,17 @@ Copyright 2012--2014 for Tex Gyre Termes Math OTF by B. Jackowski, P. Strzelczyk
 % http://www.latex-project.org/lppl.txt and version 1.3c or later
 % is part of all distributions of LaTeX version 2006/05/20 or later.
 </pre>
-  </details>
-  <h2>Fira Math</h2>
-  <p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
-  <pre lang="en">
+        </details>
+        <h2>Fira Math</h2>
+        <p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
+        <pre lang="en">
 Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
 Original copyright:
 Copyright (C) 2018, 2019 Xiangdong Zeng</pre>
-  <p><a href="https://github.com/firamath/firamath/blob/main/LICENSE">原書体の参照先</a></p>
-  <details>
-    <summary>適用ライセンス — 全文</summary>
-    <pre lang="en">
+        <p><a href="https://github.com/firamath/firamath/blob/main/LICENSE">原書体の参照先</a></p>
+        <details>
+          <summary>適用ライセンス — 全文</summary>
+          <pre lang="en">
 Copyright (C) 2018--2023 by Xiangdong Zeng &lt;xdzeng96@gmail.com&gt;
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -525,15 +1683,15 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 </pre>
-  </details>
-  <h2>Fira Sans（Oldstyle数字）</h2>
-  <p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
-  <pre lang="en">
+        </details>
+        <h2>Fira Sans（Oldstyle数字）</h2>
+        <p>CDNパッケージ：@mathjax/mathjax-fira-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
+        <pre lang="en">
 Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.</pre>
-  <p><a href="https://github.com/mozilla/Fira/blob/master/LICENSE">原書体の参照先</a></p>
-  <details>
-    <summary>適用ライセンス — 全文</summary>
-    <pre lang="en">
+        <p><a href="https://github.com/mozilla/Fira/blob/master/LICENSE">原書体の参照先</a></p>
+        <details>
+          <summary>適用ライセンス — 全文</summary>
+          <pre lang="en">
 Digitized data copyright (c) 2012-2015, The Mozilla Foundation and Telefonica S.A.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -628,21 +1786,21 @@ DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 </pre>
-  </details>
-  <h2>Euler / Neo Euler</h2>
-  <p>
-    CDNパッケージ：@mathjax/mathjax-euler-font-extension 4.1.3<br />配布フォント内部の版表示：1.0.0
-  </p>
-  <pre lang="en">
+        </details>
+        <h2>Euler / Neo Euler</h2>
+        <p>
+          CDNパッケージ：@mathjax/mathjax-euler-font-extension 4.1.3<br />配布フォント内部の版表示：1.0.0
+        </p>
+        <pre lang="en">
 Copyright (c) 2022 MathJax, Inc. (www.mathjax.org)
 Original copyright:
 Copyright (c) 1997, 2009 American Mathematical Society (http://www.ams.org).
 Copyright (c) 2009, 2010 Khaled Hosny (khaledhosny@eglug.org).</pre>
-  <p>デザイン：Hermann Zapf</p>
-  <p><a href="https://github.com/aliftype/euler-otf">原書体の参照先</a></p>
-  <details>
-    <summary>適用ライセンス — 全文</summary>
-    <pre lang="en">
+        <p>デザイン：Hermann Zapf</p>
+        <p><a href="https://github.com/aliftype/euler-otf">原書体の参照先</a></p>
+        <details>
+          <summary>適用ライセンス — 全文</summary>
+          <pre lang="en">
 Copyright (c) 1997, 2009 American Mathematical Society (http://www.ams.org),
 with Reserved Font Names EUEX10, EUEX7, EUEX8, EUEX9, EUFB10, EUFB5, EUFB7,
 EUFM10, EUFM5, EUFM7, EURB10, EURB5, EURB7, EURM10, EURM5, EURM7, EUSB10,
@@ -741,15 +1899,17 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.</pre>
-  </details>
-  <h2>Latin Modern Math</h2>
-  <p>CDNパッケージ：@mathjax/mathjax-modern-font 4.1.3<br />配布フォント内部の版表示：1.0.0</p>
-  <pre lang="en">
+        </details>
+        <h2>Latin Modern Math</h2>
+        <p>
+          CDNパッケージ：@mathjax/mathjax-modern-font 4.1.3<br />配布フォント内部の版表示：1.0.0
+        </p>
+        <pre lang="en">
 Copyright 2012--2014 for Latin Modern Math OTF by B. Jackowski, P. Strzelczyk and P. Pianowski (on behalf of TeX users groups). This work is released under the GUST Font License -- see http://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt for details.</pre>
-  <p><a href="https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt">原書体の参照先</a></p>
-  <details>
-    <summary>適用ライセンス — 全文</summary>
-    <pre lang="en">
+        <p><a href="https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt">原書体の参照先</a></p>
+        <details>
+          <summary>適用ライセンス — 全文</summary>
+          <pre lang="en">
 % This is version 1.0, dated 22 June 2009, of the GUST Font License.
 % (GUST is the Polish TeX Users Group, http://www.gust.org.pl)
 %
@@ -779,10 +1939,10 @@ Copyright 2012--2014 for Latin Modern Math OTF by B. Jackowski, P. Strzelczyk an
 % http://www.latex-project.org/lppl.txt and version 1.3c or later
 % is part of all distributions of LaTeX version 2006/05/20 or later.
 </pre>
-  </details>
-  <details>
-    <summary>GUSTから参照されるLaTeX Project Public License 1.3c — 全文</summary>
-    <pre lang="en">
+        </details>
+        <details>
+          <summary>GUSTから参照されるLaTeX Project Public License 1.3c — 全文</summary>
+          <pre lang="en">
 The LaTeX Project Public License
 =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -1200,20 +2360,20 @@ Important Recommendations
    the Work.
 
 </pre>
-  </details>
-  <h2>resvg-js / 共有画像の生成</h2>
-  <p>
-    @resvg/resvg-wasm 2.6.2を改変せず使用しています（Mozilla Public License
-    2.0）。PNG化はWorkerとビルド時に行い、ブラウザにはWASMを配信しません。OG画像のロゴ文字は、上記ライセンスのFira
-    Mathからアウトライン化しています。
-  </p>
-  <p>
-    <a href="https://github.com/thx/resvg-js/tree/v2.6.2">使用版のソースコード</a> ·
-    <a href="https://github.com/thx/resvg-js/blob/v2.6.2/LICENSE">ライセンス原文</a>
-  </p>
-  <details>
-    <summary>Mozilla Public License 2.0 — 全文</summary>
-    <pre lang="en">
+        </details>
+        <h2>resvg-js / 共有画像の生成</h2>
+        <p>
+          @resvg/resvg-wasm 2.6.2を改変せず使用しています（Mozilla Public License
+          2.0）。PNG化はWorkerとビルド時に行い、ブラウザにはWASMを配信しません。OG画像のロゴ文字は、上記ライセンスのFira
+          Mathからアウトライン化しています。
+        </p>
+        <p>
+          <a href="https://github.com/thx/resvg-js/tree/v2.6.2">使用版のソースコード</a> ·
+          <a href="https://github.com/thx/resvg-js/blob/v2.6.2/LICENSE">ライセンス原文</a>
+        </p>
+        <details>
+          <summary>Mozilla Public License 2.0 — 全文</summary>
+          <pre lang="en">
 Mozilla Public License Version 2.0
 ==================================
 
@@ -1587,11 +2747,19 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.</pre>
-  </details>
-  <p>
-    <small
-      >配布物照合日：2026-09-10。ブラウザはCDNから書体を取得し、サーバー描画用の依存はWorkerに同梱しています。</small
+        </details>
+        <p>
+          <small
+            >配布物照合日：2026-09-10。ブラウザはCDNから書体を取得し、サーバー描画用の依存はWorkerに同梱しています。</small
+          >
+        </p>
+      </div>
+    </dialog>
+    <noscript
+      ><p style="padding: 30px; text-align: center">
+        JavaScript is required to display this clock. / この時計の表示にはJavaScriptが必要。
+      </p></noscript
     >
-  </p>
-  <!-- licenses-content:end -->
+    <!-- clock-scripts -->
+  </body>
 </html>

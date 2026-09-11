@@ -69,7 +69,8 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 
 | ファイル                                      | 役割                                              |
 | --------------------------------------------- | ------------------------------------------------- |
-| `_head.html` / `app.ts`                       | 画面・操作・時計・アニメーション・時報            |
+| `app.html`                                    | 画面・CSS・ライセンス本文の原本                   |
+| `app.ts`                                      | 操作・時計・アニメーション・時報                  |
 | `i18n.ts`                                     | 日英のUI文言                                      |
 | `expression.ts` / `data.ts`                   | ASTからのTeX生成、式データの取得                  |
 | `display.ts` / `typesetter.ts` / `symbols.ts` | 表示設定、組版、数字と記号の配置・同一性          |
@@ -83,7 +84,7 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 
 `tsconfig.json`の`strict`でソースを型チェックし、esbuildでブラウザ用JavaScriptをHTMLへ埋め込みます。Nodeのツールと既存のJavaScriptテストはtsxでTypeScriptソースを読み込みます。ブラウザにTypeScriptの実行環境やnpmライブラリを追加する必要はありません。
 
-`index.html`は生成物です。原本を編集して`npm run build`で更新してください。
+`app.html`が画面の原本、`index.html`が単体配布用の生成物です。ビルドは`app.html`の`<!-- clock-scripts -->`へブラウザの公開API・データ設定・アプリを順に挿入します。ライセンス本文も同じ原本内のダイアログにあり、別ページへの配信やビルド時の本文抽出はありません。原本を編集して`npm run build`で更新してください。
 `npm run generate`は全日の式を再探索し、現在の採用データを上書きする処理です。通常の表示変更やビルドには不要です。外部で生成したデータは`npm run import:data -- DIRECTORY`で取り込みます。出典と手順は[data/README.md](data/README.md)を参照してください。
 
 ## 検証

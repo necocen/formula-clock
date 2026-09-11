@@ -33,14 +33,13 @@ test('external build exactly partitions the canonical day and publishes only sit
     '_headers',
     'data',
     'index.html',
-    'licenses.html',
     'og-default.png',
   ]);
   assert.equal(fs.readdirSync(path.join(dir, 'data/hours')).length, 24);
   assert.ok(read('index.html').includes("new FormulaData.FetchHourProvider('data/manifest.json')"));
   assert.ok(!read('index.html').includes('id="clock-data"'));
   assert.ok(read('_headers').includes('max-age=31536000, immutable'));
-  assert.ok(read('licenses.html').includes('LaTeX Project Public License'));
+  assert.ok(read('index.html').includes('LaTeX Project Public License'));
   const png = fs.readFileSync(path.join(dir, 'og-default.png'));
   assert.equal(png.readUInt32BE(16), 1200);
   assert.equal(png.readUInt32BE(20), 630);

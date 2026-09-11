@@ -29,11 +29,7 @@ const outDir = external ? path.join(root, 'dist-external') : root;
 // Only the dedicated generated directory is cleaned. Never publish the repository root.
 if (external) fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
-const licenseContent = read('licenses.html').match(
-  /<!-- licenses-content:start -->([\s\S]*?)<!-- licenses-content:end -->/,
-);
-if (!licenseContent) throw new Error('License content markers are missing');
-const template = read('_head.html').replace('<!-- licenses-content -->', () => licenseContent[1]);
+const template = read('app.html');
 if (!template.includes('<!-- clock-scripts -->')) throw new Error('Clock script marker is missing');
 let scripts = `<script id="browser-code">\n${bundle('browser.ts')}\n</script>\n`;
 const data = read('data/expressions.json');
@@ -71,7 +67,6 @@ if (external) {
 scripts += `<script id="app-code">\n${bundle('app.ts')}\n</script>\n`;
 const html = template.replace('<!-- clock-scripts -->', () => scripts);
 fs.writeFileSync(path.join(outDir, 'index.html'), html);
-if (external) fs.copyFileSync(path.join(root, 'licenses.html'), path.join(outDir, 'licenses.html'));
 if (external)
   execFileSync(process.execPath, ['--import', 'tsx', path.join(root, 'tools/build-worker.ts')], {
     cwd: root,

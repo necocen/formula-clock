@@ -5,7 +5,7 @@
 
 ## 編集とビルド
 
-- ルートの `_head.html` / `i18n.ts` / `display.ts` / `share.ts` / `expression.ts` / `data.ts` / `typesetter.ts` / `symbols.ts` / `app.ts` が表示アプリの原本。共有画像と配信処理は `worker/`。
+- ルートの `app.html` / `i18n.ts` / `display.ts` / `share.ts` / `expression.ts` / `data.ts` / `typesetter.ts` / `symbols.ts` / `app.ts` が表示アプリの原本。`app.html`は画面・CSS・ライセンス本文を持つ完全なHTMLで、ビルド時に`<!-- clock-scripts -->`へスクリプトを挿入する。共有画像と配信処理は `worker/`。
 - アプリ・Worker・ビルドツールはTypeScriptのES Modules。共通の型は `types.ts`、ブラウザ固有の型は `browser-types.ts` / `globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
 - `browser.ts` が公開グローバルを準備した後にプロバイダー設定、`app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
 - `index.html` は生成物。直接編集せず、原本を変更して `npm run build` を実行する。
