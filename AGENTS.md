@@ -5,7 +5,7 @@
 
 ## 編集とビルド
 
-- `src/browser/index.html` / `src/shared/i18n.ts` / `src/shared/display.ts` / `src/shared/share.ts` / `src/shared/expression.ts` / `src/shared/data.ts` / `src/browser/typesetter.ts` / `src/shared/symbols.ts` / `src/browser/app.ts` が表示アプリの原本。`src/browser/index.html`は画面・CSSを持つ完全なHTMLで、ビルド時に`<!-- clock-licenses -->`へライセンス表示、単体版の`<!-- clock-data -->`へ式データを挿入する。共有画像と配信処理は `src/worker/`。
+- `src/browser/index.html` / `src/browser/styles.css` / `src/shared/i18n.ts` / `src/shared/display.ts` / `src/shared/share.ts` / `src/shared/expression.ts` / `src/shared/data.ts` / `src/browser/typesetter.ts` / `src/shared/symbols.ts` / `src/browser/app.ts` が表示アプリの原本。画面のマークアップは`src/browser/index.html`、CSSは`src/browser/styles.css`で、ビルド時に`<!-- clock-licenses -->`へライセンス表示、単体版の`<!-- clock-data -->`へ式データを挿入する。共有画像と配信処理は `src/worker/`。
 - ライセンスの取得先・SHA-256・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。本文は取得してGit管理外の`licenses/texts/`へキャッシュする。通常ビルドでも自動生成し、`pnpm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版とハッシュを更新する。
 - アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行し、PythonはSymPyの厳密計算だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
 - `src/browser/main.ts`は`bootstrap.ts`・`provider.ts`・`app.ts`をこの順で読み込む。ビルドはVite、Worker・WASM・配布設定はCloudflare公式プラグイン、単体HTMLの埋め込みはvite-plugin-singlefileを使う。`tools/vite-clock.ts`には式データとライセンス固有の処理だけを置き、独自バンドラーやWASMローダーを追加しない。

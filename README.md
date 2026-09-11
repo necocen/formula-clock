@@ -98,7 +98,7 @@ test-results/    実行結果・スクリーンショット（Git管理外）
 ## 検証
 
 整形は[Oxfmt](https://oxc.rs/docs/guide/usage/formatter)、lintは[Oxlint](https://oxc.rs/docs/guide/usage/linter)を使います。
-TypeScript・JavaScriptの原本とテスト、HTML内のCSS、JSON設定、Markdownを整形します。2スペース・シングルクォート・100文字幅を基準にし、importの自動並べ替えは行いません。
+TypeScript・JavaScriptの原本とテスト、CSS、JSON設定、Markdownを整形します。2スペース・シングルクォート・100文字幅を基準にし、importの自動並べ替えは行いません。
 生成物・採用済み式データ・形式サンプル・ロックファイルは整形対象外です。HTMLやTypeScriptの整形後は`pnpm run build`で出力を更新します。
 
 ```sh
