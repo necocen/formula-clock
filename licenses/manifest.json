@@ -1,0 +1,67 @@
+{
+  "reviewedOn": "2026-09-10",
+  "packages": {
+    "@mathjax/src": {
+      "version": "4.1.3",
+      "license": "Apache-2.0"
+    },
+    "@mathjax/mathjax-stix2-font": {
+      "version": "4.1.3",
+      "license": "Apache-2.0"
+    },
+    "@mathjax/mathjax-termes-font": {
+      "version": "4.1.3",
+      "license": "Apache-2.0"
+    },
+    "@mathjax/mathjax-fira-font": {
+      "version": "4.1.3",
+      "license": "Apache-2.0"
+    },
+    "@mathjax/mathjax-euler-font-extension": {
+      "version": "4.1.3",
+      "license": "Apache-2.0"
+    },
+    "@mathjax/mathjax-modern-font": {
+      "version": "4.1.3",
+      "license": "Apache-2.0"
+    },
+    "@resvg/resvg-wasm": {
+      "version": "2.6.2",
+      "license": "MPL-2.0"
+    }
+  },
+  "texts": {
+    "apache-2.0": {
+      "file": "node_modules/@mathjax/src/LICENSE",
+      "source": "https://github.com/mathjax/MathJax-src/blob/4.1.3/LICENSE"
+    },
+    "stix2-ofl": {
+      "file": "licenses/texts/stix2-ofl.txt",
+      "source": "https://github.com/stipub/stixfonts/blob/master/OFL.txt"
+    },
+    "gust": {
+      "file": "licenses/texts/gust.txt",
+      "source": "https://tug.org/fonts/licenses/GUST-FONT-LICENSE.txt"
+    },
+    "fira-math-ofl": {
+      "file": "licenses/texts/fira-math-ofl.txt",
+      "source": "https://github.com/firamath/firamath/blob/main/LICENSE"
+    },
+    "fira-sans-ofl": {
+      "file": "licenses/texts/fira-sans-ofl.txt",
+      "source": "https://github.com/mozilla/Fira/blob/master/LICENSE"
+    },
+    "euler-ofl": {
+      "file": "licenses/texts/euler-ofl.txt",
+      "source": "https://github.com/aliftype/euler-otf"
+    },
+    "lppl-1.3c": {
+      "file": "licenses/texts/lppl-1.3c.txt",
+      "source": "https://www.latex-project.org/lppl/lppl-1-3c.txt"
+    },
+    "mpl-2.0": {
+      "file": "licenses/texts/mpl-2.0.txt",
+      "source": "https://github.com/thx/resvg-js/blob/v2.6.2/LICENSE"
+    }
+  }
+}

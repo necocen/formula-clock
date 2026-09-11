@@ -11,6 +11,7 @@
     "check": "npm run format:check && npm run lint && npm run typecheck",
     "build": "npm run typecheck && tsx tools/build.ts",
     "build:external": "npm run typecheck && tsx tools/build.ts --external",
+    "generate:licenses": "npm run typecheck && tsx tools/licenses.ts",
     "generate": "npm run typecheck && tsx tools/generate.ts",
     "test": "npm run check && npm run test:unit && npm run test:build",
     "test:og": "npm run build:external && node --import tsx --test tests/og/*.test.ts",

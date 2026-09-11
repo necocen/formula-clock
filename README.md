@@ -64,16 +64,18 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 言語によって時計の数値・フォント・共有URL・保存設定は変わりません。
 
 ライセンス画面の説明は日本語のみで、ライセンス原文をそのまま掲載します。
+本文・出典・確認済みバージョンは`licenses/`で管理し、ビルド時に画面へ組み込みます。`npm run generate:licenses`でライセンス部分だけを生成できます。更新手順は[ライセンス表示の管理](licenses/README.md)を参照してください。
 
 ## ディレクトリ構成
 
 ```text
 src/
-  browser/       画面・CSS・ライセンス・組版・ブラウザ操作
+  browser/       画面・CSS・組版・ブラウザ操作
   shared/        AST・表示設定・データ取得・共有URL・共通の型
   worker/        共有API・HTMLメタデータ・OG画像
   api.d.ts       公開APIの型
 public/          配信用の静的設定（_headers）
+licenses/        ライセンス本文・出典・表示テンプレート
 tools/           ビルド・データ生成／取り込み・テスト実行
 data/            採用済み式データ・JSON Schema・形式サンプル
 tests/
@@ -89,7 +91,7 @@ dist/            ビルド出力（Git管理外）
 test-results/    実行結果・スクリーンショット（Git管理外）
 ```
 
-`src/browser/app.html`が画面の原本です。ビルドは`<!-- clock-scripts -->`へ公開APIの準備・データ設定・アプリを順に挿入し、単体版を`dist/standalone/index.html`、配信版を`dist/site/index.html`へ生成します。原本を編集して`npm run build`で更新してください。
+`src/browser/app.html`が画面の原本です。ビルドは`<!-- clock-licenses -->`へライセンス表示、`<!-- clock-scripts -->`へ公開APIの準備・データ設定・アプリを順に挿入し、単体版を`dist/standalone/index.html`、配信版を`dist/site/index.html`へ生成します。原本を編集して`npm run build`で更新してください。
 
 `dist/`と`test-results/`は削除・再生成できるためGitへ入れません。`data/expressions.json`は採用済みの入力データ、`docs/images/`は説明用の見本なのでGit管理します。テスト結果を`tests/`へ出力しないでください。
 

@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { inspect } from 'node:util';
 import * as playwright from 'playwright';
 import type { DisplayOptions, ClockState } from '../../src/shared/types.ts';
+import { renderLicenses } from '../../tools/licenses.ts';
 import {
   browserArgs,
   createReport,
@@ -32,11 +33,7 @@ test('i18n', { timeout: 900000 }, async (t) => {
     structureMotion: true,
     symbolMorph: false,
   };
-  const legal = [
-    ...fs
-      .readFileSync(path.join(ROOT, 'src/browser/app.html'), 'utf8')
-      .matchAll(new RegExp('<pre(?: [^>]*)?>(.*?)</pre>', 'gs')),
-  ]
+  const legal = [...renderLicenses().matchAll(new RegExp('<pre(?: [^>]*)?>(.*?)</pre>', 'gs'))]
     .map((match) => match[1])
     .map((text) => decodeHtml(text).replace(/^\n/, ''));
   const query = '?v=1&t=123430&font=stix2&numerals=oldstyle&division=fraction';
@@ -122,7 +119,27 @@ test('i18n', { timeout: 900000 }, async (t) => {
       licenseContent = await page.locator('.license-content').textContent();
     }
     assert.deepEqual(await page.locator('.license-content').textContent(), licenseContent);
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page
+      .locator('.license-content details')
+      .evaluateAll(script('(elements)=>elements.forEach(el=>el.open=true)'));
+    assert.ok(
+      await page
+        .locator('#licenses')
+        .evaluate(
+          script('(el)=>el.scrollWidth<=el.clientWidth && el.scrollHeight>el.clientHeight'),
+        ),
+    );
+    await page.screenshot({ path: path.join(args.outputDir, `${language}-licenses-320.png`) });
     await page.click('#licenses-close');
+    assert.ok(
+      await page.locator('#licenses-open').evaluate(script('(el)=>el===document.activeElement')),
+    );
+    await page.click('#licenses-open');
+    await page.keyboard.press('Escape');
+    assert.ok(
+      await page.locator('#licenses-open').evaluate(script('(el)=>el===document.activeElement')),
+    );
     await page.keyboard.press('Escape');
     await page.evaluate(
       script(`() => {
@@ -164,6 +181,7 @@ test('i18n', { timeout: 900000 }, async (t) => {
     assert.ok(await page.evaluate('FormulaClock.state.paused'));
     for (const [time, font, mode] of [
       ['235910', 'stix2', 'formula'] as const,
+      ['235910', 'termes', 'formula'] as const,
       ['123459', 'fira', 'formula'] as const,
       ['004159', 'euler', 'time'] as const,
     ]) {

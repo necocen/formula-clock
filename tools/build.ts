@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildSync } from 'esbuild';
 import type { FormulaTable, SecondEntries } from '../src/shared/types.ts';
+import { renderLicenses } from './licenses.ts';
 const root = path.resolve(fileURLToPath(new URL('../', import.meta.url)));
 // Bundled JavaScript stays inline: opening index.html needs no module server or
 // TypeScript runtime. Bootstrap globals exist before a custom provider is set.
@@ -26,11 +27,14 @@ const read = (name: string) => fs.readFileSync(path.join(root, name), 'utf8');
 const external = process.argv.includes('--external'),
   raw = process.argv.includes('--raw-json');
 const outDir = path.join(root, 'dist', external ? 'site' : 'standalone');
+const template = read('src/browser/app.html');
+for (const marker of ['<!-- clock-scripts -->', '<!-- clock-licenses -->']) {
+  if (template.split(marker).length !== 2) throw new Error(`Expected exactly one ${marker}`);
+}
+const licenses = renderLicenses(root);
 // Only the dedicated generated directory is cleaned. Never publish the repository root.
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
-const template = read('src/browser/app.html');
-if (!template.includes('<!-- clock-scripts -->')) throw new Error('Clock script marker is missing');
 let scripts = `<script id="browser-code">\n${bundle('src/browser/bootstrap.ts')}\n</script>\n`;
 const data = read('data/expressions.json');
 if (external) {
@@ -65,7 +69,9 @@ if (external) {
   scripts += `<script id="clock-data" type="application/octet-stream" data-encoding="gzip-base64">${zlib.gzipSync(data, { level: 9 }).toString('base64')}</script>\n`;
 }
 scripts += `<script id="app-code">\n${bundle('src/browser/app.ts')}\n</script>\n`;
-const html = template.replace('<!-- clock-scripts -->', () => scripts);
+const html = template
+  .replace('<!-- clock-licenses -->', () => licenses)
+  .replace('<!-- clock-scripts -->', () => scripts);
 fs.writeFileSync(path.join(outDir, 'index.html'), html);
 if (external)
   execFileSync(process.execPath, ['--import', 'tsx', path.join(root, 'tools/build-worker.ts')], {
