@@ -312,6 +312,8 @@ test('motion-settings', async ({ browser, args, page }) => {
   assert.notDeepEqual(await page.locator('#render-status').getAttribute('hidden'), null);
   const failed = await browser.newPage({ locale: 'ja-JP', timezoneId: 'Asia/Tokyo' });
   failed.on('pageerror', (e) => errors.push(String(e)));
+  // The served site self-hosts MathJax under /vendor/mathjax; the standalone build uses the CDN.
+  await failed.route('**/vendor/mathjax/**', async (route) => await route.abort());
   await failed.route('https://cdn.jsdelivr.net/**', async (route) => await route.abort());
   await failed.goto(args.url);
   await failed.waitForFunction('window.FormulaClock?.state.engineError', undefined);
@@ -319,7 +321,7 @@ test('motion-settings', async ({ browser, args, page }) => {
   assert.deepEqual(await failed.locator('#render-status').getAttribute('hidden'), null);
   assert.ok((await failed.locator('#render-status').textContent())!.includes('通常の時計'));
   report['checks'].push(
-    'Mobile disabled states are muted and fit; expression failure falls back to the SVG clock and recovers; CDN failure keeps the plain clock and failure message',
+    'Mobile disabled states are muted and fit; expression failure falls back to the SVG clock and recovers; MathJax delivery failure keeps the plain clock and failure message',
   );
   await failed.close();
   assert.ok(!(errors.length > 0), inspect(errors));
