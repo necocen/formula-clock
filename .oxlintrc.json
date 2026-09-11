@@ -7,7 +7,7 @@
   "rules": {
     "eslint/eqeqeq": ["error", "always", { "null": "ignore" }],
     "eslint/no-var": "error",
-    "eslint/prefer-const": "error"
+    "eslint/prefer-const": ["error", { "ignoreReadBeforeAssign": true }]
   },
   "ignorePatterns": [
     "dist/**",
