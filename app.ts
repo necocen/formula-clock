@@ -10,7 +10,7 @@ interface MorphPart {group: SVGGElement; shape: Node; center: number[];}
 interface Morph {parts: Record<string,MorphPart>; from: MorphState; to: {angle: number; center: number[]}; started: number; target: string;}
 interface SymbolRecord {el: MovingElement; token: PlacedToken; exiting?: boolean; animation?: Animation | null;}
 interface DisplayedFrame {frame: Frame; ast: Expr | null; code: string; seconds: number; view: DisplayOptions;}
-interface Preview {epoch: number; started: number; speed: number; paused: boolean;}
+interface Preview {epoch: number; started: number; paused: boolean;}
 /* Formula Clock: persistent digit objects, separate typography and data delivery. */
 (() => {
   'use strict';
@@ -482,38 +482,39 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     }
   }
   // Transport time is anchored to the wall clock (live) or a monotonic clock (preview).
-  let preview: Preview | null = sharedState ? {epoch:+FormulaShare.localDate(sharedState.t),started:performance.now(),speed:1,paused:true} : null;
+  let preview: Preview | null = sharedState ? {epoch:+FormulaShare.localDate(sharedState.t),started:performance.now(),paused:true} : null;
   let generation = 0, lastSecond: number | null = null, lastCode: string | null = null;
   let tickTimer: ReturnType<typeof setTimeout> | undefined;
   let nextPrefetch: {code: string; at: number} | null = null;
   const eventHistory: AudioEvent[] = [];
-  function getNow() { return preview ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started) * preview.speed) : new Date(); }
-  function setPreview(date: Date, paused = false) {
+  function getNow() { return preview ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started)) : new Date(); }
+  function setPreview(date: Date, paused = true) {
     if (!(date instanceof Date) || !Number.isFinite(+date)) return;
     leaveSharedView();
-    preview = { epoch: +date, started: performance.now(), speed: 1, paused };
+    preview = { epoch: +date, started: performance.now(), paused };
     resetTransport();
   }
   function resetTransport() {
     generation++; lastSecond = null; sound.cancel();
     document.body.classList.toggle('preview-mode', !!preview);
     $('#transport').hidden = !preview;
-    $<HTMLButtonElement>('#play-pause').textContent = t(preview?.paused ? 'play' : 'pause');
-    $<HTMLButtonElement>('#slow').setAttribute('aria-pressed', String(!!preview && preview.speed < 1));
     refresh(true); scheduleTick();
   }
   function goLive() { leaveSharedView(); preview = null; resetTransport(); }
-  function togglePlay() {
-    if (!preview) return;
-    leaveSharedView();
-    preview = { ...preview, epoch: +getNow(), started: performance.now(), paused: !preview.paused };
-    resetTransport();
+  function pauseClock() {
+    if (preview?.paused) return;
+    // Freeze the second actually on screen, even if the next frame is pending.
+    const now = getNow();
+    if (displayedFrame) {
+      const {code,seconds} = displayedFrame;
+      now.setHours(Number(code.slice(0,2)),Number(code.slice(2)),seconds,0);
+    }
+    setPreview(now,true);
   }
-  function toggleSlow() {
-    if (!preview) return;
-    leaveSharedView();
-    preview = { ...preview, epoch: +getNow(), started: performance.now(), speed: preview.speed === 1 ? .5 : 1 };
-    resetTransport();
+  function stepSecond(offset: -1 | 1) {
+    if (!preview?.paused) return;
+    // Advance the requested time, so rapid keys accumulate before rendering.
+    setPreview(new Date(Math.floor(+getNow()/1000)*1000 + offset*1000),true);
   }
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   function showNotice(text: string) {
@@ -592,7 +593,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     // Capture the AST before any network await, including an ordinary null frame.
     Object.assign(displaySettings,{font:state.font,numerals:state.numerals,division:state.division});
     activeSnapshot = state;
-    preview = {epoch:+FormulaShare.localDate(state.t),started:performance.now(),speed:1,paused:true};
+    preview = {epoch:+FormulaShare.localDate(state.t),started:performance.now(),paused:true};
     resetTransport();
     ++requestSerial;
     scene.getAnimations({subtree:true}).forEach(animation => animation.finish());
@@ -632,7 +633,6 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
       nextPrefetch = null;
     }
     sourceTime.setAttribute('aria-label',t('clockTime',{hours:pad(now.getHours()),minutes:pad(now.getMinutes()),seconds:pad(seconds)}));
-    $('#playback').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(seconds)}`;
     const snapshot = snapshotAt(code,seconds), ast = snapshot ? snapshot.ast : result?.solutions[seconds] || null;
     renderExpression(ast, code, seconds, !result);
     prepareNext(now);
@@ -660,8 +660,8 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   function scheduleTick() {
     clearTimeout(tickTimer);
     if (preview?.paused) return;
-    const now = +getNow(), speed = preview?.speed || 1;
-    const delay = Math.max(12, (1000 - (now % 1000)) / speed + 3);
+    const now = +getNow();
+    const delay = Math.max(12, 1000 - (now % 1000) + 3);
     tickTimer = setTimeout(() => { refresh(); scheduleTick(); }, delay);
   }
 
@@ -754,9 +754,9 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
     }
     poll() {
       if (!this.enabled || this.ctx?.state !== 'running' || document.hidden || preview?.paused) return;
-      const now = +getNow(), speed = preview?.speed || 1, second = Math.floor(now / 1000);
+      const now = +getNow(), second = Math.floor(now / 1000);
       for (const boundary of [second * 1000, (second + 1) * 1000]) {
-        const delay = (boundary - now) / (1000 * speed);
+        const delay = (boundary - now) / 1000;
         if (delay < -.16 || delay > .16) continue;
         const date = new Date(boundary), sec = date.getSeconds();
         const countdown = sec % 30 >= 27, marker = sec % 10 === 0;
@@ -782,8 +782,6 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   $<HTMLButtonElement>('#sound').addEventListener('click', () => sound.toggle());
   $<HTMLInputElement>('#volume').addEventListener('input', e => sound.setVolume(Number((e.target as HTMLInputElement).value) / 100));
   $<HTMLButtonElement>('#go-live').addEventListener('click', goLive);
-  $<HTMLButtonElement>('#play-pause').addEventListener('click', togglePlay);
-  $<HTMLButtonElement>('#slow').addEventListener('click', toggleSlow);
   $<HTMLButtonElement>('#custom-go').addEventListener('click', () => {
     const value = $<HTMLInputElement>('#custom-time').value;
     if (!/^\d\d:\d\d(?::\d\d)?$/.test(value)) return;
@@ -823,11 +821,19 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   }
   paintFullscreen();
   document.addEventListener('keydown', e => {
-    if (settingsDialog.open || licenseDialog.open || e.altKey || e.ctrlKey || e.metaKey || (e.target instanceof Element && /^(INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY)$/.test(e.target.tagName))) return;
+    const target = e.target;
+    if (settingsDialog.open || licenseDialog.open || shareDialog.open || e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey ||
+      (target instanceof Element && target.closest('input,textarea,select')) || (target instanceof HTMLElement && target.isContentEditable)) return;
+    // Ruler buttons retain focus after a click; arrows should still seek there.
+    if (!e.shiftKey && preview?.paused && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      e.preventDefault(); stepSecond(e.key === 'ArrowLeft' ? -1 : 1); return;
+    }
+    if (target instanceof Element && target.closest('button,summary,a')) return;
+    if (e.repeat) { if (e.code === 'Space') e.preventDefault(); return; }
     if (e.key.toLowerCase() === 'm') sound.toggle();
     if (e.key.toLowerCase() === 'l') goLive();
     if (e.key.toLowerCase() === 'f') toggleFullscreen();
-    if (e.code === 'Space' && preview) { e.preventDefault(); togglePlay(); }
+    if (e.code === 'Space') { e.preventDefault(); if (preview?.paused) goLive(); else pauseClock(); }
   });
   function resumeSavedSound(event: MouseEvent | KeyboardEvent) {
     if (!event.isTrusted || !sound.enabled || sound.ready) return;
@@ -853,7 +859,7 @@ interface Preview {epoch: number; started: number; speed: number; paused: boolea
   // Read-only handles for tests, with explicit transport controls for reproducible previews.
   window.FormulaClock = Object.freeze({
     preview: (time: string | Date, paused = true) => { const d = time instanceof Date ? time : new Date(time); setPreview(d, paused); },
-    live: goLive, pause: togglePlay, setDisplay, setDataProvider,
+    live: goLive, pause: pauseClock, setDisplay, setDataProvider,
     get state() { return { display:{...displaySettings}, dataRevision, dataError:cache.get(timeCode(getNow()))?.error || null, now: getNow().toISOString(), preview: !!preview, paused: preview?.paused || false, layout: latestLayout, coverage: cache.get(timeCode(getNow()))?.count, audio: eventHistory.slice(), soundEnabled: sound.enabled, soundReady: sound.ready, soundVolume: sound.volume, engineReady: typesetter.ready, engineError, typesetCacheSize: typesetter.cache.size }; },
     get digits() { return [...digitsEls]; },
     diagnostics() {

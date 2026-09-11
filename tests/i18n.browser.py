@@ -75,10 +75,11 @@ with sync_playwright() as p:
         page.click('#share')
         assert page.locator('#share-title').inner_text() == ('Share' if locale == 'ja' else 'Share this view')
         page.keyboard.press('Escape')
-        assert page.locator('#play-pause').inner_text() == 'Play'
-        page.click('#play-pause')
-        assert page.locator('#play-pause').inner_text() == 'Pause'
-        page.click('#play-pause')
+        assert page.locator('#play-pause,#slow').count() == 0
+        assert page.locator('#transport button').count() == 1
+        assert page.locator('#go-live').inner_text() == ('現在時刻へ' if locale == 'ja' else 'Current time')
+        assert page.locator('.seek-hint').inner_text() == ('← → 1秒ずつ移動' if locale == 'ja' else '← → Step by 1 second')
+        assert page.evaluate('FormulaClock.state.paused')
         for time, font, mode in [('235910','stix2','formula'),('123459','fira','formula'),('004159','euler','time')]:
             page.evaluate('([time,font])=>{FormulaClock.setDisplay({font});FormulaClock.preview(FormulaShare.localDate(time),true)}',[time,font])
             # A cache miss may first render this time as a loading clock.

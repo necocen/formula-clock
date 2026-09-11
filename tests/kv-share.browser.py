@@ -94,9 +94,11 @@ with sync_playwright() as p:
     restyled = page.evaluate('nativeCalls.at(-1).url')
     assert restyled != url
     assert read_snapshot(ctx,restyled) == {**snapshot,'font':'termes','division':'slash'}
-    page.click('#play-pause')
-    page.wait_for_function('!FormulaClock.state.paused')
-    page.wait_for_function('FormulaClock.state.layout.seconds!==21',timeout=5000)
+    page.keyboard.press('ArrowRight'); ready(page,'123422')
+    assert page.evaluate('FormulaClock.state.paused')
+    page.keyboard.press('ArrowLeft'); ready(page,'123421')
+    assert page.evaluate('async()=>JSON.stringify(FormulaClock.state.layout.ast)===JSON.stringify((await FORMULA_CLOCK_CONFIG.provider.getMinute("1234")).seconds[21])')
+    assert page.evaluate('FormulaClock.state.layout.ast') != ast
     assert page.evaluate('FormulaClock.digits.every((digit,i)=>digit===originalDigits[i])')
     report['checks'].append('Saved AST overrides updated data and survives resize/restyling; resharing reuses unchanged ids; history is replaced without reload')
 

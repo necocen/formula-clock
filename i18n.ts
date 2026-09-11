@@ -17,7 +17,7 @@ const messages = {
   symbolMotion: {ja:'記号をなめらかに動かす',en:'Move symbols smoothly'},
   structureMotion: {ja:'分数・√・括弧も動かす',en:'Move fractions, roots & brackets'},
   symbolMorph: {ja:'四則記号を変形する',en:'Morph arithmetic symbols'},
-  shortcuts: {ja:'M 時報 / F 全画面 / L 現在時刻へ / Space 再生・一時停止',en:'M Sound / F Fullscreen / L Current time / Space Play or pause preview'},
+  shortcuts: {ja:'← → 一時停止中に1秒移動 / Space 一時停止・現在時刻へ / L 現在時刻へ / M 時報 / F 全画面',en:'← → Step 1 second while paused / Space Pause or return to current time / L Current time / M Sound / F Fullscreen'},
   shortcut: {ja:'{label}（{key}）',en:'{label} ({key})'},
   licenses: {ja:'LICENSE',en:'LICENSE'},
   closeLicenses: {ja:'ライセンスを閉じる',en:'Close licenses'},
@@ -51,9 +51,7 @@ const messages = {
   loading: {ja:'Loading',en:'Loading'},
   dataFailed: {ja:'データ取得失敗',en:'Data unavailable'},
   // Visible preview controls and their hover titles.
-  play: {ja:'Play',en:'Play'},
-  pause: {ja:'Pause',en:'Pause'},
-  playShortcut: {ja:'再生／一時停止（Space）',en:'Play or pause (Space)'},
+  seekHint: {ja:'← → 1秒ずつ移動',en:'← → Step by 1 second'},
   goLive: {ja:'現在時刻へ',en:'Current time'},
   goLiveShortcut: {ja:'現在時刻に戻る（L）',en:'Return to current time (L)'},
   // Accessible descriptions of the SVG clocks; never drawn as visual text.

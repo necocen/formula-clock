@@ -28,11 +28,11 @@ main{flex:1;display:flex;flex-direction:column;justify-content:center;width:100%
 
 .stage{height:clamp(242px,32svh,360px)}
 .minute{max-width:710px;width:calc(100% - 50px);margin:28px auto 0}.ruler{height:32px;display:grid;grid-template-columns:repeat(60,1fr);align-items:center;gap:4px}.tick{position:relative;background:transparent;padding:0;height:32px;border:0;border-radius:2px}.tick:before{content:"";position:absolute;left:50%;top:12px;width:2px;height:7px;transform:translateX(-50%);background:#30372b;transition:background .3s,height .3s,top .3s}.tick.major:before{height:12px;top:9px}.tick.solved:before{background:#7c8970}.tick.past:before{opacity:.55}.tick.current:before{height:22px;top:4px;background:var(--fg);box-shadow:0 0 10px #d5dbc333}.tick:hover:before{background:var(--c2);height:20px;top:5px}.ruler-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim)}
-.transport{display:flex;justify-content:center;align-items:center;gap:10px;height:38px;margin-top:18px}.transport[hidden]{display:flex;visibility:hidden}.transport button{border:0;background:transparent;color:var(--muted);font-size:10px;padding:10px;border-radius:4px;letter-spacing:.5px}.transport .live-return{color:var(--c2)}.transport .divider{height:10px;width:1px;background:var(--line)}.transport .playback{font-family:var(--mono);font-size:10px;color:var(--dim);min-width:76px}.transport #play-pause{min-width:63px}
+.transport{display:flex;justify-content:center;align-items:center;gap:16px;height:38px;margin-top:18px}.transport[hidden]{display:flex;visibility:hidden}.transport button{border:0;background:transparent;color:var(--muted);font-size:10px;padding:10px;border-radius:4px;letter-spacing:.5px}.transport .live-return{color:var(--c2);white-space:nowrap}.transport .seek-hint{color:var(--dim);font-size:10px}
 .settings-dialog{position:fixed;inset:80px 28px auto auto;margin:0;width:350px;max-width:calc(100vw - 32px);max-height:calc(100svh - 100px);overflow:auto;overscroll-behavior:contain;background:#181d17;border:1px solid #394232;border-radius:12px;color:var(--fg);padding:22px;box-shadow:0 16px 70px #0005;font-size:12px}.settings-dialog::backdrop{background:#0003}.settings-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.settings-header h2{font-size:13px;font-weight:500;letter-spacing:1px;margin:0}.settings-close{display:grid;place-items:center;width:32px;height:32px;background:transparent;border:0;border-radius:5px;color:var(--muted)}.setting-row{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:16px 0;color:var(--muted)}.setting-row select{color:var(--fg);background:#111710;border:1px solid var(--line);border-radius:5px;padding:8px;max-width:180px}.setting-row input[type=range]{width:160px;accent-color:var(--c2)}.experimental-option{margin-top:22px;font-size:11px}.experimental-option:has(input:disabled){opacity:.45}.experimental-option input{accent-color:var(--c2);width:16px;height:16px}.custom-time-label{display:block;margin:22px 0 9px;color:var(--muted)}.custom-time{display:flex;gap:8px}.custom-time input{background:#111710;color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:8px;min-width:0;flex:1;font-family:var(--mono)}.settings-dialog .small-button{border:1px solid var(--line);background:transparent;border-radius:5px;padding:8px 10px;font-size:11px}.advanced{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}.advanced summary{color:var(--muted);cursor:pointer;padding:4px 0}.advanced p{font-size:10px;line-height:1.8;color:var(--muted);overflow-wrap:anywhere}.settings-links{display:flex;gap:18px;margin-top:22px}.settings-links a,.license-link{padding:0;border:0;background:none;color:var(--muted);font-size:10px;text-decoration:underline;text-underline-offset:3px}.settings-dialog.license-dialog{inset:0;margin:auto;width:760px;max-height:calc(100svh - 48px);padding:0}.license-dialog .settings-header{position:sticky;top:0;margin:0;padding:16px 22px;background:#181d17;border-bottom:1px solid var(--line);z-index:1}.license-content{padding:0 24px 24px;font-size:12px;line-height:1.8;overflow-wrap:anywhere}.license-content h1{display:none}.license-content h2{font-size:14px;margin-top:28px}.license-content a{color:var(--c2)}.license-content pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 var(--mono);color:var(--muted)}.license-content summary{cursor:pointer;padding:12px 0}.license-content details{border-bottom:1px solid var(--line)}.math-engine-frame{position:fixed;left:-100000px;top:0;width:300px;height:200px;visibility:hidden;pointer-events:none;border:0}
 .segmented-control{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:180px;flex-shrink:0;gap:2px;padding:3px;background:#111710;border:1px solid var(--line);border-radius:7px}.segmented-control label{position:relative;cursor:pointer}.segmented-control input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}.segmented-control span{display:block;border-radius:4px;padding:6px 9px;text-align:center;line-height:18px;color:var(--muted)}.segmented-control input:hover+span{color:var(--fg)}.segmented-control input:checked+span{background:#35402f;color:var(--fg);box-shadow:0 1px 3px #0005}.segmented-control input:focus-visible+span{outline:2px solid var(--c2);outline-offset:1px}#division-choice span{padding-inline:2px}
 @media(max-width:760px){.shell{padding:22px}.brand{font-size:10px;letter-spacing:1.8px}.tools{gap:6px}main{padding:40px 0 48px}.minute{width:100%;margin-top:22px}.ruler{gap:2px}.source-time{font-size:22px}.settings-dialog{right:16px;top:76px;max-height:calc(100svh - 92px)}}
-@media(max-width:480px){.shell{padding:18px 16px}.brand{font-size:9px;letter-spacing:1.4px;gap:8px}.tool{padding:10px;min-width:40px}.tools{gap:5px}.stage{height:226px}.transport{gap:2px}.transport button{padding:10px 7px}.transport .playback{min-width:60px;font-size:9px}.transport #play-pause{min-width:55px}.transport .live-return{white-space:nowrap}.setting-row select{max-width:165px}.segmented-control{width:165px}.settings-dialog{padding:20px}}
+@media(max-width:480px){.shell{padding:18px 16px}.brand{font-size:9px;letter-spacing:1.4px;gap:8px}.tool{padding:10px;min-width:40px}.tools{gap:5px}.stage{height:226px}.transport{gap:10px}.transport button{padding:10px 7px}.setting-row select{max-width:165px}.segmented-control{width:165px}.settings-dialog{padding:20px}}
 @media(prefers-reduced-motion:reduce){*,*:before{scroll-behavior:auto!important}.source-time,.math-scene .digit,.answer-digit,#equal-sign,#notation-root{transition:none!important}}
 .tool:disabled{opacity:.4;cursor:default}.tool[hidden]{display:none}.share-status{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);margin:0;padding:10px 16px;border:1px solid var(--line);border-radius:7px;background:#181d17;color:var(--fg);font-size:12px;z-index:2;white-space:nowrap}.share-status:empty{display:none}.share-dialog{inset:0;margin:auto;width:460px}.share-dialog p{color:var(--muted);line-height:1.8}.share-url{width:100%;padding:10px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:5px;font:12px var(--mono)}
 @media(max-width:480px){.topbar{gap:8px}.tools{gap:4px}.tool.icon-only{width:36px;min-width:36px;padding:8px}}
@@ -82,7 +82,7 @@ body.fullscreen .shell{max-width:none;padding-block:16px}body.fullscreen main{pa
     <div class="ruler-labels" aria-hidden="true"><span>00</span><span>15</span><span>30</span><span>45</span><span>59</span></div>
   </div>
   <div class="transport" id="transport" hidden>
-    <button id="play-pause" data-i18n-title="playShortcut" title="再生／一時停止（Space）"><span data-i18n="pause">Pause</span></button><button id="slow" aria-pressed="false">0.5×</button><span class="divider"></span><span class="playback" id="playback"></span><button class="live-return" id="go-live" data-i18n-title="goLiveShortcut" title="現在時刻に戻る（L）"><span data-i18n="goLive">現在時刻へ</span></button>
+    <span class="seek-hint" data-i18n="seekHint">← → 1秒ずつ移動</span><button class="live-return" id="go-live" data-i18n-title="goLiveShortcut" title="現在時刻に戻る（L）"><span data-i18n="goLive">現在時刻へ</span></button>
   </div>
 </main>
 </div>
@@ -107,7 +107,7 @@ body.fullscreen .shell{max-width:none;padding-block:16px}body.fullscreen main{pa
     <label class="setting-row experimental-option"><span data-i18n="symbolMorph">四則記号を変形する</span><input id="symbol-morph" type="checkbox"></label>
     <p id="render-status" role="status" hidden></p>
     <p id="state-label" role="status"></p>
-    <p><span data-i18n="shortcuts">M 時報 / F 全画面 / L 現在時刻へ / Space 再生・一時停止</span></p>
+    <p><span data-i18n="shortcuts">← → 一時停止中に1秒移動 / Space 一時停止・現在時刻へ / L 現在時刻へ / M 時報 / F 全画面</span></p>
   </details>
   <div class="settings-links"><button class="license-link" id="licenses-open" aria-haspopup="dialog" aria-controls="licenses"><span data-i18n="licenses">LICENSE</span></button><a href="https://github.com/necocen/formula-clock" target="_blank" rel="noopener">GitHub ↗</a></div>
 </dialog>
@@ -1587,7 +1587,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     symbolMotion: { ja: "\u8A18\u53F7\u3092\u306A\u3081\u3089\u304B\u306B\u52D5\u304B\u3059", en: "Move symbols smoothly" },
     structureMotion: { ja: "\u5206\u6570\u30FB\u221A\u30FB\u62EC\u5F27\u3082\u52D5\u304B\u3059", en: "Move fractions, roots & brackets" },
     symbolMorph: { ja: "\u56DB\u5247\u8A18\u53F7\u3092\u5909\u5F62\u3059\u308B", en: "Morph arithmetic symbols" },
-    shortcuts: { ja: "M \u6642\u5831 / F \u5168\u753B\u9762 / L \u73FE\u5728\u6642\u523B\u3078 / Space \u518D\u751F\u30FB\u4E00\u6642\u505C\u6B62", en: "M Sound / F Fullscreen / L Current time / Space Play or pause preview" },
+    shortcuts: { ja: "\u2190 \u2192 \u4E00\u6642\u505C\u6B62\u4E2D\u306B1\u79D2\u79FB\u52D5 / Space \u4E00\u6642\u505C\u6B62\u30FB\u73FE\u5728\u6642\u523B\u3078 / L \u73FE\u5728\u6642\u523B\u3078 / M \u6642\u5831 / F \u5168\u753B\u9762", en: "\u2190 \u2192 Step 1 second while paused / Space Pause or return to current time / L Current time / M Sound / F Fullscreen" },
     shortcut: { ja: "{label}\uFF08{key}\uFF09", en: "{label} ({key})" },
     licenses: { ja: "LICENSE", en: "LICENSE" },
     closeLicenses: { ja: "\u30E9\u30A4\u30BB\u30F3\u30B9\u3092\u9589\u3058\u308B", en: "Close licenses" },
@@ -1621,9 +1621,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     loading: { ja: "Loading", en: "Loading" },
     dataFailed: { ja: "\u30C7\u30FC\u30BF\u53D6\u5F97\u5931\u6557", en: "Data unavailable" },
     // Visible preview controls and their hover titles.
-    play: { ja: "Play", en: "Play" },
-    pause: { ja: "Pause", en: "Pause" },
-    playShortcut: { ja: "\u518D\u751F\uFF0F\u4E00\u6642\u505C\u6B62\uFF08Space\uFF09", en: "Play or pause (Space)" },
+    seekHint: { ja: "\u2190 \u2192 1\u79D2\u305A\u3064\u79FB\u52D5", en: "\u2190 \u2192 Step by 1 second" },
     goLive: { ja: "\u73FE\u5728\u6642\u523B\u3078", en: "Current time" },
     goLiveShortcut: { ja: "\u73FE\u5728\u6642\u523B\u306B\u623B\u308B\uFF08L\uFF09", en: "Return to current time (L)" },
     // Accessible descriptions of the SVG clocks; never drawn as visual text.
@@ -3201,18 +3199,18 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         });
       }
     }
-    let preview = sharedState ? { epoch: +FormulaShare.localDate(sharedState.t), started: performance.now(), speed: 1, paused: true } : null;
+    let preview = sharedState ? { epoch: +FormulaShare.localDate(sharedState.t), started: performance.now(), paused: true } : null;
     let generation = 0, lastSecond = null, lastCode = null;
     let tickTimer;
     let nextPrefetch = null;
     const eventHistory = [];
     function getNow() {
-      return preview ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started) * preview.speed) : /* @__PURE__ */ new Date();
+      return preview ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started)) : /* @__PURE__ */ new Date();
     }
-    function setPreview(date, paused = false) {
+    function setPreview(date, paused = true) {
       if (!(date instanceof Date) || !Number.isFinite(+date)) return;
       leaveSharedView();
-      preview = { epoch: +date, started: performance.now(), speed: 1, paused };
+      preview = { epoch: +date, started: performance.now(), paused };
       resetTransport();
     }
     function resetTransport() {
@@ -3221,8 +3219,6 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       sound.cancel();
       document.body.classList.toggle("preview-mode", !!preview);
       $("#transport").hidden = !preview;
-      $("#play-pause").textContent = t(preview?.paused ? "play" : "pause");
-      $("#slow").setAttribute("aria-pressed", String(!!preview && preview.speed < 1));
       refresh(true);
       scheduleTick();
     }
@@ -3231,17 +3227,18 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       preview = null;
       resetTransport();
     }
-    function togglePlay() {
-      if (!preview) return;
-      leaveSharedView();
-      preview = { ...preview, epoch: +getNow(), started: performance.now(), paused: !preview.paused };
-      resetTransport();
+    function pauseClock() {
+      if (preview?.paused) return;
+      const now = getNow();
+      if (displayedFrame) {
+        const { code, seconds } = displayedFrame;
+        now.setHours(Number(code.slice(0, 2)), Number(code.slice(2)), seconds, 0);
+      }
+      setPreview(now, true);
     }
-    function toggleSlow() {
-      if (!preview) return;
-      leaveSharedView();
-      preview = { ...preview, epoch: +getNow(), started: performance.now(), speed: preview.speed === 1 ? 0.5 : 1 };
-      resetTransport();
+    function stepSecond(offset) {
+      if (!preview?.paused) return;
+      setPreview(new Date(Math.floor(+getNow() / 1e3) * 1e3 + offset * 1e3), true);
     }
     let noticeTimer;
     function showNotice(text) {
@@ -3347,7 +3344,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       const state = FormulaShare.snapshot({ v: 1, t: code + pad(seconds), font: view.font, numerals: view.numerals, division: view.division, ast: snapshot.ast });
       Object.assign(displaySettings, { font: state.font, numerals: state.numerals, division: state.division });
       activeSnapshot = state;
-      preview = { epoch: +FormulaShare.localDate(state.t), started: performance.now(), speed: 1, paused: true };
+      preview = { epoch: +FormulaShare.localDate(state.t), started: performance.now(), paused: true };
       resetTransport();
       ++requestSerial;
       scene.getAnimations({ subtree: true }).forEach((animation) => animation.finish());
@@ -3399,7 +3396,6 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         nextPrefetch = null;
       }
       sourceTime.setAttribute("aria-label", t("clockTime", { hours: pad(now.getHours()), minutes: pad(now.getMinutes()), seconds: pad(seconds) }));
-      $("#playback").textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(seconds)}`;
       const snapshot = snapshotAt(code, seconds), ast = snapshot ? snapshot.ast : result?.solutions[seconds] || null;
       renderExpression(ast, code, seconds, !result);
       prepareNext(now);
@@ -3435,8 +3431,8 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     function scheduleTick() {
       clearTimeout(tickTimer);
       if (preview?.paused) return;
-      const now = +getNow(), speed = preview?.speed || 1;
-      const delay = Math.max(12, (1e3 - now % 1e3) / speed + 3);
+      const now = +getNow();
+      const delay = Math.max(12, 1e3 - now % 1e3 + 3);
       tickTimer = setTimeout(() => {
         refresh();
         scheduleTick();
@@ -3564,9 +3560,9 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
       }
       poll() {
         if (!this.enabled || this.ctx?.state !== "running" || document.hidden || preview?.paused) return;
-        const now = +getNow(), speed = preview?.speed || 1, second = Math.floor(now / 1e3);
+        const now = +getNow(), second = Math.floor(now / 1e3);
         for (const boundary of [second * 1e3, (second + 1) * 1e3]) {
-          const delay = (boundary - now) / (1e3 * speed);
+          const delay = (boundary - now) / 1e3;
           if (delay < -0.16 || delay > 0.16) continue;
           const date = new Date(boundary), sec = date.getSeconds();
           const countdown = sec % 30 >= 27, marker = sec % 10 === 0;
@@ -3590,8 +3586,6 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     $("#sound").addEventListener("click", () => sound.toggle());
     $("#volume").addEventListener("input", (e) => sound.setVolume(Number(e.target.value) / 100));
     $("#go-live").addEventListener("click", goLive);
-    $("#play-pause").addEventListener("click", togglePlay);
-    $("#slow").addEventListener("click", toggleSlow);
     $("#custom-go").addEventListener("click", () => {
       const value = $("#custom-time").value;
       if (!/^\d\d:\d\d(?::\d\d)?$/.test(value)) return;
@@ -3640,13 +3634,25 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
     }
     paintFullscreen();
     document.addEventListener("keydown", (e) => {
-      if (settingsDialog.open || licenseDialog.open || e.altKey || e.ctrlKey || e.metaKey || e.target instanceof Element && /^(INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY)$/.test(e.target.tagName)) return;
+      const target = e.target;
+      if (settingsDialog.open || licenseDialog.open || shareDialog.open || e.defaultPrevented || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || target instanceof Element && target.closest("input,textarea,select") || target instanceof HTMLElement && target.isContentEditable) return;
+      if (!e.shiftKey && preview?.paused && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        e.preventDefault();
+        stepSecond(e.key === "ArrowLeft" ? -1 : 1);
+        return;
+      }
+      if (target instanceof Element && target.closest("button,summary,a")) return;
+      if (e.repeat) {
+        if (e.code === "Space") e.preventDefault();
+        return;
+      }
       if (e.key.toLowerCase() === "m") sound.toggle();
       if (e.key.toLowerCase() === "l") goLive();
       if (e.key.toLowerCase() === "f") toggleFullscreen();
-      if (e.code === "Space" && preview) {
+      if (e.code === "Space") {
         e.preventDefault();
-        togglePlay();
+        if (preview?.paused) goLive();
+        else pauseClock();
       }
     });
     function resumeSavedSound(event) {
@@ -3683,7 +3689,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
         setPreview(d, paused);
       },
       live: goLive,
-      pause: togglePlay,
+      pause: pauseClock,
       setDisplay,
       setDataProvider,
       get state() {

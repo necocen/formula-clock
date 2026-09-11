@@ -44,6 +44,7 @@ export interface FormulaClockAPI {
   setDataProvider(provider: FormulaProvider): void;
   preview(time: string | Date, paused?: boolean): void;
   live(): void;
+  /** Freeze the displayed second. Repeated calls leave it paused. */
   pause(): void;
   readonly digits: SVGGElement[];
   readonly state: Readonly<ClockState>;

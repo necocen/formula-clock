@@ -161,15 +161,18 @@ with sync_playwright() as p:
     # AudioParam.value can retain the intrinsic value while automation runs.
     # Verify that the slider schedules the real master node's smooth gain change.
     assert volume['commands'][-1]['method']=='setTargetAtTime' and abs(volume['commands'][-1]['args'][0]-.128)<1e-7,volume
-    page.click('#slow');page.click('#play-pause')
-    page.wait_for_function('(n)=>audioVoices.length>=n+2',arg=before)
-    slowed=page.evaluate('audioSnapshot()')[before:before+2]
-    assert [v['frequency'] for v in slowed]==[500,500],slowed
-    assert abs(slowed[1]['when']-slowed[0]['when']-2)<.09,slowed
-    assert all(abs(v['stops'][0]-v['when']-.05)<1e-7 for v in slowed),slowed
-    page.click('#play-pause');before=page.evaluate('audioVoices.length');page.wait_for_timeout(250)
+    page.keyboard.press('ArrowRight');page.wait_for_timeout(250)
+    assert page.evaluate('FormulaClock.state.paused && new Date(FormulaClock.state.now).getSeconds()===27')
     assert page.evaluate('audioVoices.length')==before
-    report['checks'].append('Missed seconds are skipped; visibility/off cancels audio; volume updates the master gain; paused previews are silent; half speed doubles spacing while preserving pitch and pulse length')
+    wall(29,minute=35);page.click('#go-live')
+    page.wait_for_function('(n)=>audioVoices.length===n+1',arg=before)
+    assert page.evaluate('audioVoices.at(-1).frequency')==500
+    wall(30,minute=35)
+    page.wait_for_function('(n)=>audioVoices.length===n+2',arg=before)
+    assert page.evaluate('audioVoices.at(-1).frequency')==1000
+    page.evaluate('FormulaClock.pause()');before=page.evaluate('audioVoices.length');page.wait_for_timeout(250)
+    assert page.evaluate('audioVoices.length')==before
+    report['checks'].append('Missed seconds are skipped; visibility/off cancels audio; volume updates the master gain; paused previews and arrow-key steps are silent; returning to current time resumes the correct signal')
     page.click('#sound')
     assert not errors,errors
     report['pageErrors']=errors
