@@ -107,8 +107,8 @@ npm run build
 npm run build:external
 npm run test:og
 npm run test:browser -- share
-npm run test:browser -- kv_share --browser chromium
-npm run test:browser -- og_parity
+npm run test:browser -- kv-share --browser chromium
+npm run test:browser -- og-parity
 npm run test:browser -- clock --url http://127.0.0.1:8787/ --screenshots
 ```
 

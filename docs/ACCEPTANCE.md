@@ -1,7 +1,7 @@
 # 動作の確認項目
 
 この文書は今後の検証用チェックリスト。完了を示す記録ではない。
-`tests/browser/clock.py` と `tests/compat/stix2.py` に対応する確認も含む。
+`tests/browser/clock.test.ts` と `tests/compat/stix2.test.ts` に対応する確認も含む。
 
 ## 基本
 
@@ -59,7 +59,7 @@ FormulaClock.diagnostics();
 
 02:20:33の累乗の底にある二重根号を、画面・OG画像で括弧なしに表示すること。指数20が両方の根号の上線の外にあり、根号の内側の累乗と区別できること。タイトル・Descriptionなど上線のないテキストでは、意味を保つための括弧を残すこと。
 
-`tests/browser/clock.py` にある12:48:05の独自AST `1 + 2 / (4 / 8) = 5` を使い、
+`tests/browser/clock.test.ts` にある12:48:05の独自AST `1 + 2 / (4 / 8) = 5` を使い、
 ÷モードの `1 + 2 ÷ (4 ÷ 8)` と / モードの `1 + 2 / (4 / 8)` が必要な括弧を持つことを確認する。選択は保存・復元され、KV共有ページとOG画像でも同じ除算スタイルになること。
 
 設定画面には式データの読み込み・復元ボタンやファイル入力がないこと。APIによる提供元の差し替えは動作すること。
@@ -80,8 +80,8 @@ FormulaClock.diagnostics();
 音の再開待ちの間にオフにしたら、遅れて再開応答が届いてもオフのままにすること。
 `state.soundEnabled`は選択したオン／オフ、`state.soundReady`は実際の再生可能状態、`state.soundVolume`は0〜1の音量を示す。
 テストのイベントログ確認に加え、利用環境で実際の音も確認する。
-`tests/browser/audio.py` は1分全60音のWeb Audio生成、波形の周波数・長さ・減衰、音量・停止中の秒移動・現在時刻への復帰を検証する。
-`tests/browser/audio_settings.py` は保存復元、再生待ちからの再開、待機中のオフと非同期応答の競合を検証する。
+`tests/browser/audio.test.ts` は1分全60音のWeb Audio生成、波形の周波数・長さ・減衰、音量・停止中の秒移動・現在時刻への復帰を検証する。
+`tests/browser/audio-settings.test.ts` は保存復元、再生待ちからの再開、待機中のオフと非同期応答の競合を検証する。
 
 Space（表示中の秒で一時停止／現在時刻へ戻る）、← / →（一時停止中に1秒移動）、M（音）、F（全画面）、L（現在時刻）と、時刻入力・プレビュー目盛りを確認する。
 操作欄には左右キーの案内と「現在時刻へ」だけを表示し、再生・速度変更ボタンを置かない。左右キーで分・日付の境界を往復でき、連打でも要求した秒数ぶん移動すること。目盛りのボタンにフォーカスがあっても左右キーで移動できること。入力欄・設定や共有ダイアログ・修飾キー付きの操作には干渉しないこと。Spaceの長押しは一度だけ切り替え、ボタンにフォーカスがあるときは通常のボタン操作を保つこと。
@@ -96,7 +96,7 @@ Space（表示中の秒で一時停止／現在時刻へ戻る）、← / →（
 「記号をなめらかに動かす」をオフにすると下の2項目は選択値を保持してdisabled・淡い表示になり、描画時だけ無効になること。再びオンにすると選択どおりの動作へ戻ること。
 保存・リロード・旧設定の復元・`setDisplay`でも選択値を保持すること。`state.display`は選択値、`state.layout.display`は描画時に有効な値を示すこと。
 通常時にMathJax・書体のエンジン情報や「実験的」のラベルを表示しないこと。組版失敗時の時計への退避と状態表示は維持すること。
-`tests/browser/motion_settings.py` が依存関係、保存復元、切り替え中の後始末とエラー表示を検証する。
+`tests/browser/motion-settings.test.ts` が依存関係、保存復元、切り替え中の後始末とエラー表示を検証する。
 
 設定を閉じるボタン、外側クリック、Escapeで閉じ、フォーカスが設定ボタンに戻ること。
 Tab / Shift+Tabをダイアログ内で循環させる。320px幅と低い画面でも内部スクロールできること。
@@ -142,7 +142,7 @@ Tab / Shift+Tabをダイアログ内で循環させる。320px幅と低い画面
 高速プレビュー、式なし表示、設定切り替え後に記号が重複・残留しないこと。
 reduced-motionでは即座に配置し、フェードしないこと。分数線・括弧・根号は対象外。
 
-`tests/browser/symbol_motion.py` が、配布CDNフォントで配置一致・要素寿命・設定保存を検証する。
+`tests/browser/symbol-motion.test.ts` が、配布CDNフォントで配置一致・要素寿命・設定保存を検証する。
 
 記号の持ち場は画面座標ではなくHHMMスロットで判定する。
 `1−2＋3＋4` → `1＋2−3＋4` では最初の−と＋を再利用せず、末尾の＋だけを保持すること。
@@ -162,7 +162,7 @@ reduced-motionでは即座に配置し、フェードしないこと。分数線
 高速プレビュー・書体切り替え・通常時計への移行・オフへの切り替えで残像が残らないこと。
 320px幅に収まり、reduced-motionでは移動とフェードを抑制すること。
 
-`tests/browser/structure_motion.py` が配布CDNフォントの全字形座標、線の補間、識別子と要素寿命を検証する。
+`tests/browser/structure-motion.test.ts` が配布CDNフォントの全字形座標、線の補間、識別子と要素寿命を検証する。
 
 ## 実験機能：四則記号の変形
 
@@ -178,7 +178,7 @@ reduced-motionでは即座に配置し、フェードしないこと。分数線
 終了後は回転用のグループを取り除き、本来の1字形を表示すること。
 reduced-motionへの切り替えは回転・フェードを止め、通常時計やオフへの切り替えで残像を残さないこと。
 
-`tests/browser/symbol_morph.py` がCDNの4書体×Lining / Oldstyleで上記とモバイル設定・他の実験機能との併用を検証する。
+`tests/browser/symbol-morph.test.ts` がCDNの4書体×Lining / Oldstyleで上記とモバイル設定・他の実験機能との併用を検証する。
 
 ## UIの言語
 
@@ -207,5 +207,5 @@ reduced-motionへの切り替えは回転・フェードを止め、通常時計
 - 同じ時刻・設定でASTが違うIDの画像を区別し、R2削除後も保存済みASTから再生成する。未知IDやKV障害で現在の式を表示しない。
 - 失敗時は同梱ロゴPNGを短時間キャッシュで返し、正常画像としてR2に保存しない。R2書き込み失敗だけなら生成したPNGを返す。
 
-`tests/unit/share.test.cjs`、`tests/unit/share-storage.test.mjs`、`tests/unit/og-cache.test.mjs`、`tests/og/og-render.test.mjs`、`tests/og/og-worker.test.mjs`、
-`tests/browser/share.py`、`tests/browser/kv_share.py`、`tests/browser/speculative_share.py`、`tests/browser/og_parity.py`で検証する。配信用ビルドとCloudflareプレビューも確認する。
+`tests/unit/share.test.ts`、`tests/unit/share-storage.test.ts`、`tests/unit/og-cache.test.ts`、`tests/og/og-render.test.ts`、`tests/og/og-worker.test.ts`、
+`tests/browser/share.test.ts`、`tests/browser/kv-share.test.ts`、`tests/browser/speculative-share.test.ts`、`tests/browser/og-parity.test.ts`で検証する。配信用ビルドとCloudflareプレビューも確認する。

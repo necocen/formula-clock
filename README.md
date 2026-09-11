@@ -130,10 +130,7 @@ npm run test:og
 `npm test`は整形・lint・型、単体テスト、単体／配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。
 
 ```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -r requirements-test.txt
-python -m playwright install chromium
+npx playwright install chromium webkit
 npm run test:browser -- clock --browser chromium
 ```
 

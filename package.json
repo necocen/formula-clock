@@ -13,14 +13,14 @@
     "build:external": "npm run typecheck && tsx tools/build.ts --external",
     "generate": "npm run typecheck && tsx tools/generate.ts",
     "test": "npm run check && npm run test:unit && npm run test:build",
-    "test:og": "npm run build:external && node --import tsx --test tests/og/*.test.mjs",
+    "test:og": "npm run build:external && node --import tsx --test tests/og/*.test.ts",
     "deploy": "wrangler deploy",
     "preview": "wrangler versions upload",
     "typecheck": "tsc --noEmit",
     "import:data": "npm run typecheck && tsx tools/import-data.ts",
     "dev": "wrangler dev --local",
-    "test:unit": "node --import tsx --test tests/unit/*.test.cjs tests/unit/*.test.mjs",
-    "test:build": "node --import tsx --test tests/build/*.test.cjs",
+    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "test:build": "node --import tsx --test tests/build/*.test.ts",
     "test:browser": "tsx tools/test-browser.ts"
   },
   "engines": {
@@ -40,6 +40,7 @@
     "miniflare": "5.20260907.0-alpha",
     "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
+    "playwright": "1.62.0",
     "tsx": "4.23.13",
     "typescript": "7.0.2",
     "wrangler": "4.129.1"

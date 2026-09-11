@@ -6,7 +6,7 @@
 ## 編集とビルド
 
 - `src/browser/app.html` / `src/shared/i18n.ts` / `src/shared/display.ts` / `src/shared/share.ts` / `src/shared/expression.ts` / `src/shared/data.ts` / `src/browser/typesetter.ts` / `src/shared/symbols.ts` / `src/browser/app.ts` が表示アプリの原本。`src/browser/app.html`は画面・CSS・ライセンス本文を持つ完全なHTMLで、ビルド時に`<!-- clock-scripts -->`へスクリプトを挿入する。共有画像と配信処理は `src/worker/`。
-- アプリ・Worker・ビルドツールはTypeScriptのES Modules。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
+- アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。テストは`node:test`とNode版Playwrightで実行し、PythonはSymPyの厳密計算とfontToolsの字形抽出だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
 - `src/browser/bootstrap.ts` が公開グローバルを準備した後にプロバイダー設定、`src/browser/app.ts` を実行する。ブラウザへはesbuildで生成したJavaScriptを埋め込む。
 - `dist/` は生成物。単体HTMLは`dist/standalone/index.html`、配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。
 - 整形はOxfmt、lintはOxlint。編集後に`npm run format`で原本を整形し、`npm run check`で整形・lint・型を確認する。`npm test`にも同じ確認を含む。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
@@ -55,8 +55,8 @@
 ## 検証と報告
 
 - `npm test` はデータとTeX生成の検証であり、配布フォントのロード検証ではない。
-- `tests/browser/clock.py` の既定はMathJax 4のCDN経路。
-- `--local-mathjax` や `stix2.local.test.py` の成功を、MathJax 4＋CDNの成功として報告しない。
+- `tests/browser/clock.test.ts` の既定はMathJax 4のCDN経路。
+- `--local-mathjax` や `tests/compat/stix2.test.ts` の成功を、MathJax 4＋CDNの成功として報告しない。
 - 以前のテスト結果を再実行した結果として扱わない。使用エンジン、書体、ブラウザ、実行コマンドを記録する。
 - 変更後は `docs/ACCEPTANCE.md` の該当項目と、分数・指数・通常時計・書体切り替えを確認する。
 

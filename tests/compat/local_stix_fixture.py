@@ -56,3 +56,9 @@ def make_fixture(directory):
         'axis': math['MATH'].table.MathConstants.AxisHeight.Value / math['head'].unitsPerEm,
         'fontVersion': text['name'].getDebugName(5),
     }
+
+
+if __name__ == '__main__':
+    import json
+    import sys
+    print(json.dumps(make_fixture(sys.argv[1]), separators=(',', ':')))
