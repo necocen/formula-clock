@@ -5,6 +5,10 @@ allowBuilds:
   esbuild: true
   workerd: true
 
+# pnpm 12 enforces a default 24-hour release-age cooldown on every lockfile
+# entry. These pinned releases were adopted within that window; the whole list
+# can be deleted once they are older than a day (after 2026-09-12T14:04Z).
+# Dependabot applies its own 7-day cooldown to future updates.
 minimumReleaseAgeExclude:
   - '@cloudflare/vite-plugin@1.54.8'
   - '@cloudflare/workerd-darwin-64@1.20260911.1'

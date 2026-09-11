@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Matches the pnpm minimumReleaseAge cooldown in pnpm-workspace.yaml.
+    cooldown:
+      default-days: 7
+    groups:
+      cloudflare:
+        patterns:
+          - '@cloudflare/*'
+          - wrangler
+          - miniflare
+      mathjax:
+        patterns:
+          - '@mathjax/*'
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

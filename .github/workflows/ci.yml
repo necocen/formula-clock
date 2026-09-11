@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      # The Python lock (pylock.toml) is tied to the OS it was generated on, so a
+      # frozen install fails on Linux runners. Plain install keeps pnpm-lock.yaml
+      # as-is here because every JavaScript dependency is pinned exactly.
+      - run: pnpm install
+      - run: pnpm run check
+      - run: pnpm test
