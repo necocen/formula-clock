@@ -3,31 +3,24 @@ import {
   type DisplayOptions,
   type FormulaProvider,
   type Expr,
-  type SecondEntries,
   type SharedSnapshot,
   type SharedView,
   type LayoutItem,
   type ClockLayout,
-  type AudioEvent,
 } from '../shared/types.ts';
 import FormulaI18n from '../shared/i18n.ts';
 import FormulaDisplay from '../shared/display.ts';
 import FormulaShare from '../shared/share.ts';
 import FormulaExpression from '../shared/expression.ts';
-import FormulaData from '../shared/data.ts';
 import FormulaSymbols from '../shared/symbols.ts';
 import FormulaTypesetter, { type Typesetter } from './typesetter.ts';
+import { $, pad, timeCode, setupDialog } from './dom.ts';
+import { createTimeSignal } from './audio.ts';
+import { assertProvider, createDataSource } from './data-source.ts';
 import type { ClockFace, Frame, PlacedToken } from './types.ts';
 // The default provider registers itself on FORMULA_CLOCK_CONFIG before the app reads it.
 import './provider.ts';
 
-interface MinuteSolutions {
-  input: string;
-  solutions: SecondEntries;
-  count: number;
-  error?: string;
-  retryAfter?: number;
-}
 interface Movement {
   from: number[];
   to: number[];
@@ -75,18 +68,11 @@ interface Preview {
   const ui = FormulaI18n.create(navigator.languages?.[0] || navigator.language),
     t = ui.t;
   ui.apply(document);
-  function $<T extends Element = HTMLElement>(selector: string): T {
-    const element = document.querySelector<T>(selector);
-    if (!element) throw new Error(`Missing clock element ${selector}`);
-    return element;
-  }
   const stage = $('#stage'),
     digitsEls = [...stage.querySelectorAll<MovingElement>('.digit')];
   const sourceTime = $('#source-time'),
     sourceEls = [...sourceTime.querySelectorAll<MovingElement>('.source-digit')];
   const sourceColons = [...sourceTime.querySelectorAll<MovingElement>('.colon')];
-  const cache = new Map<string, MinuteSolutions>(),
-    pending = new Map<string, AbortController>();
   const settingsDialog = $<HTMLDialogElement>('#settings'),
     settingsButton = $<HTMLButtonElement>('#settings-open');
   const licenseDialog = $<HTMLDialogElement>('#licenses');
@@ -135,54 +121,6 @@ interface Preview {
       sharedAddress = false;
     }
   }
-  function setupDialog(
-    dialog: HTMLDialogElement,
-    opener: HTMLButtonElement,
-    closeButton: HTMLButtonElement,
-    openOnClick = true,
-  ) {
-    if (openOnClick)
-      opener.addEventListener('click', () => {
-        dialog.showModal();
-        closeButton.focus({ preventScroll: true });
-        dialog.scrollTop = 0;
-      });
-    closeButton.addEventListener('click', () => dialog.close());
-    dialog.addEventListener('close', () => opener.focus({ preventScroll: true }));
-    dialog.addEventListener('keydown', (event) => {
-      if (event.key !== 'Tab') return;
-      const controls = [
-        ...dialog.querySelectorAll<HTMLElement>('button,input,select,summary,a[href]'),
-      ].filter((el) => !('disabled' in el && el.disabled) && el.getClientRects().length);
-      const first = controls[0],
-        last = controls.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    });
-    // Dragging out from a control must not count as a backdrop click.
-    let backdropPointer = false;
-    function outsideDialog(event: MouseEvent) {
-      const r = dialog.getBoundingClientRect();
-      return (
-        event.clientX < r.left ||
-        event.clientX > r.right ||
-        event.clientY < r.top ||
-        event.clientY > r.bottom
-      );
-    }
-    dialog.addEventListener('pointerdown', (event) => {
-      backdropPointer = outsideDialog(event);
-    });
-    dialog.addEventListener('click', (event) => {
-      if (backdropPointer && outsideDialog(event)) dialog.close();
-      backdropPointer = false;
-    });
-  }
   setupDialog(settingsDialog, settingsButton, $<HTMLButtonElement>('#settings-close'));
   setupDialog(
     licenseDialog,
@@ -191,15 +129,10 @@ interface Preview {
   );
   setupDialog(shareDialog, shareButton, $<HTMLButtonElement>('#share-close'), false);
   shareButton.hidden = !['http:', 'https:'].includes(location.protocol);
-  const { normalizeMinute, TableProvider } = FormulaData;
-  const defaultProvider = () =>
-    new TableProvider(async () => {
-      const embedded = document.querySelector<HTMLElement>('#clock-data');
-      if (!embedded) throw new Error('No embedded formula table or custom provider');
-      return FormulaData.loadEmbedded(embedded);
-    });
-  let provider = window.FORMULA_CLOCK_CONFIG?.provider || defaultProvider();
-  let dataRevision = 0;
+  const data = createDataSource({
+    isCurrentCode: (code) => timeCode(getNow()) === code,
+    kick: () => refresh(true),
+  });
   function savedDisplay(): Record<string, unknown> {
     try {
       const saved: unknown = JSON.parse(localStorage.getItem('formula-clock-display-v2') || '{}');
@@ -244,8 +177,6 @@ interface Preview {
     document.title = FormulaShare.title(sharedState);
   }
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const timeCode = (d: Date) => pad(d.getHours()) + pad(d.getMinutes());
   const ticks = Array.from({ length: 60 }, (_, i) => {
     const b = document.createElement('button');
     b.className = 'tick' + (i % 5 === 0 ? ' major' : '');
@@ -258,55 +189,10 @@ interface Preview {
     $('#ruler').append(b);
     return b;
   });
-  function requestSolutions(code: string) {
-    const existing = cache.get(code);
-    if (
-      pending.has(code) ||
-      (existing && (!existing.error || Date.now() < (existing.retryAfter || 0)))
-    )
-      return;
-    const revision = dataRevision,
-      currentProvider = provider,
-      controller = new AbortController();
-    pending.set(code, controller);
-    Promise.resolve()
-      .then(() => currentProvider.getMinute(code, { signal: controller.signal }))
-      .then((raw) => {
-        if (revision !== dataRevision || controller.signal.aborted) return;
-        const minute = normalizeMinute(raw, code);
-        cache.set(code, {
-          input: code,
-          solutions: minute.seconds,
-          count: minute.seconds.filter(Boolean).length,
-        });
-      })
-      .catch((error) => {
-        if (revision !== dataRevision || controller.signal.aborted) return;
-        console.warn('[Formula Clock] Formula data unavailable.', error);
-        cache.set(code, {
-          input: code,
-          solutions: Array(60).fill(null),
-          count: 0,
-          error: String(error),
-          retryAfter: Date.now() + 5000,
-        });
-      })
-      .finally(() => {
-        if (revision !== dataRevision) return;
-        if (pending.get(code) === controller) pending.delete(code);
-        while (cache.size > 10) cache.delete(cache.keys().next().value!);
-        if (timeCode(getNow()) === code) refresh(true);
-      });
-  }
   function setDataProvider(next: FormulaProvider) {
-    if (!next || typeof next.getMinute !== 'function')
-      throw new TypeError('Provider needs getMinute(hhmm, {signal})');
+    assertProvider(next);
     leaveSharedView();
-    dataRevision++;
-    pending.forEach((controller) => controller.abort());
-    pending.clear();
-    cache.clear();
-    provider = next;
+    data.replaceProvider(next);
     lastVisual = '';
     lastCode = null;
     ++requestSerial;
@@ -804,7 +690,7 @@ interface Preview {
       shareBusy ||
       loading ||
       !!engineError ||
-      (!snapshotAt(code, seconds) && (!cache.has(code) || !!cache.get(code)?.error));
+      (!snapshotAt(code, seconds) && (!data.hasMinute(code) || !!data.getMinute(code)?.error));
     preparePausedShare();
     firstFrame = false;
   }
@@ -866,7 +752,7 @@ interface Preview {
     for (const offset of [1, 2]) {
       const next = new Date(+now + offset * 1000),
         code = timeCode(next),
-        result = cache.get(code);
+        result = data.getMinute(code);
       if (result)
         typesetter
           .frame(
@@ -887,7 +773,6 @@ interface Preview {
     lastCode: string | null = null;
   let tickTimer: ReturnType<typeof setTimeout> | undefined;
   let nextPrefetch: { code: string; at: number } | null = null;
-  const eventHistory: AudioEvent[] = [];
   function getNow() {
     return preview
       ? new Date(preview.epoch + (preview.paused ? 0 : performance.now() - preview.started))
@@ -1022,7 +907,7 @@ interface Preview {
     for (const offset of [1, 2]) {
       const next = new Date(+now + offset * 1000),
         code = timeCode(next),
-        result = cache.get(code);
+        result = data.getMinute(code);
       if (!result || result.error) continue;
       void shareLinks
         .prepare({
@@ -1112,8 +997,8 @@ interface Preview {
     if (!changed && !force) return;
     const previousSecond = lastSecond;
     lastSecond = secondKey;
-    const result = cache.get(code);
-    requestSolutions(code);
+    const result = data.getMinute(code);
+    data.request(code);
     // Spread live hour-boundary prefetches across the first 30 seconds of :59.
     // Use clock ticks instead of a timer so skipped minutes cannot leave stale work.
     if (code !== lastCode) {
@@ -1127,7 +1012,7 @@ interface Preview {
       };
     }
     if (nextPrefetch && (preview || +now >= nextPrefetch.at)) {
-      requestSolutions(nextPrefetch.code);
+      data.request(nextPrefetch.code);
       nextPrefetch = null;
     }
     sourceTime.setAttribute(
@@ -1197,193 +1082,12 @@ interface Preview {
     }, delay);
   }
 
-  // Audio is scheduled independently of layout. There is no replay of missed signals.
-  class TimeSignal {
-    ctx: AudioContext | null = null;
-    master: GainNode | null = null;
-    enabled: boolean;
-    volume: number;
-    revision = 0;
-    error: string | null = null;
-    scheduled = new Map<string, number>();
-    voices = new Set<OscillatorNode>();
-    constructor() {
-      let saved: Record<string, unknown> = {};
-      try {
-        const raw: unknown = JSON.parse(localStorage.getItem('formula-clock-audio-v1') || '{}');
-        saved = isRecord(raw) ? raw : {};
-      } catch {}
-      this.ctx = null;
-      this.master = null;
-      this.enabled = saved.enabled === true;
-      this.volume =
-        typeof saved.volume === 'number' &&
-        Number.isFinite(saved.volume) &&
-        saved.volume >= 0 &&
-        saved.volume <= 1
-          ? saved.volume
-          : 0.25;
-      this.revision = 0;
-      this.error = null;
-      this.scheduled = new Map();
-      this.voices = new Set();
-    }
-    get ready() {
-      return this.enabled && this.ctx?.state === 'running';
-    }
-    save() {
-      try {
-        localStorage.setItem(
-          'formula-clock-audio-v1',
-          JSON.stringify({ enabled: this.enabled, volume: this.volume }),
-        );
-      } catch {}
-    }
-    async toggle() {
-      this.enabled = !this.enabled;
-      this.revision++;
-      this.error = null;
-      this.save();
-      this.paint();
-      if (!this.enabled) {
-        this.cancel();
-        return;
-      }
-      await this.resume(true);
-    }
-    async resume(feedback = false) {
-      if (!this.enabled) return;
-      const revision = this.revision;
-      try {
-        const Audio = window.AudioContext || window.webkitAudioContext;
-        if (!Audio) throw new Error('Web Audio API is unavailable');
-        if (!this.ctx) {
-          this.ctx = new Audio();
-          this.master = this.ctx.createGain();
-          this.master.gain.value = this.volume * 0.32;
-          this.master.connect(this.ctx.destination);
-          this.ctx.addEventListener('statechange', () => {
-            if (this.ctx?.state !== 'running') this.cancel();
-            this.paint();
-          });
-        }
-        // A blocked resume may remain pending until a later user gesture.
-        // Keep the saved preference, and allow that gesture to call resume again.
-        await this.ctx.resume();
-        if (!this.enabled || revision !== this.revision) return;
-        this.error = null;
-        this.paint();
-        if (feedback && this.ready) this.tone(1000, this.ctx.currentTime + 0.02, 0.15, 0.28);
-      } catch (error) {
-        if (!this.enabled || revision !== this.revision) return;
-        this.error = String(error);
-        this.paint();
-      }
-    }
-    paint() {
-      const label = t(
-        !this.enabled
-          ? 'soundOff'
-          : this.ready
-            ? 'soundOn'
-            : this.error
-              ? 'soundError'
-              : 'soundPending',
-      );
-      $<HTMLButtonElement>('#sound').setAttribute('aria-pressed', String(this.enabled));
-      $<HTMLButtonElement>('#sound').setAttribute('aria-label', label);
-      $<HTMLButtonElement>('#sound').title = t('shortcut', { label, key: 'M' });
-      $<SVGPathElement>('#sound-waves').setAttribute(
-        'd',
-        this.enabled ? 'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14' : 'm16 9 6 6m0-6-6 6',
-      );
-    }
-    setVolume(v: number) {
-      this.volume = Math.max(0, Math.min(1, v));
-      this.save();
-      if (this.master && this.ctx)
-        this.master.gain.setTargetAtTime(this.volume * 0.32, this.ctx.currentTime, 0.035);
-    }
-    tone(frequency: number, when: number, duration: number, strength = 1) {
-      if (!this.ctx || !this.master || !this.enabled) return;
-      const oscillator = this.ctx.createOscillator(),
-        gain = this.ctx.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.value = frequency;
-      // Short ticks need a nearly rectangular pulse; the longer signal has a
-      // brief steady onset followed by a ringing decay. Both end at duration.
-      const attack = Math.min(0.004, duration * 0.1);
-      gain.gain.setValueAtTime(0, when);
-      gain.gain.linearRampToValueAtTime(strength, when + attack);
-      if (duration > 0.1) {
-        gain.gain.setValueAtTime(strength, when + 0.08);
-        gain.gain.exponentialRampToValueAtTime(strength * 0.001, when + duration - 0.004);
-      } else gain.gain.setValueAtTime(strength, when + duration - attack);
-      gain.gain.linearRampToValueAtTime(0, when + duration);
-      oscillator.connect(gain);
-      gain.connect(this.master);
-      this.voices.add(oscillator);
-      oscillator.onended = () => {
-        oscillator.disconnect();
-        gain.disconnect();
-        this.voices.delete(oscillator);
-      };
-      oscillator.start(when);
-      oscillator.stop(when + duration);
-    }
-    cancel() {
-      // A briefly hidden/muted page must not repeat a tone that already began.
-      // Cancelled future tones may be scheduled again; transport changes use a
-      // new generation, so seeking or restarting a preview still works.
-      const now = this.ctx?.currentTime || 0;
-      for (const [key, when] of this.scheduled) if (when > now) this.scheduled.delete(key);
-      for (const oscillator of this.voices) {
-        try {
-          oscillator.stop();
-        } catch {}
-      }
-      this.voices.clear();
-    }
-    poll() {
-      if (!this.enabled || this.ctx?.state !== 'running' || document.hidden || preview?.paused)
-        return;
-      const now = +getNow(),
-        second = Math.floor(now / 1000);
-      for (const boundary of [second * 1000, (second + 1) * 1000]) {
-        const delay = (boundary - now) / 1000;
-        if (delay < -0.16 || delay > 0.16) continue;
-        const date = new Date(boundary),
-          sec = date.getSeconds();
-        const countdown = sec % 30 >= 27,
-          marker = sec % 10 === 0;
-        // 117-style timing, with the marker extended 1.5x by listening preference.
-        // These three categories never overlap at their onset.
-        const frequency = marker ? 1000 : countdown ? 500 : 2000;
-        const duration = marker ? 1.35 : countdown ? 0.05 : 0.007;
-        const key = `${generation}:${boundary}`;
-        if (this.scheduled.has(key)) continue;
-        const when = this.ctx.currentTime + Math.max(0, delay);
-        this.scheduled.set(key, when);
-        while (this.scheduled.size > 20) this.scheduled.delete(this.scheduled.keys().next().value!);
-        this.tone(frequency, when, duration, marker ? 1 : countdown ? 0.72 : 0.5);
-        eventHistory.push({
-          type: sec === 0 ? 'minute' : marker ? 'ten-second' : countdown ? 'countdown' : 'second',
-          time: boundary,
-          frequency,
-          duration,
-        });
-        if (eventHistory.length > 30) eventHistory.shift();
-      }
-    }
-  }
-  const sound = new TimeSignal();
-  $<HTMLInputElement>('#volume').value = String(sound.volume * 100);
-  sound.paint();
-  if (sound.enabled) sound.resume();
-  $<HTMLButtonElement>('#sound').addEventListener('click', () => sound.toggle());
-  $<HTMLInputElement>('#volume').addEventListener('input', (e) =>
-    sound.setVolume(Number((e.target as HTMLInputElement).value) / 100),
-  );
+  const sound = createTimeSignal({
+    t,
+    getNow: () => getNow(),
+    isPaused: () => !!preview?.paused,
+    generation: () => generation,
+  });
   $<HTMLButtonElement>('#go-live').addEventListener('click', goLive);
   $<HTMLButtonElement>('#custom-go').addEventListener('click', () => {
     const value = $<HTMLInputElement>('#custom-time').value;
@@ -1472,20 +1176,12 @@ interface Preview {
       else pauseClock();
     }
   });
-  function resumeSavedSound(event: MouseEvent | KeyboardEvent) {
-    if (!event.isTrusted || !sound.enabled || sound.ready) return;
-    const togglesSound =
-      event.target instanceof Element &&
-      event.target.closest('#sound') &&
-      (event.type === 'click' || ('key' in event && (event.key === ' ' || event.key === 'Enter')));
-    if (!togglesSound) sound.resume();
-  }
-  document.addEventListener('click', resumeSavedSound);
-  document.addEventListener('keydown', resumeSavedSound);
+  document.addEventListener('click', (event) => sound.resumeGesture(event));
+  document.addEventListener('keydown', (event) => sound.resumeGesture(event));
   function renderResize() {
     const d = getNow(),
       code = timeCode(d),
-      result = cache.get(code);
+      result = data.getMinute(code);
     renderExpression(
       result?.solutions[d.getSeconds()] || null,
       code,
@@ -1524,14 +1220,14 @@ interface Preview {
     get state() {
       return {
         display: { ...displaySettings },
-        dataRevision,
-        dataError: cache.get(timeCode(getNow()))?.error || null,
+        dataRevision: data.revision,
+        dataError: data.getMinute(timeCode(getNow()))?.error || null,
         now: getNow().toISOString(),
         preview: !!preview,
         paused: preview?.paused || false,
         layout: latestLayout,
-        coverage: cache.get(timeCode(getNow()))?.count,
-        audio: eventHistory.slice(),
+        coverage: data.getMinute(timeCode(getNow()))?.count,
+        audio: sound.history(),
         soundEnabled: sound.enabled,
         soundReady: sound.ready,
         soundVolume: sound.volume,
