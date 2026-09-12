@@ -234,7 +234,7 @@ new FormulaData.FetchHourProvider('data/manifest.json');
 同じ版や再試行失敗は通常の取得エラーとして表示側へ返す。nullには変換しない。
 
 公開書体IDは `stix2` / `termes` / `fira` / `euler` の4種類。旧 `oldstyle` 書体設定は初期値の `stix2` へ戻す。`numerals` が未保存なら旧Eulerはlining、それ以外はoldstyleへ移行する。
-独立iframe・数字スタイルごとの軸設定・各書体本来の数字の字形を維持する。
+書体×数字スタイルごとの独立エンジン・数字スタイルごとの軸設定・各書体本来の数字の字形を維持する。
 
 ## 9. 共有URLとOG画像
 

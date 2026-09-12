@@ -2,7 +2,6 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { clockContent } from './tools/vite-clock.ts';
-import { mathjaxAssets } from './tools/vite-mathjax.ts';
 
 const at = (name: string) => fileURLToPath(new URL(name, import.meta.url));
 
@@ -11,7 +10,6 @@ export default defineConfig({
   publicDir: at('./public'),
   plugins: [
     clockContent(),
-    mathjaxAssets(),
     cloudflare({
       configPath: at('./wrangler.jsonc'),
       viteEnvironment: { name: 'worker' },

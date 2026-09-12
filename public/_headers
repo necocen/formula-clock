@@ -4,9 +4,6 @@
 /data/manifest.json
   Cache-Control: no-cache
 
-/vendor/*
-  Cache-Control: public, max-age=86400
-
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

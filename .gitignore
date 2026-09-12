@@ -7,7 +7,6 @@
 /dist/
 /index.html
 /public/data/
-/public/vendor/
 
 # Verified license texts downloaded from pinned upstream sources
 /licenses/texts/

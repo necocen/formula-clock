@@ -12,7 +12,7 @@ pnpm install
 pnpm run dev
 ```
 
-ViteがローカルのWorker・KV・R2と画面を起動します。`pnpm run build`で配信用アセットを`dist/site/`、Workerを`dist/worker/`へ生成し、`pnpm run preview:local`でその出力を確認できます。サイトはMathJax 4.1.3とフォントを`/vendor/mathjax/`として自ホストするため、実行時にCDNへは接続しません。
+ViteがローカルのWorker・KV・R2と画面を起動します。`pnpm run build`で配信用アセットを`dist/site/`、Workerを`dist/worker/`へ生成し、`pnpm run preview:local`でその出力を確認できます。MathJax 4.1.3とフォントはアプリの遅延チャンクとしてバンドルされ、実行時にCDNへは接続しません。
 Cloudflareへのプレビュー・公開・KV／R2設定は[共有機能の運用](docs/SHARING.md)を参照してください。
 
 ## 使い方
@@ -124,7 +124,7 @@ pnpm exec playwright install chromium firefox webkit
 pnpm run test:browser clock.test.ts --project chromium
 ```
 
-ブラウザテストは配布経路そのままのMathJax 4.1.3を使い、すべてのスイートがサイトの自ホストする`/vendor/mathjax/`から読み込みます。
+ブラウザテストは配布物そのままのMathJax 4.1.3（バンドル済みチャンク）を使います。
 HTTP配信の共有・多言語UIは、Playwright TestがローカルWorkerを自動で起動して確認します。
 
 ```sh

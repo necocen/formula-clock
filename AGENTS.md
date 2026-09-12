@@ -8,11 +8,11 @@
 - 表示アプリの原本は`src/browser/`（マークアップ`index.html`・CSS`styles.css`・合成ルート`app.ts`・役割別モジュール`dom.ts` / `audio.ts` / `data-source.ts` / `settings.ts` / `renderer.ts` / `clock.ts` / `sharing.ts` / `fullscreen.ts` / `shortcuts.ts` / `typesetter.ts`）と`src/shared/`（`i18n.ts` / `display.ts` / `share.ts` / `expression.ts` / `data.ts` / `symbols.ts`）。ビルド時に`<!-- clock-licenses -->`へライセンス表示を挿入する。共有画像と配信処理は `src/worker/`。
 - ライセンスの取得先・SHA-256・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。本文は取得してGit管理外の`licenses/texts/`へキャッシュする。通常ビルドでも自動生成し、`pnpm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版とハッシュを更新する。
 - アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行し、PythonはSymPyの厳密計算だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
-- モジュール間の依存はESモジュールのimportで宣言する。`bootstrap.ts`の`window`公開はブラウザテスト・コンソール用の公開面で、アプリ内部の参照には使わない。ブラウザの各モジュールは`createX(deps)`ファクトリでモジュールトップレベルの副作用を持たず、合成順序・リスナー登録順（ショートカット→時報再開のkeydown）は`app.ts`が管理する。遅延バインドのクロージャはイベント・Promise継続・タイマーからのみ発火させる。世代カウンタ（`dataRevision` / `requestSerial` / `shareSerial` / `TimeSignal.revision`）はガードと継続を同一モジュール内に保つ。ビルドはVite、Worker・WASM・配布設定はCloudflare公式プラグインを使う。`tools/vite-clock.ts`には式データとライセンス固有の処理、`tools/vite-mathjax.ts`には自ホストするMathJax・フォントのコピーだけを置き、独自バンドラーやWASMローダーを追加しない。
-- `dist/` は生成物。配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。`public/data/`と`public/vendor/`もVite起動時に生成する入力でGit管理外。
+- モジュール間の依存はESモジュールのimportで宣言する。`bootstrap.ts`の`window`公開はブラウザテスト・コンソール用の公開面で、アプリ内部の参照には使わない。ブラウザの各モジュールは`createX(deps)`ファクトリでモジュールトップレベルの副作用を持たず、合成順序・リスナー登録順（ショートカット→時報再開のkeydown）は`app.ts`が管理する。遅延バインドのクロージャはイベント・Promise継続・タイマーからのみ発火させる。世代カウンタ（`dataRevision` / `requestSerial` / `shareSerial` / `TimeSignal.revision`）はガードと継続を同一モジュール内に保つ。ビルドはVite、Worker・WASM・配布設定はCloudflare公式プラグインを使う。`tools/vite-clock.ts`には式データとライセンス固有の処理だけを置き、独自バンドラーやWASMローダーを追加しない。
+- `dist/` は生成物。配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。`public/data/`もVite起動時に生成する入力でGit管理外。
 - 整形はOxfmt、lintはOxlint。編集後に`pnpm run format`で原本を整形し、`pnpm run check`で整形・lint・型を確認する。`pnpm test`はテスト実行のみで、この確認を含まない。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
 - パッケージ管理はpnpm 12.4.1。`pnpm install`でNode.js 22.23.2とJavaScript・Pythonの依存を準備する。Python 3.11以上の本体は別途必要。JavaScriptは`pnpm-lock.yaml`、テスト用Pythonは`pyproject.toml` / `pylock.toml`で管理し、`.venv`と`.pnpm/`は生成物としてGitへ入れない。npmやpipで別の依存環境・ロックファイルを作らない。Python連携は実験機能でロックがOS・Python環境に依存するため、環境変更時は通常インストールで更新し、同じ環境の再現には`--frozen-lockfile`を使う。
-- ブラウザの実行時npm依存はなく、Worker用のMathJax・フォント・resvg WASMを別にビルドする。`pnpm run check` / `pnpm test` / `pnpm run build` が基本の確認コマンド（ビルドは型チェックを含む）。`pnpm run typecheck`でも単独で確認できる。共有画像の変更時は `pnpm run test:og` も実行する。
+- ブラウザとWorkerは同じ版の`@mathjax/src`とフォントパッケージをバンドルする（ブラウザは`src/browser/engine.ts`の遅延チャンク、Workerは`src/worker/render.ts`）。resvg WASMはWorker専用。`pnpm run check` / `pnpm test` / `pnpm run build` が基本の確認コマンド（ビルドは型チェックを含む）。`pnpm run typecheck`でも単独で確認できる。共有画像の変更時は `pnpm run test:og` も実行する。
 - `pnpm run generate` は全日データの再探索。起動・表示変更だけなら実行しない。外部の検証済みデータは`pnpm run import:data DIRECTORY`で24時間分を取り込み、`data/README.md`の出典も更新する。`pnpm test`の厳密検証にはpnpmが準備するSymPyを使う。
 - 既にユーザーが評価しているUIを、依頼なしに全面改装しない。
 
@@ -40,8 +40,8 @@
 - データ取得は `getMinute(hhmm, {signal})` で統一する。埋め込みと非同期の選択をアプリ全体に持ち込まない。
 - ブラウザ用コードにソルバを含めない。値と定義域の検証は生成・テスト側の責務。
 - 測定用SVGと数字パスには同じ基準の `getScreenCTM()` を使う。過去の数字消失を再発させない。
-- 書体×数字スタイルごとのiframeと設定のrealmに関する処理を理解せず削除しない。
-- MathJaxの `charNode` で失われる前のサイズバリアントを記録する処理を保持する。内部APIが使えない互換エンジンでは該当字形をフェードに戻す。MathJax更新時は構造記号のブラウザ検証も実行する。
+- 書体×数字スタイルごとに独立したエンジン（SVG出力とフォントインスタンス）を保ち、軸キャリブレーションを他のエンジンへ漏らさない。エンジン生成は`src/browser/engine.ts`に集約し、Workerの`render.ts`と構成を揃える。
+- `engine.ts`の`charNode`パッチ（`data-glyph-key`によるサイズバリアント記録）を保持する。Wrapperのprototypeは全エンジン共有のため、パッチは1回だけ当ててフォント識別は呼び出し時に解決する。MathJax更新時は構造記号のブラウザ検証も実行する。
 - 古い非同期応答を破棄するserial/revision確認と、失敗時の時刻表示を維持する。
 - 共有URLの解析・生成は `src/shared/share.ts` に集約し、復元でlocalStorageを書き換えない。共有時は描画済みの秒を同期的に停止し、ネイティブ共有の前に画像生成を待たない。
 - 新しい共有URLは英数字10文字の`/s/<ID>`。ID発行後に202で返し、時刻・表示設定・AST（nullを含む）のKVへの期限なし保存を`ctx.waitUntil`で継続する。共有シート表示ではKV保存を待たず、タイトルはブラウザから渡す。画面とOG画像は保存済みASTから再現する。時刻操作で固定ASTを解除し、表示設定変更時はASTを保ってURLを`/`へ戻す。ID発行を待った後のネイティブ共有ではユーザー操作の有効期間を確認する。
@@ -60,14 +60,14 @@
 - `pnpm test` はデータとTeX生成の検証であり、配布フォントのロード検証ではない。
 - `vitest.config.ts`で`unit`・`build`・`og`を分け、`playwright.config.ts`でブラウザとサーバーの起動・終了・レポートを管理する。VitestのTypeScript変換はViteが行い、全テストの型チェックは`tsc --noEmit`で別に維持する。
 - Worker統合テストはWranglerの`createTestHarness`でViteが生成した`dist/worker/wrangler.json`を使う。固定PNGの回帰検証はPlaywrightの`toMatchSnapshot`で行い、基準画像は`tests/fixtures/og-snapshots/`、実際の画像と差分は`test-results/`に保存する。
-- ブラウザ検証は配布経路をそのまま使い、全スイートがサイトの自ホストする`/vendor/mathjax`を読む。過去のMathJax 3や別実装による代替検証は戻さない。
+- ブラウザ検証は配布物のMathJax（バンドル済みチャンク）をそのまま使う。過去のMathJax 3や別実装による代替検証は戻さない。
 - 以前のテスト結果を再実行した結果として扱わない。使用エンジン、書体、ブラウザ、実行コマンドを記録する。
 - 変更後は `docs/ACCEPTANCE.md` の該当項目と、分数・指数・通常時計・書体切り替えを確認する。
 
 ## リポジトリの管理
 
 ソース、採用済み式データ、テスト入力、説明、説明用PNG見本をGit管理する。`dist/`と`test-results/`は再生成可能な出力なのでGit管理しない。
-配信サイトはMathJaxとフォントを`/vendor/mathjax/`へ自ホストする（`tools/vite-mathjax.ts`がnode_modulesから生成）。Workerには同じ版のフォントデータを同梱し、ライセンス表示を維持する。
+ブラウザとWorkerは同じ版のMathJax・フォントデータをバンドルし、ライセンス表示を維持する。
 
 - `docs/`には継続して参照する仕様・運用手順・確認項目を置く。作業ごとのverificationディレクトリや引き継ぎ報告書を増やさない。
 - テストは`tests/README.md`の役割別ディレクトリに置く。生ログ・実行結果JSON・確認用スクリーンショットは、Git対象外の`test-results/`に保存し、`tests/`へ出力しない。実行結果は必要な範囲を回答やコミットに要約する。
