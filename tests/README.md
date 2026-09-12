@@ -72,6 +72,7 @@ pnpm run test:browser transport.test.ts --project chromium
 | `fullscreen`                                          | 全画面API・利用不可・拒否・接頭辞付きAPI            |
 | `audio` / `audio-settings`                            | 時報の波形・音量保存・毎回オフ・開始と取り消し      |
 | `motion-settings`                                     | 記号アニメーション設定の依存関係・保存復元          |
+| `dialog`                                              | 背景クリック・タップ、誤操作防止、フォーカス復元    |
 | `symbol-motion` / `structure-motion` / `symbol-morph` | 記号・構造・変形の各アニメーション                  |
 | `share` / `kv-share`                                  | 共有URL・保存済みAST・競合                          |
 | `og-parity`                                           | OG画像とブラウザの字形・軸・配置の一致              |
