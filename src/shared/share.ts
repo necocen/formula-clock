@@ -135,7 +135,7 @@ interface PreparedLink {
   promise: Promise<string>;
   controller: AbortController | null;
 }
-/** Small per-page cache: speculative and explicit saves share the same request. */
+/** Small per-page cache: repeated saves of the same snapshot share one request. */
 class LinkCache {
   private entries = new Map<string, PreparedLink>();
   constructor(

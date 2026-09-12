@@ -152,7 +152,7 @@ test('shared readings do not shift with recipient timezone or DST', () => {
       env: { ...process.env, TZ },
     });
 });
-test('speculative and clicked saves share one request; accepted exact snapshots hit the cache', async () => {
+test('repeated saves of one snapshot share one request; accepted exact snapshots hit the cache', async () => {
   let release!: () => void;
   const calls: { input: RequestInfo | URL; init?: RequestInit }[] = [];
   const cache = new Share.LinkCache(null, async (input, init) => {
@@ -189,7 +189,7 @@ test('speculative and clicked saves share one request; accepted exact snapshots 
   assert.equal(seeded.peek(snapshot), 'Abc0123X9z');
   assert.equal(await seeded.prepare(snapshot), 'Abc0123X9z');
 });
-test('cancelled or failed speculative saves cannot publish stale ids and remain retryable', async () => {
+test('cancelled or failed saves cannot publish stale ids and remain retryable', async () => {
   let release!: () => void;
   let signal: AbortSignal | null | undefined;
   let attempts = 0;
@@ -222,7 +222,7 @@ test('cancelled or failed speculative saves cannot publish stale ids and remain 
     assert.equal(await failed.prepare(snapshot), 'Abc0123X9z');
   }
 });
-test('the speculative cache bounds retained entries and aborts timed-out saves', async () => {
+test('the link cache bounds retained entries and aborts timed-out saves', async () => {
   let calls = 0;
   const cache = new Share.LinkCache(null, async () =>
     Response.json({ id: String(++calls).padStart(10, '0') }),

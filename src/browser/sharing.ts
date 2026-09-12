@@ -6,7 +6,7 @@ import {
   type SharedView,
 } from '../shared/types.ts';
 import FormulaShare from '../shared/share.ts';
-import { $, pad, timeCode } from './dom.ts';
+import { $, pad } from './dom.ts';
 import type { DisplayedFrame, Frame, Translate } from './types.ts';
 import type { MinuteSolutions } from './data-source.ts';
 
@@ -56,7 +56,6 @@ export interface SharingDeps {
   hasMinute(code: string): boolean;
   getMinute(code: string): MinuteSolutions | undefined;
   settle(epoch: number): void;
-  previewPaused(): boolean;
   kick(): void;
   adoptView(view: Pick<DisplayOptions, 'font' | 'numerals' | 'division'>): void;
 }
@@ -75,8 +74,6 @@ export function createSharing(deps: SharingDeps): Sharing {
   const shareLinks = new FormulaShare.LinkCache(deps.sharedView);
   let shareSerial = 0,
     shareBusy = false;
-  let shareWarmTimer: ReturnType<typeof setTimeout> | undefined,
-    shareWarmKey = '';
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   function snapshotAt(code: string, seconds: number) {
     return activeSnapshot?.t === code + pad(seconds) ? activeSnapshot : null;
@@ -85,8 +82,6 @@ export function createSharing(deps: SharingDeps): Sharing {
     if (!keepFormula) activeSnapshot = null;
     ++shareSerial;
     shareLinks.cancelPending();
-    clearTimeout(shareWarmTimer);
-    shareWarmKey = '';
     shareBusy = false;
     deps.invalidate();
     shareButton.removeAttribute('aria-busy');
@@ -155,58 +150,6 @@ export function createSharing(deps: SharingDeps): Sharing {
       failed(error);
     }
   }
-  function displayedSnapshot(): SharedSnapshot | null {
-    const displayed = deps.displayedFrame();
-    if (!displayed || shareButton.disabled || shareButton.hidden || document.hidden) return null;
-    const { code, seconds, view, ast } = displayed;
-    return FormulaShare.snapshot({
-      v: 1,
-      t: code + pad(seconds),
-      font: view.font,
-      numerals: view.numerals,
-      division: view.division,
-      ast,
-    });
-  }
-  function preparePausedShare() {
-    const state = deps.previewPaused() ? displayedSnapshot() : null;
-    if (!state) {
-      clearTimeout(shareWarmTimer);
-      return;
-    }
-    const key = JSON.stringify(state);
-    if (key === shareWarmKey) return;
-    clearTimeout(shareWarmTimer);
-    shareWarmKey = key;
-    const serial = shareSerial;
-    // Coalesce quick ruler/settings changes; failures stay quiet until a real share.
-    shareWarmTimer = setTimeout(() => {
-      if (serial === shareSerial && JSON.stringify(displayedSnapshot()) === key)
-        void shareLinks.prepare(state).catch(() => {});
-    }, 250);
-  }
-  function prepareShareOnIntent() {
-    const state = displayedSnapshot();
-    if (!state) return;
-    void shareLinks.prepare(state).catch(() => {});
-    if (deps.previewPaused()) return;
-    // Only this gesture warms the next two seconds; the running clock never
-    // continuously writes to KV. Exact AST/settings keys guard second boundaries.
-    const now = FormulaShare.localDate(state.t);
-    for (const offset of [1, 2]) {
-      const next = new Date(+now + offset * 1000),
-        code = timeCode(next),
-        result = deps.getMinute(code);
-      if (!result || result.error) continue;
-      void shareLinks
-        .prepare({
-          ...state,
-          t: code + pad(next.getSeconds()),
-          ast: result.solutions[next.getSeconds()] || null,
-        })
-        .catch(() => {});
-    }
-  }
   function frameCommitted({ code, seconds, loading, view, ast }: FrameCommit) {
     if (sharedAddress && !loading && !deps.engineError())
       document.title = FormulaShare.title({ v: 1, t: code + pad(seconds), ...view, ast });
@@ -215,17 +158,7 @@ export function createSharing(deps: SharingDeps): Sharing {
       loading ||
       !!deps.engineError() ||
       (!snapshotAt(code, seconds) && (!deps.hasMinute(code) || !!deps.getMinute(code)?.error));
-    preparePausedShare();
   }
-  for (const event of ['pointerenter', 'focus', 'pointerdown'])
-    shareButton.addEventListener(event, prepareShareOnIntent);
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      clearTimeout(shareWarmTimer);
-      shareWarmKey = '';
-      if (!shareBusy) shareLinks.cancelPending();
-    } else preparePausedShare();
-  });
   $('#share-copy').addEventListener('click', () => {
     void copyShare($<HTMLInputElement>('#share-url').value);
   });
@@ -254,8 +187,6 @@ export function createSharing(deps: SharingDeps): Sharing {
     deps.finishAnimations();
     deps.applyFrame(snapshot.frame, snapshot.ast, code, seconds, false, true, view);
     showNotice('');
-    clearTimeout(shareWarmTimer);
-    shareWarmKey = JSON.stringify(state);
     const serial = ++shareSerial,
       preparedId = shareLinks.peek(state);
     if (preparedId) {

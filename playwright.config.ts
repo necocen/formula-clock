@@ -42,7 +42,6 @@ export default defineConfig<ClockTestOptions>({
         'i18n.test.ts',
         'transport.test.ts',
         'fullscreen.test.ts',
-        'speculative-share.test.ts',
       ],
     },
     {

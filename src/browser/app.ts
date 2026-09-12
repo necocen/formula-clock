@@ -89,7 +89,6 @@ const sharing = createSharing({
   hasMinute: (code) => data.hasMinute(code),
   getMinute: (code) => data.getMinute(code),
   settle: (epoch) => clock.settle(epoch),
-  previewPaused: () => !!clock.preview?.paused,
   kick: () => clock.refresh(true),
   adoptView: (view) => settings.adoptView(view),
 });
