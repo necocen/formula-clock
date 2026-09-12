@@ -35,6 +35,8 @@ export interface FormulaProvider {
 /** Optional second argument to FormulaData.FetchHourProvider; default is browser fetch. */
 export interface FetchHourOptions {
   fetch?: typeof fetch;
+  /** Build-baked manifest snapshot adopted without a network round trip. */
+  initial?: unknown;
 }
 export interface DisplayOptions {
   font: 'stix2' | 'termes' | 'fira' | 'euler';

@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { clockContent } from './tools/vite-clock.ts';
+import { preloadHints } from './tools/vite-preload.ts';
 
 const at = (name: string) => fileURLToPath(new URL(name, import.meta.url));
 
@@ -10,6 +11,7 @@ export default defineConfig({
   publicDir: at('./public'),
   plugins: [
     clockContent(),
+    preloadHints(),
     cloudflare({
       configPath: at('./wrangler.jsonc'),
       viteEnvironment: { name: 'worker' },

@@ -11,8 +11,11 @@ import { renderLicenses } from './licenses.ts';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const hash = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
+const VIRTUAL_HOURS = 'virtual:clock-hours';
+
 export function clockContent(): Plugin {
   let licenses: string;
+  let manifestJson = '';
   return {
     name: 'formula-clock-content',
     async configResolved() {
@@ -36,14 +39,20 @@ export function clockContent(): Plugin {
         hours[hour] = `hours/${hour}.${hash(json)}.json`;
         await fs.writeFile(path.join(folder, hours[hour]), json);
       }
-      await fs.writeFile(
-        path.join(folder, 'manifest.json'),
-        JSON.stringify(
-          { schema: 'formula-clock-hours/1', version: hash(JSON.stringify(hours)), hours },
-          null,
-          2,
-        ) + '\n',
+      manifestJson = JSON.stringify(
+        { schema: 'formula-clock-hours/1', version: hash(JSON.stringify(hours)), hours },
+        null,
+        2,
       );
+      // The served manifest is the recovery path for tabs that outlive a data
+      // redeploy; the virtual module bakes the same snapshot into the bundles.
+      await fs.writeFile(path.join(folder, 'manifest.json'), manifestJson + '\n');
+    },
+    resolveId(id) {
+      if (id === VIRTUAL_HOURS) return '\0' + VIRTUAL_HOURS;
+    },
+    load(id) {
+      if (id === '\0' + VIRTUAL_HOURS) return `export default ${manifestJson};`;
     },
     transformIndexHtml: {
       order: 'pre',

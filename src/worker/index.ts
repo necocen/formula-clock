@@ -1,4 +1,5 @@
 import wasm from '@resvg/resvg-wasm/index_bg.wasm';
+import hoursSnapshot from 'virtual:clock-hours';
 import { createHandler } from './handler.ts';
 import { initRenderer, renderOg } from './render.ts';
 import type { Context, Env } from './types.ts';
@@ -9,6 +10,7 @@ export default {
   fetch(request: Request, env: Env & { WORKER_VERSION: { id: string } }, ctx: Context) {
     handler ??= createHandler({
       revision: env.WORKER_VERSION.id,
+      hours: hoursSnapshot,
       renderOg: async (input) => {
         await initRenderer(wasm);
         return renderOg(input);

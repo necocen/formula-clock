@@ -13,7 +13,6 @@ import '@mathjax/src/js/input/tex/base/BaseConfiguration.js';
 import '@mathjax/src/js/input/tex/ams/AmsConfiguration.js';
 import '@mathjax/src/js/input/tex/newcommand/NewcommandConfiguration.js';
 import '@mathjax/src/js/input/tex/html/HtmlConfiguration.js';
-import type { DisplayOptions } from '../shared/types.ts';
 import { CONVERT_OPTIONS, TEX_PACKAGES } from '../shared/typeset.ts';
 
 RegisterHTMLHandler(browserAdaptor());
@@ -39,23 +38,12 @@ wrapperPrototype.charNode = function (variant, code, path) {
   return node;
 };
 
-const FONTS: Record<DisplayOptions['font'], () => Promise<{ Font: unknown }>> = {
-  stix2: () => import('./fonts/font-stix2.ts'),
-  termes: () => import('./fonts/font-termes.ts'),
-  fira: () => import('./fonts/font-fira.ts'),
-  euler: () => import('./fonts/font-euler.ts'),
-};
-
 export interface Engine {
   convert(tex: string): Promise<HTMLElement>;
   readonly params: { axis_height: number };
 }
 
-export async function createEngine(
-  font: DisplayOptions['font'],
-  glyphFont: string,
-): Promise<Engine> {
-  const { Font } = await FONTS[font]();
+export function createEngine(Font: unknown, glyphFont: string): Engine {
   const output = new SVG<HTMLElement, Text, Document>({ fontData: Font, fontCache: 'none' });
   glyphFonts.set(output, glyphFont);
   const doc = mathjax.document(document, {

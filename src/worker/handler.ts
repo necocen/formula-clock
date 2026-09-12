@@ -42,6 +42,7 @@ const check = (signal: AbortSignal) => {
 export function createHandler({
   renderOg,
   revision,
+  hours,
   timeoutMs = 8000,
   writeTimeoutMs = 1000,
   log = (value) => console.log(JSON.stringify(value)),
@@ -55,6 +56,7 @@ export function createHandler({
         assets,
         new Data.FetchHourProvider(new URL('/data/manifest.json', origin).href, {
           fetch: (url, options) => assets.fetch(new Request(url, options)),
+          initial: hours,
         }),
       );
     return providers.get(assets)!;

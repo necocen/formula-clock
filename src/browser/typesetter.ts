@@ -1,6 +1,7 @@
 import type { DisplayOptions, Expr, TexOptions, Typography } from '../shared/types.ts';
 import type { ClockFace, Frame, GlyphToken, PlacedToken } from './types.ts';
 import type { Engine } from './engine.ts';
+import { FONT_LOADERS } from './fonts/index.ts';
 /* TeX -> SVG layout adapter. MathJax owns typography; the clock owns animation.
  * The engine and per-font data ship as lazy chunks of the app bundle; see
  * ./engine.ts for the shared pipeline.
@@ -92,8 +93,12 @@ class Typesetter {
       await Promise.race([
         timeout,
         (async () => {
-          const { createEngine, version } = await import('./engine.ts');
-          this.eng = await createEngine(this.profile.id, `${this.profile.id}@${version}`);
+          // Download the engine and the font data concurrently.
+          const [{ createEngine, version }, { Font }] = await Promise.all([
+            import('./engine.ts'),
+            FONT_LOADERS[this.profile.id](),
+          ]);
+          this.eng = createEngine(Font, `${this.profile.id}@${version}`);
           this.mathjax = { version };
           await this.calibrateTypography();
         })(),

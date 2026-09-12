@@ -118,7 +118,7 @@ class FetchHourProvider implements FormulaProvider {
   private pending = new Map<string, Promise<HourRecords>>();
   constructor(
     manifestUrl: string | URL,
-    { fetch: fetcher = (...args) => fetch(...args) }: FetchHourOptions = {},
+    { fetch: fetcher = (...args) => fetch(...args), initial }: FetchHourOptions = {},
   ) {
     if (typeof fetcher !== 'function') throw new TypeError('Expected a fetch function');
     this.fetch = fetcher;
@@ -126,6 +126,37 @@ class FetchHourProvider implements FormulaProvider {
       manifestUrl,
       typeof document === 'undefined' ? undefined : document.baseURI,
     ).href;
+    // A baked snapshot serves the first request with no manifest round trip;
+    // the manifest URL remains the recovery path for long-lived sessions that
+    // cross a data redeploy (hour fetches then 404 and refresh the manifest).
+    if (initial !== undefined) this.adopt(initial, this.url);
+  }
+  private adopt(raw: unknown, base: string): Manifest {
+    if (
+      !isRecord(raw) ||
+      raw.schema !== 'formula-clock-hours/1' ||
+      typeof raw.version !== 'string' ||
+      !/^[a-f0-9]{64}$/.test(raw.version) ||
+      !isRecord(raw.hours) ||
+      Object.keys(raw.hours).length !== 24
+    ) {
+      throw new TypeError('Expected a versioned formula-clock-hours/1 manifest with 24 hours');
+    }
+    const urls: Record<string, string> = {};
+    for (let i = 0; i < 24; i++) {
+      const hour = String(i).padStart(2, '0');
+      if (typeof raw.hours[hour] !== 'string' || !raw.hours[hour])
+        throw new TypeError(`Missing hour ${hour}`);
+      const url = new URL(raw.hours[hour], base);
+      if (!['http:', 'https:'].includes(url.protocol))
+        throw new TypeError('Hour URLs must use HTTP(S)');
+      urls[hour] = url.href;
+    }
+    if (!this.manifest || this.manifest.version !== raw.version) {
+      this.hours.clear();
+      this.manifest = Object.freeze({ version: raw.version, urls: Object.freeze(urls) });
+    }
+    return this.manifest;
   }
   private async loadManifest(previous?: Manifest): Promise<Manifest> {
     if (this.manifest && this.manifest !== previous) return this.manifest;
@@ -137,31 +168,7 @@ class FetchHourProvider implements FormulaProvider {
       });
       if (!response.ok) throw new DataHTTPError(response.status, this.url);
       const raw: unknown = await response.json();
-      if (
-        !isRecord(raw) ||
-        raw.schema !== 'formula-clock-hours/1' ||
-        typeof raw.version !== 'string' ||
-        !/^[a-f0-9]{64}$/.test(raw.version) ||
-        !isRecord(raw.hours) ||
-        Object.keys(raw.hours).length !== 24
-      ) {
-        throw new TypeError('Expected a versioned formula-clock-hours/1 manifest with 24 hours');
-      }
-      const urls: Record<string, string> = {};
-      for (let i = 0; i < 24; i++) {
-        const hour = String(i).padStart(2, '0');
-        if (typeof raw.hours[hour] !== 'string' || !raw.hours[hour])
-          throw new TypeError(`Missing hour ${hour}`);
-        const url = new URL(raw.hours[hour], response.url || this.url);
-        if (!['http:', 'https:'].includes(url.protocol))
-          throw new TypeError('Hour URLs must use HTTP(S)');
-        urls[hour] = url.href;
-      }
-      if (!this.manifest || this.manifest.version !== raw.version) {
-        this.hours.clear();
-        this.manifest = Object.freeze({ version: raw.version, urls: Object.freeze(urls) });
-      }
-      return this.manifest;
+      return this.adopt(raw, response.url || this.url);
     })();
     this.manifestTask = task;
     try {

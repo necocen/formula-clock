@@ -26,6 +26,8 @@ export interface Rewriter {
   transform(response: Response): Response;
 }
 export interface HandlerOptions {
+  /** Build-baked manifest snapshot (virtual:clock-hours) adopted without a fetch. */
+  hours?: unknown;
   renderOg(input: RenderInput): Promise<Uint8Array<ArrayBuffer>>;
   revision: string;
   timeoutMs?: number;

@@ -216,12 +216,13 @@ await FormulaClock.setDisplay({ font: 'euler', numerals: 'lining', division: 'fr
 時間別JSONは `FormulaTable` の部分集合で、該当時間の60分をすべて含む。
 
 ```js
-new FormulaData.FetchHourProvider('data/manifest.json');
+new FormulaData.FetchHourProvider('data/manifest.json', { initial: snapshot });
 ```
 
 目録の形式は `schema: "formula-clock-hours/1"`、`version`（64桁のSHA-256）、
 `hours`（"00"〜"23"をURLへ対応させるオブジェクト）。URLは目録の応答URLから解決する。
 版はURLマップから、時間別ファイル名は各JSON本文から計算する。
+`initial`にはビルド時に焼き込んだ目録スナップショット（`virtual:clock-hours`）を渡し、初回の目録取得を省く。`data/manifest.json`はデータ再デプロイをまたいで開いたままのタブが404から回復するための経路として配信を続ける。
 
 同じ時間帯の取得を共有し、取得済み時間はLRUで2時間保持する。
 個別のAbortSignalはその利用者だけを中止する。共有ダウンロードは継続できる。
@@ -304,5 +305,5 @@ OG／Twitterカードは`FormulaShare.card(state)`で作り、タイトルは`Fo
 旧形式の`/og.png`も維持する。画像URLの描画版`r`はキャッシュの更新用で、過去の描画版を指定するAPIではない。
 `renderOg({state,ast})` は正規ASTからPNGを返す、Cloudflareのストレージに依存しない処理。
 
-`FetchHourProvider(manifestUrl, {fetch})` の任意の第2引数で取得関数を差し替えられる。
+`FetchHourProvider(manifestUrl, {fetch, initial})` の任意の第2引数で取得関数と焼き込み目録を差し替えられる。
 旧形式のOG画像ではASSETS bindingを使い、既存の`getMinute(hhmm, {signal})`契約とキャッシュ・中止処理を維持する。
