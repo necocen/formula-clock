@@ -15,7 +15,6 @@ export default defineConfig<ClockTestOptions>({
   outputDir: 'test-results/browser',
   reporter: [['list'], ['html', { outputFolder: 'test-results/playwright-report', open: 'never' }]],
   metadata: { command: process.argv },
-  globalSetup: './tests/helpers/setup-browser.ts',
   use: {
     baseURL: url ?? 'http://127.0.0.1:8787/',
     actionTimeout: 30_000,
@@ -53,7 +52,7 @@ export default defineConfig<ClockTestOptions>({
   webServer: url
     ? undefined
     : {
-        command: 'pnpm run build:external && pnpm run preview:local',
+        command: 'pnpm run build && pnpm run preview:local',
         url: 'http://127.0.0.1:8787/',
         timeout: 120_000,
         reuseExistingServer: !process.env.CI,

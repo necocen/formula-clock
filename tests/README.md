@@ -22,7 +22,7 @@ pnpm run check        # 整形・lint・型チェック
 pnpm test             # 単体テスト → ビルドテスト
 pnpm run test:unit    # AST・全日データ・取得・共有・キャッシュなど
 pnpm run test:watch   # 単体テストを変更時に再実行
-pnpm run test:build   # 単体HTMLと配信用アセットを実際にビルドして検証
+pnpm run test:build   # 配信用アセットを実際にビルドして検証
 pnpm run test:og      # 配信用ビルド → 画像描画とworkerdの統合テスト
 ```
 
@@ -45,9 +45,9 @@ pnpm run test:browser --project chromium --project webkit
 
 引数なしでは設定済みの全ブラウザとOG画像差分を実行します。Chromium・WebKitは全13スイート、Firefoxは対応する9スイートです。テストファイル名か`--grep`で絞り込み、`--project`でブラウザを選択します。`share`など名前が重なる場合は`--grep '^share$'`でテスト名を完全一致させてください。アニメーションの計測に競合が出ないよう、実行workerは1に固定しています。
 
-実行時に単体HTMLと配信版をViteでビルドし、`vite preview`のHTTP Workerを自動で起動・終了します。`--list` / `--help`ではビルドやサーバー起動は行いません。既定のHTTP URLは`http://127.0.0.1:8787/`です。開発中に同じポートでWorkerが動いていれば再利用し、CIでは既存サーバーとの競合をエラーにします。
+実行時に配信版をViteでビルドし、`vite preview`のHTTP Workerを自動で起動・終了します。`--list` / `--help`ではビルドやサーバー起動は行いません。既定のHTTP URLは`http://127.0.0.1:8787/`です。開発中に同じポートでWorkerが動いていれば再利用し、CIでは既存サーバーとの競合をエラーにします。
 
-`clock`は`dist/standalone/index.html`を直接開き、他のスイートはHTTPを使います。プレビューなど別の配信先を確認するときは`FORMULA_CLOCK_TEST_URL`を指定します。この場合は`clock`も指定URLを使い、ローカルWorkerを起動しません。
+全スイートがHTTPを使います。プレビューなど別の配信先を確認するときは`FORMULA_CLOCK_TEST_URL`を指定します。この場合はローカルWorkerを起動しません。
 
 ```sh
 FORMULA_CLOCK_TEST_URL=http://127.0.0.1:8787/ pnpm run test:browser clock.test.ts --project chromium
@@ -93,7 +93,7 @@ pnpm exec playwright show-report test-results/playwright-report
 
 `clock`で移動を完全に無効化する場合は、3つのmotion設定をすべて`0`にします。構造の移動・四則記号の変形には基本記号の移動が必要なためです。
 
-ブラウザ検証は配布経路のMathJax 4だけを使います。単体HTMLを開く`clock`はCDN、HTTP配信のスイートはサイト自身の`/vendor/mathjax/`から読み込みます。
+ブラウザ検証は配布経路のMathJax 4だけを使い、すべてサイト自身の`/vendor/mathjax/`から読み込みます。
 
 ## 実行結果
 

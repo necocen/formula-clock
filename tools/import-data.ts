@@ -42,6 +42,4 @@ console.log({
   ordinaryTime: 86400 - equations,
   jsonBytes: Buffer.byteLength(json),
 });
-console.log(
-  'Run pnpm run build and pnpm test to verify exact values and regenerate the standalone app.',
-);
+console.log('Run pnpm run build and pnpm test to verify exact values and rebuild the site.');

@@ -2,11 +2,10 @@ import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { inspect } from 'node:util';
 import type { DisplayOptions, ClockState } from '../../src/shared/types.ts';
 import { renderLicenses } from '../../tools/licenses.ts';
-import { test, createReport, playwrightVersion, ROOT, decodeHtml } from '../helpers/browser.ts';
+import { test, createReport, playwrightVersion, decodeHtml } from '../helpers/browser.ts';
 test('i18n', async ({ browser, args }) => {
   const report = createReport({
     at: new Date().toISOString(),
@@ -224,19 +223,6 @@ test('i18n', async ({ browser, args }) => {
     });
     await ctx.close();
   }
-  const ctx = await browser.newContext({ locale: 'en-US' });
-  const page = await ctx.newPage();
-  await page.goto(pathToFileURL(path.join(ROOT, 'dist/standalone/index.html')).href + query);
-  await page.waitForFunction('window.FormulaClock?.state.layout', undefined, { timeout: 45000 });
-  assert.deepEqual(await page.locator('html').getAttribute('lang'), 'en');
-  assert.deepEqual(await page.locator('#settings-title').textContent(), 'Settings');
-  assert.ok(await page.locator('#share').isHidden());
-  assert.ok(await page.evaluate('FormulaClock.state.paused'));
-  await page.click('#go-live');
-  assert.ok(!(await page.evaluate('FormulaClock.state.preview')));
-  assert.deepEqual(page.url(), pathToFileURL(path.join(ROOT, 'dist/standalone/index.html')).href);
-  report['standaloneEnglish'] = true;
-  await ctx.close();
   assert.ok(!(report['errors'].length > 0), inspect(report['errors']));
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),

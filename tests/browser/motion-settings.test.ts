@@ -312,9 +312,8 @@ test('motion-settings', async ({ browser, args, page }) => {
   assert.notDeepEqual(await page.locator('#render-status').getAttribute('hidden'), null);
   const failed = await browser.newPage({ locale: 'ja-JP', timezoneId: 'Asia/Tokyo' });
   failed.on('pageerror', (e) => errors.push(String(e)));
-  // The served site self-hosts MathJax under /vendor/mathjax; the standalone build uses the CDN.
+  // The site self-hosts MathJax under /vendor/mathjax.
   await failed.route('**/vendor/mathjax/**', async (route) => await route.abort());
-  await failed.route('https://cdn.jsdelivr.net/**', async (route) => await route.abort());
   await failed.goto(args.url);
   await failed.waitForFunction('window.FormulaClock?.state.engineError', undefined);
   assert.ok(await failed.locator('#plain-time').isVisible());

@@ -1,14 +1,10 @@
 import type { DisplayOptions, Expr, TexOptions, Typography } from '../shared/types.ts';
 import type { ClockFace, Frame, GlyphToken, PlacedToken, MathJaxRuntime } from './types.ts';
 /* TeX -> SVG layout adapter. MathJax owns typography; the clock owns animation.
- * No font files are bundled into the app script. Served builds load MathJax and
- * its fonts from the site's own /vendor/mathjax assets; the standalone single
- * file loads the same version from the CDN.
+ * No font files are bundled into the app script; the site self-hosts the
+ * MathJax runtime and fonts under /vendor/mathjax.
  */
-const STANDALONE = import.meta.env.MODE.startsWith('standalone');
-const MATHJAX_BASE = STANDALONE
-  ? 'https://cdn.jsdelivr.net/npm/mathjax@4.1.3'
-  : new URL('/vendor/mathjax', document.baseURI).href;
+const MATHJAX_BASE = new URL('/vendor/mathjax', document.baseURI).href;
 const NS = 'http://www.w3.org/2000/svg';
 import * as Expression from '../shared/expression.ts';
 const { expressionTex, frameTex, mark, relation } = Expression;
@@ -115,7 +111,7 @@ class Typesetter {
       const config = {
         loader: {
           load: ['[tex]/html'],
-          ...(STANDALONE ? {} : { paths: { fonts: `${MATHJAX_BASE}/fonts` } }),
+          paths: { fonts: `${MATHJAX_BASE}/fonts` },
           failed: (error: unknown) =>
             finish(new Error(`MathJax: ${error instanceof Error ? error.message : String(error)}`)),
         },

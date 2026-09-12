@@ -3,43 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { isRecord } from '../../src/shared/types.ts';
 import { renderLicenses } from '../../tools/licenses.ts';
 const root = fileURLToPath(new URL('../../', import.meta.url));
-test('standalone build embeds the canonical day and licenses without including the solver', async () => {
-  execFileSync(
-    process.execPath,
-    ['node_modules/vite/bin/vite.js', 'build', '--mode', 'standalone'],
-    { cwd: root, env: { ...process.env, NODE_ENV: 'production' } },
-  );
-  const html = fs.readFileSync(path.join(root, 'dist/standalone/index.html'), 'utf8');
-  const source: unknown = JSON.parse(
-    fs.readFileSync(path.join(root, 'data/expressions.json'), 'utf8'),
-  );
-  assert.ok(!html.includes('function createSolver'));
-  const encoded = html.match(/data-encoding="gzip-base64">([^<]+)/);
-  assert.ok(encoded);
-  const b64 = encoded[1];
-  assert.deepEqual(
-    JSON.parse(zlib.gunzipSync(Buffer.from(b64, 'base64')).toString('utf8')),
-    source,
-  );
-  assert.ok(html.includes(await renderLicenses()));
-  assert.equal((html.match(/<pre lang="en">/g) || []).length, 15);
-  assert.equal(
-    (html.match(/This is version 1.0, dated 22 June 2009, of the GUST Font License/g) || []).length,
-    2,
-  );
-  assert.ok(html.includes('LaTeX Project Public License'));
-  assert.ok(html.includes('Mozilla Public License Version 2.0'));
-  assert.ok(!(await renderLicenses()).includes('{{'));
-  assert.ok(!html.includes('<!-- clock-licenses -->'));
-  assert.ok(!html.includes('<!-- clock-data -->'));
-  assert.ok(!/<script[^>]+src=/.test(html), 'Standalone JavaScript is entirely inline');
-});
 test('external build exactly partitions the canonical day and publishes only site assets', async () => {
   execFileSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], {
     cwd: root,

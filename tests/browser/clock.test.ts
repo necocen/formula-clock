@@ -21,7 +21,6 @@ interface SourceClockGeometry {
   colons: { x: number; y: number; inside: boolean }[];
   glyphFonts: string[];
 }
-test.use({ standalone: true });
 test.use({
   locale: 'ja-JP',
   viewport: { width: 1440, height: 1000 },
@@ -67,9 +66,7 @@ test('clock', async ({ browser, args, context: ctx }) => {
   await page.evaluate(
     "window.originalSourceDigits=[...document.querySelectorAll('#source-time .source-digit')];window.originalSourceColons=[...document.querySelectorAll('#source-time .colon')]",
   );
-  await page.evaluate(
-    "window.originalProvider=window.FORMULA_CLOCK_CONFIG?.provider || new FormulaData.TableProvider(()=>FormulaData.loadEmbedded(document.querySelector('#clock-data')))",
-  );
+  await page.evaluate('window.originalProvider=FORMULA_CLOCK_CONFIG.provider');
   report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
   assert.deepEqual(report['mathjax'], '4.1.3');
   assert.deepEqual(await page.evaluate('FormulaClock.state.display.font'), 'stix2');
@@ -800,9 +797,6 @@ test('clock', async ({ browser, args, context: ctx }) => {
   assert.ok(!(errors.length > 0), inspect(errors));
   report['pageErrors'] = errors;
   report['warnings'] = warnings;
-  report['cdnRequests'] = sorted(
-    new Set(requests.filter((url) => url.includes('cdn.jsdelivr.net')).map((url) => url)),
-  );
   report['dataRequests'] = sorted(
     new Set(requests.filter((url) => url.includes('/data/')).map((url) => url)),
   );

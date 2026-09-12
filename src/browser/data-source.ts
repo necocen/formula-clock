@@ -27,18 +27,14 @@ export interface DataSource {
   replaceProvider(next: FormulaProvider): void;
 }
 
-const { normalizeMinute, TableProvider } = FormulaData;
+const { normalizeMinute } = FormulaData;
 
 export function createDataSource(deps: DataSourceDeps): DataSource {
   const cache = new Map<string, MinuteSolutions>(),
     pending = new Map<string, AbortController>();
-  const defaultProvider = () =>
-    new TableProvider(async () => {
-      const embedded = document.querySelector<HTMLElement>('#clock-data');
-      if (!embedded) throw new Error('No embedded formula table or custom provider');
-      return FormulaData.loadEmbedded(embedded);
-    });
-  let provider = window.FORMULA_CLOCK_CONFIG?.provider || defaultProvider();
+  const configured = window.FORMULA_CLOCK_CONFIG?.provider;
+  if (!configured) throw new Error('No formula data provider configured');
+  let provider = configured;
   let dataRevision = 0;
   function request(code: string) {
     const existing = cache.get(code);

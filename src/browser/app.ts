@@ -32,7 +32,6 @@ setupDialog(
   $<HTMLButtonElement>('#licenses-close'),
 );
 setupDialog(shareDialog, shareButton, $<HTMLButtonElement>('#share-close'), false);
-shareButton.hidden = !['http:', 'https:'].includes(location.protocol);
 // Composed after the renderer block; late-bound closures fire only from
 // event listeners, promise continuations, and timers.
 let clock!: Clock;

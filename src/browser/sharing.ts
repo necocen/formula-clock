@@ -91,8 +91,7 @@ export function createSharing(deps: SharingDeps): Sharing {
       const target = new URL(location.href);
       target.search = '';
       target.hash = '';
-      // file:// previews retain their pathname; changing it would fail the origin check.
-      if (['http:', 'https:'].includes(target.protocol)) target.pathname = '/';
+      target.pathname = '/';
       history.replaceState(history.state, '', target);
       document.title = FormulaShare.title(null);
       sharedAddress = false;

@@ -9,18 +9,10 @@ pnpm 12.4.1とPython 3.11以上を用意します。pnpm未導入の場合は[�
 
 ```sh
 pnpm install
-pnpm run build
-```
-
-生成された`dist/standalone/index.html`をブラウザで開けます。MathJax 4.1.3とフォントはCDNから読み込むため、インターネット接続が必要です。
-
-共有URLとOG画像を含むサイトをローカルで動かす場合：
-
-```sh
 pnpm run dev
 ```
 
-ViteがローカルのWorker・KV・R2と画面を起動します。`pnpm run build:external`で配信用アセットを`dist/site/`、Workerを`dist/worker/`へ生成し、`pnpm run preview:local`でその出力を確認できます。配信サイトはMathJaxとフォントを`/vendor/mathjax/`として自ホストするため、単体HTMLと異なりCDNへは接続しません。
+ViteがローカルのWorker・KV・R2と画面を起動します。`pnpm run build`で配信用アセットを`dist/site/`、Workerを`dist/worker/`へ生成し、`pnpm run preview:local`でその出力を確認できます。サイトはMathJax 4.1.3とフォントを`/vendor/mathjax/`として自ホストするため、実行時にCDNへは接続しません。
 Cloudflareへのプレビュー・公開・KV／R2設定は[共有機能の運用](docs/SHARING.md)を参照してください。
 
 ## 使い方
@@ -79,7 +71,7 @@ tools/           データ生成／取り込み・Vite用データ／ライセ�
 data/            採用済み式データ・JSON Schema・形式サンプル
 tests/
   unit/          Nodeによる単体・データ検証
-  build/         単体HTML・配信用ビルドの検証
+  build/         配信用ビルドの検証
   og/            OG画像描画・workerdの統合テスト
   browser/       配布経路のMathJax 4を使うPlaywrightテスト
   fixtures/      固定したテスト入力
@@ -119,21 +111,20 @@ Python連携はpnpmの実験機能で、この版のPythonロックは生成し�
 pnpm run check
 pnpm test
 pnpm run build
-pnpm run build:external
 pnpm run test:og
 ```
 
-単体・ビルド・OG検証はVitest、画面検証はPlaywright Testを使います。VitestのTypeScript変換はViteが担当し、`pnpm run test:watch`で単体テストを変更時に再実行できます。ビルドは[Vite](https://vite.dev/)、Worker・WASM・配布設定は[Cloudflare公式プラグイン](https://developers.cloudflare.com/workers/vite-plugin/)、単体HTMLの埋め込みは[vite-plugin-singlefile](https://github.com/richardtallent/vite-plugin-singlefile)が担当します。圧縮しない埋め込みJSONを調べる場合は`pnpm exec vite build --mode standalone-raw`を使います。
+単体・ビルド・OG検証はVitest、画面検証はPlaywright Testを使います。VitestのTypeScript変換はViteが担当し、`pnpm run test:watch`で単体テストを変更時に再実行できます。ビルドは[Vite](https://vite.dev/)、Worker・WASM・配布設定は[Cloudflare公式プラグイン](https://developers.cloudflare.com/workers/vite-plugin/)が担当します。
 
-`pnpm run typecheck`はTypeScriptの型チェックだけを実行します。整形・lint・型の確認は`pnpm run check`、テストの実行は`pnpm test`と役割を分けているため、通常は両方を実行します。両ビルドには型チェックを含めています。
-`pnpm test`は単体テストと単体／配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。
+`pnpm run typecheck`はTypeScriptの型チェックだけを実行します。整形・lint・型の確認は`pnpm run check`、テストの実行は`pnpm test`と役割を分けているため、通常は両方を実行します。ビルドには型チェックを含めています。
+`pnpm test`は単体テストと配信用ビルドを順に検証します。Git管理された生成HTMLには依存しないため、初回のチェックアウトでもそのまま実行できます。配布フォントの実際の読み込みはブラウザで確認します。各テストの範囲・個別実行・準備手順は[tests/README.md](tests/README.md)にまとめています。
 
 ```sh
 pnpm exec playwright install chromium firefox webkit
 pnpm run test:browser clock.test.ts --project chromium
 ```
 
-ブラウザテストは配布経路そのままのMathJax 4.1.3を使います。単体HTMLを開く`clock`はCDN、HTTP配信のスイートはサイトが自ホストする`/vendor/mathjax/`から読み込みます。
+ブラウザテストは配布経路そのままのMathJax 4.1.3を使い、すべてのスイートがサイトの自ホストする`/vendor/mathjax/`から読み込みます。
 HTTP配信の共有・多言語UIは、Playwright TestがローカルWorkerを自動で起動して確認します。
 
 ```sh

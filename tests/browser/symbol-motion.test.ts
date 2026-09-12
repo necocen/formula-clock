@@ -31,9 +31,7 @@ test('symbol-motion', async ({ browser, args, page }) => {
   await page.evaluate(
     'FormulaClock.setDisplay({symbolMotion:false,structureMotion:false,symbolMorph:false})',
   );
-  await page.evaluate(
-    "window.originalProvider=window.FORMULA_CLOCK_CONFIG?.provider || new FormulaData.TableProvider(()=>FormulaData.loadEmbedded(document.querySelector('#clock-data')))",
-  );
+  await page.evaluate('window.originalProvider=FORMULA_CLOCK_CONFIG.provider');
   report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
   assert.deepEqual(report['mathjax'], '4.1.3');
   await page.evaluate(

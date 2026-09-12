@@ -18,10 +18,6 @@ function fixture() {
   const packageInfo = { name: '@mathjax/src', version: '4.1.3', license: 'Apache-2.0' };
   write('package.json', JSON.stringify({ devDependencies: { '@mathjax/src': '4.1.3' } }));
   write('node_modules/@mathjax/src/package.json', JSON.stringify(packageInfo));
-  write(
-    'src/browser/typesetter.ts',
-    "script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-svg-nofont.js';",
-  );
   const manifest = {
     reviewedOn: '2026-09-10',
     packages: { '@mathjax/src': packageInfo },
@@ -99,7 +95,7 @@ test('license generation escapes source text without changing whitespace and is 
   assert.equal(await renderLicenses(root), html);
 });
 
-test('license generation rejects dependency and CDN changes pending review', async () => {
+test('license generation rejects dependency changes pending review', async () => {
   const { root, write, packageInfo } = fixture();
   for (const change of [{ version: '4.2.0' }, { license: 'MIT' }]) {
     write('node_modules/@mathjax/src/package.json', JSON.stringify({ ...packageInfo, ...change }));
@@ -113,12 +109,6 @@ test('license generation rejects dependency and CDN changes pending review', asy
     JSON.stringify({ devDependencies: { '@mathjax/src': '4.1.3', '@mathjax/new-font': '4.1.3' } }),
   );
   await assert.rejects(() => renderLicenses(root), /Missing license review for @mathjax\/new-font/);
-  write('package.json', JSON.stringify({ devDependencies: { '@mathjax/src': '4.1.3' } }));
-  write(
-    'src/browser/typesetter.ts',
-    "script.src = 'https://cdn.jsdelivr.net/npm/mathjax@4.2.0/tex-svg-nofont.js';",
-  );
-  await assert.rejects(() => renderLicenses(root), /CDN version does not match/);
 });
 
 test('license generation rejects missing text and template omissions', async () => {

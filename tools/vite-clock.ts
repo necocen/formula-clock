@@ -1,8 +1,7 @@
-// Only Formula Clock's data format and license markup live here. Vite and its
-// Cloudflare/singlefile plugins own bundling, HTML scripts, WASM and deployment.
+// Only Formula Clock's data format and license markup live here. Vite and the
+// Cloudflare plugin own bundling, HTML scripts, WASM and deployment.
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
@@ -12,20 +11,13 @@ import { renderLicenses } from './licenses.ts';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const hash = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
 
-export function clockContent({ standalone, raw }: { standalone: boolean; raw: boolean }): Plugin {
+export function clockContent(): Plugin {
   let licenses: string;
-  let embedded = '';
   return {
     name: 'formula-clock-content',
     async configResolved() {
       licenses = await renderLicenses(root);
       const data = await fs.readFile(path.join(root, 'data/expressions.json'), 'utf8');
-      if (standalone) {
-        embedded = raw
-          ? `<script id="clock-data" type="application/json">${data.replace(/</g, '\\u003c')}</script>`
-          : `<script id="clock-data" type="application/octet-stream" data-encoding="gzip-base64">${zlib.gzipSync(data, { level: 9 }).toString('base64')}</script>`;
-        return;
-      }
       // Generated public assets are ignored by Git and copied/served by Vite.
       const folder = path.join(root, 'public/data');
       await fs.rm(folder, { recursive: true, force: true });
@@ -56,12 +48,9 @@ export function clockContent({ standalone, raw }: { standalone: boolean; raw: bo
     transformIndexHtml: {
       order: 'pre',
       handler(html) {
-        for (const marker of ['<!-- clock-licenses -->', '<!-- clock-data -->']) {
-          if (html.split(marker).length !== 2) throw new Error(`Expected exactly one ${marker}`);
-        }
-        return html
-          .replace('<!-- clock-licenses -->', () => licenses)
-          .replace('<!-- clock-data -->', () => embedded);
+        const marker = '<!-- clock-licenses -->';
+        if (html.split(marker).length !== 2) throw new Error(`Expected exactly one ${marker}`);
+        return html.replace(marker, () => licenses);
       },
     },
   };

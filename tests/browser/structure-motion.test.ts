@@ -120,13 +120,9 @@ test('structure-motion', async ({ browser, args, page }) => {
   });
   const errors: string[] = [];
   const warnings: string[] = [];
-  const cdn: string[] = [];
   report['browserVersion'] = browser.version();
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (msg) => (msg.type() === 'warning' ? warnings.push(msg.text()) : null));
-  page.on('request', (req) =>
-    req.url().includes('cdn.jsdelivr.net') ? cdn.push(req.url()) : null,
-  );
   await page.goto(args.url);
   await page.waitForFunction(
     'window.FormulaClock?.state.engineReady && FormulaClock.state.layout',
@@ -136,9 +132,7 @@ test('structure-motion', async ({ browser, args, page }) => {
   await page.evaluate(
     'FormulaClock.setDisplay({symbolMotion:false,structureMotion:false,symbolMorph:false})',
   );
-  await page.evaluate(
-    "window.originalProvider=window.FORMULA_CLOCK_CONFIG?.provider || new FormulaData.TableProvider(()=>FormulaData.loadEmbedded(document.querySelector('#clock-data')))",
-  );
+  await page.evaluate('window.originalProvider=FORMULA_CLOCK_CONFIG.provider');
   report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
   assert.deepEqual(report['mathjax'], '4.1.3');
   await page.evaluate(
@@ -416,7 +410,6 @@ test('structure-motion', async ({ browser, args, page }) => {
   assert.ok(!(errors.length > 0), inspect(errors));
   report['pageErrors'] = errors;
   report['warnings'] = sorted(new Set(warnings));
-  report['cdnRequests'] = sorted(new Set(cdn));
   fs.writeFileSync(
     path.join(args.outputDir, 'results.json'),
     JSON.stringify(report, null, 2) +

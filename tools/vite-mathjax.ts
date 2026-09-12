@@ -1,5 +1,5 @@
-// Copies the MathJax runtime and font data that served builds self-host under
-// /vendor/mathjax. The standalone single-file build keeps loading from the CDN.
+// Copies the MathJax runtime and font data that the site self-hosts under
+// /vendor/mathjax.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

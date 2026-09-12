@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
 import { test as base } from '@playwright/test';
@@ -20,7 +20,6 @@ export interface ClockOptions {
   symbolMorph: boolean;
 }
 export interface ClockTestOptions {
-  standalone: boolean;
   clockOptions: ClockOptions;
 }
 export interface BrowserOptions extends ClockOptions {
@@ -31,7 +30,6 @@ export interface BrowserOptions extends ClockOptions {
 export const test = base.extend<
   ClockTestOptions & { args: BrowserOptions; isolatedContexts: void }
 >({
-  standalone: [false, { option: true }],
   clockOptions: [
     { screenshots: false, symbolMotion: true, structureMotion: true, symbolMorph: true },
     { option: true },
@@ -45,15 +43,13 @@ export const test = base.extend<
     },
     { auto: true, box: true },
   ],
-  args: async ({ browserName, baseURL, standalone, clockOptions }, use, testInfo) => {
+  args: async ({ browserName, baseURL, clockOptions }, use, testInfo) => {
     const outputDir = testInfo.outputPath();
     fs.mkdirSync(outputDir, { recursive: true });
     await use({
       ...clockOptions,
       browser: browserName,
-      url:
-        clockOptions.url ??
-        (standalone ? pathToFileURL(path.join(ROOT, 'dist/standalone/index.html')).href : baseURL!),
+      url: clockOptions.url ?? baseURL!,
       outputDir,
       renderResults: clockOptions.renderResults
         ? path.resolve(clockOptions.renderResults)
