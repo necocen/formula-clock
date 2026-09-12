@@ -23,6 +23,10 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2022',
     modulePreload: false,
+    // The MathJax engine and per-font data ship as deliberate, lazily loaded
+    // self-contained chunks (engine ~1.34 MB / fonts up to ~1 MB minified).
+    // Keep the warning armed just above them so new accidental bloat still trips it.
+    chunkSizeWarningLimit: 1400,
   },
   environments: {
     client: { build: { outDir: at('./dist/site') } },
