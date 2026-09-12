@@ -63,7 +63,8 @@ export function createHandler({
     log({ event: 'og', revision, ...fields });
   }
   function imageJob(state: SharedClockState, env: Env, origin: string, shared?: SharedView) {
-    const key = shared ? `og/${revision}/shares/${shared.id}.png` : keyFor(state, revision);
+    // A share's image is frozen at creation; its id-keyed object never changes.
+    const key = shared ? `og/shares/${shared.id}.png` : keyFor(state, revision);
     if (pending.has(key)) return { task: pending.get(key)!, coalesced: true };
     const task = deadline<ImageResult>(
       async (signal) => {
@@ -99,7 +100,12 @@ export function createHandler({
             await deadline(
               () =>
                 env.OG_IMAGES!.put(key, result.bytes, {
-                  httpMetadata: { contentType: 'image/png', cacheControl: 'public, max-age=86400' },
+                  httpMetadata: {
+                    contentType: 'image/png',
+                    cacheControl: shared
+                      ? 'public, max-age=31536000, immutable'
+                      : 'public, max-age=86400',
+                  },
                   customMetadata: { revision },
                 }),
               writeTimeoutMs,
@@ -142,7 +148,7 @@ export function createHandler({
         etag = `"${result.key}"`;
       const headers: Record<string, string> = {
         'Content-Type': 'image/png',
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': shared ? 'public, max-age=31536000, immutable' : 'public, max-age=86400',
         ETag: etag,
         'X-Content-Type-Options': 'nosniff',
       };
@@ -169,8 +175,12 @@ export function createHandler({
           ? Share.url(url.origin, state)
           : new URL('/', url.origin);
     const imageUrl = new URL(shared ? `/s/${shared.id}/og.png` : '/og.png', url.origin);
-    if (state && !shared) imageUrl.search = Share.params(state).toString();
-    imageUrl.searchParams.set('r', revision);
+    // Shared images are immutable by id; only current-data images need the
+    // rendering revision as a cache buster.
+    if (state && !shared) {
+      imageUrl.search = Share.params(state).toString();
+      imageUrl.searchParams.set('r', revision);
+    }
     let ast = shared?.snapshot.ast;
     if (state && !shared) {
       try {
@@ -255,8 +265,17 @@ export function createHandler({
         try {
           response = await deadline(
             () =>
-              createShare(request, env, ctx, (fields) =>
-                log({ event: 'share-store', revision, ...fields }),
+              createShare(
+                request,
+                env,
+                ctx,
+                (fields) => log({ event: 'share-store', revision, ...fields }),
+                (view) => {
+                  // Render the frozen image alongside the KV write; failures
+                  // stay silent and the image route self-heals on demand.
+                  const { task } = imageJob(view.snapshot, env, url.origin, view);
+                  ctx.waitUntil(task.catch(() => {}));
+                },
               ),
             timeoutMs,
             'Share creation',

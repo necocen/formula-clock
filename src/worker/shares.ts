@@ -23,6 +23,7 @@ export async function createShare(
   env: Env,
   ctx: Context,
   log: (fields: Record<string, unknown>) => void,
+  onAccepted?: (view: SharedView) => void,
 ): Promise<Response> {
   if (!env.SHARES) throw new ShareError(503, 'share-storage-unavailable');
   const origin = request.headers.get('Origin');
@@ -104,6 +105,7 @@ export async function createShare(
       }
     })(),
   );
+  onAccepted?.({ id, snapshot });
   return json({ id }, 202, { Location: `/s/${id}` });
 }
 

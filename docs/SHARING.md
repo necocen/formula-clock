@@ -39,7 +39,7 @@ pnpm exec wrangler kv namespace create formula-clock-shares-preview
 保存容量だけでなく書き込み・読み取り数も[KVの料金](https://developers.cloudflare.com/kv/platform/pricing/)の対象となる。
 
 `POST /api/shares`は入力検証とID生成後、KV書き込みの完了を待たず`202 {"id":"…"}`を返す。IDの事前検索はせず、存在しないキーのキャッシュを作らない。
-保存は`ctx.waitUntil`でレスポンス後も継続する。失敗した場合は1秒・2秒後に同じID・内容で再試行し、最大3回で終了する。Workerのバックグラウンド実行には[応答後30秒の上限](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil)があり、202は保存完了を保証しない。画像生成・R2操作・現在の式データの読み出しは行わない。
+保存は`ctx.waitUntil`でレスポンス後も継続する。失敗した場合は1秒・2秒後に同じID・内容で再試行し、最大3回で終了する。Workerのバックグラウンド実行には[応答後30秒の上限](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil)があり、202は保存完了を保証しない。受理と同時にOG画像も同じバックグラウンドで描画してR2へ保存する。描画の失敗は通知せず、画像ルートのオンデマンド描画が自己修復する。
 応答の`Server-Timing`には`share`（ID発行ハンドラー全体）をミリ秒で出し、ブラウザのNetwork／Resource Timingで通信全体と比較できる。KV保存は応答後に完了するため、その所要時間を応答ヘッダーには含めない。Workerの`event: "share-store"`ログにID、成否（`ok`・`retry`・`error`）、試行回数、開始からの経過時間を記録する。経過時間は再試行待ちも含む。Workersの[タイマーはI/O時にだけ進む](https://developers.cloudflare.com/workers/runtime-apis/performance/)ため、CPU処理の精密な計測値としては使わない。
 KVには[結果整合性と存在しないキーのキャッシュ](https://developers.cloudflare.com/kv/concepts/how-kv-works/)があり、
 保存前や別の地域では作成直後の共有リンクが一時的に見えない場合がある。書き込み完了は全地域での即時可視性を保証しない。
@@ -70,9 +70,8 @@ pnpm exec wrangler r2 bucket lifecycle add formula-clock-og-preview og-30-days o
 ```
 
 公開R2 URLやカスタムドメインは設定しない。オブジェクトはWorkerが読む。
-新形式のキーは`og/<描画版>/shares/<ID>.png`。同じ時刻・設定でも式木が違う共有画像を混同しない。
-旧クエリURLは`og/<描画版>/<HHMMSS>-<書体>-<数字>-<除算>.png`を使う。
-描画版はCloudflareの[Version metadata binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/version-metadata/)の`WORKER_VERSION.id`を使う。新しいWorkerバージョンのアップロードごとにキャッシュが分かれる。画像に無関係な変更でも新バージョンでは再生成されるが、依存ファイル一覧を手で維持する必要がない。
+共有画像のキーは`og/shares/<ID>.png`。作成時に描画した内容をIDで固定し、`immutable`で配信する。ライフサイクルで期限切れになった場合は、保存済みASTからオンデマンドで再描画して同じキーへ書き戻す。
+旧クエリURLは現在の式データを描くため`og/<描画版>/<HHMMSS>-<書体>-<数字>-<除算>.png`を使う。描画版はCloudflareの[Version metadata binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/version-metadata/)の`WORKER_VERSION.id`で、新しいWorkerバージョンのアップロードごとにキャッシュが分かれる。
 ライフサイクルは保存から30日で期限切れにする。最終アクセス日時を延長する方式ではない。
 Cloudflareの非同期削除後、要求があれば現在の描画コードとKVに保存した式木で再生成する。
 旧クエリURLだけは現在の式データを使う。画像の期限切れで共有リンク自体は消えない。

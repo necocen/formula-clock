@@ -107,13 +107,14 @@ test('creation returns an accepted ID before KV completes; the background snapsh
   assert.equal(response.headers.get('Cache-Control'), 'no-store');
   assert.match(response.headers.get('Server-Timing')!, /^share;dur=\d+$/);
   assert.equal(f.records.size, 0);
-  assert.equal(f.jobs.length, 1);
+  // Acceptance schedules two background jobs: the KV write and the frozen image.
+  assert.equal(f.jobs.length, 2);
   assert.equal(f.logs.length, 0);
-  assert.equal(f.rendered.length, 0);
-  assert.equal(f.images.size, 0);
   release();
   await f.flush();
   assert.deepEqual(JSON.parse(f.records.get('share/' + id)!), snapshot);
+  assert.equal(f.rendered.length, 1);
+  assert.ok(f.images.has(`og/shares/${id}.png`));
   assert.equal(f.logs[0].event, 'share-store');
   assert.equal(f.logs[0].status, 'ok');
   assert.equal(f.logs[0].id, id);
@@ -149,7 +150,7 @@ test('separate snapshots at the same time have distinct image caches; eviction r
     [snapshot.ast, null],
   );
   assert.equal(f.images.size, 2);
-  assert.ok([...f.images.keys()].every((key) => key.startsWith('og/snapshot-test/shares/')));
+  assert.ok([...f.images.keys()].every((key) => key.startsWith('og/shares/')));
   await f.request(`/s/${first}/og.png`);
   assert.equal(f.rendered.length, 2);
   f.images.clear();

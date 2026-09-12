@@ -127,14 +127,24 @@ test('workerd serves state-specific metadata, real PNGs, R2 cache, and static as
       storedHtml.match(/<script id="shared-clock" type="application\/json">(.*?)<\/script>/s)![1],
     );
     assert.deepEqual(embedded, { id, snapshot });
-    assert.ok(storedHtml.includes(`https://clock.example/s/${id}/og.png?r=`));
+    assert.ok(
+      storedHtml.includes(`property="og:image" content="https://clock.example/s/${id}/og.png"`),
+    );
+    // Creation renders the frozen image in the background, before any image request.
+    let prerendered = null;
+    for (let attempt = 0; attempt < 150; attempt++) {
+      prerendered = await bucket.get(`og/shares/${id}.png`);
+      if (prerendered !== null) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.ok(prerendered, 'The shared image is rendered when the share is created');
+    const prerenderedPng = Buffer.from(await prerendered.arrayBuffer());
     const sharedImage = await worker.fetch(`https://clock.example/s/${id}/og.png`),
       sharedPng = Buffer.from(await sharedImage.arrayBuffer());
     assert.equal(sharedImage.status, 200);
+    assert.equal(sharedImage.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
     assert.equal(sharedPng.readUInt32BE(16), 1200);
-    assert.ok(
-      (await bucket.list()).objects.some((object) => object.key.endsWith(`/shares/${id}.png`)),
-    );
+    assert.deepEqual(sharedPng, prerenderedPng);
     const missing = await worker.fetch('https://clock.example/s/XXXXXXXXXX', {
       headers: { 'Accept-Language': 'ja-JP' },
     });
