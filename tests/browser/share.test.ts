@@ -1,11 +1,26 @@
 import { sharedSnapshot } from '../helpers/share-response.ts';
-import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import type { DisplayOptions, ClockState } from '../../src/shared/types.ts';
+import type { DisplayOptions } from '../../src/shared/types.ts';
 import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
+
+declare global {
+  var shareLoadingChecks: boolean[];
+  var originalShareDigits: SVGGElement[];
+  var shared: {
+    url: string;
+    title?: string;
+    text?: string;
+    activation: boolean | undefined;
+    paused: boolean;
+  }[];
+  var beforeShare: string;
+  var copied: string | null;
+  var nullShared: { url: string };
+}
+
 test.use({
   locale: 'ja-JP',
   viewport: { width: 1200, height: 800 },
@@ -35,45 +50,54 @@ test('share', async ({ browser, args, context: ctx }) => {
     requests: requests,
   });
   report['browserVersion'] = browser.version();
-  await ctx.addInitScript(
-    "localStorage.setItem('formula-clock-display-v2'," +
-      JSON.stringify(JSON.stringify(saved)) +
-      ");localStorage.setItem('formula-clock-audio-v1',JSON.stringify({enabled:true,volume:.25}));",
-  );
+  await ctx.addInitScript((display: string) => {
+    localStorage.setItem('formula-clock-display-v2', display);
+    localStorage.setItem('formula-clock-audio-v1', JSON.stringify({ enabled: true, volume: 0.25 }));
+  }, JSON.stringify(saved));
   // Observe the real fetch instead of Playwright routing, which can stall
   // MathJax's dynamically imported blob modules in WebKit.
-  await ctx.addInitScript(`window.shareLoadingChecks=[];const originalFetch=window.fetch;
-      window.fetch=function(input,...args){
-        if(String(input?.url||input).includes('/data/hours/')){
-          shareLoadingChecks.push(document.querySelector('#share').disabled && FormulaClock.state.preview && FormulaClock.state.paused);
-        }
-        return originalFetch.call(this,input,...args);
-      };`);
+  await ctx.addInitScript(() => {
+    window.shareLoadingChecks = [];
+    const originalFetch = window.fetch;
+    window.fetch = function (this: unknown, input: RequestInfo | URL, ...args: [RequestInit?]) {
+      if (String((input as Request)?.url || input).includes('/data/hours/')) {
+        shareLoadingChecks.push(
+          document.querySelector<HTMLButtonElement>('#share')!.disabled &&
+            FormulaClock.state.preview &&
+            FormulaClock.state.paused,
+        );
+      }
+      return originalFetch.call(this, input, ...args);
+    } as typeof fetch;
+  });
   const page = await ctx.newPage();
   page.on('pageerror', (error) => errors.push(String(error)));
   page.on('request', (request) => requests.push(request.url()));
   await page.goto(args.url + '?v=1&t=123430&font=stix2&numerals=oldstyle&division=fraction', {
     waitUntil: 'domcontentloaded',
   });
-  await page.waitForFunction('window.FormulaClock', undefined);
-  const initial = await page.evaluate<ClockState>('FormulaClock.state');
+  await page.waitForFunction(() => window.FormulaClock, undefined);
+  const initial = await page.evaluate(() => FormulaClock.state);
   assert.ok(initial['preview'] && initial['paused'] && initial['display']['font'] === 'stix2');
-  assert.deepEqual(await page.evaluate('new Date(FormulaClock.state.now).getHours()'), 12);
+  assert.deepEqual(await page.evaluate(() => new Date(FormulaClock.state.now).getHours()), 12);
   assert.deepEqual(
-    await page.evaluate<DisplayOptions>(
-      'JSON.parse(localStorage.getItem("formula-clock-display-v2"))',
-    ),
+    await page.evaluate(() => JSON.parse(localStorage.getItem('formula-clock-display-v2')!)),
     saved,
   );
   try {
-    await page.waitForFunction('!document.querySelector("#share").disabled', undefined, {
-      timeout: 45000,
-    });
-  } catch (error) {
-    report['startup'] = await page.evaluate(
-      '({state:FormulaClock.state,diagnostics:FormulaClock.diagnostics()})',
+    await page.waitForFunction(
+      () => !document.querySelector<HTMLButtonElement>('#share')!.disabled,
+      undefined,
+      {
+        timeout: 45000,
+      },
     );
-    report['loadingChecks'] = await page.evaluate<boolean[]>('shareLoadingChecks');
+  } catch (error) {
+    report['startup'] = await page.evaluate(() => ({
+      state: FormulaClock.state,
+      diagnostics: FormulaClock.diagnostics(),
+    }));
+    report['loadingChecks'] = await page.evaluate(() => shareLoadingChecks);
     fs.writeFileSync(
       path.join(output, 'failure.json'),
       JSON.stringify(report, null, 2) +
@@ -83,46 +107,59 @@ test('share', async ({ browser, args, context: ctx }) => {
     await page.screenshot({ path: String(path.join(output, 'failure.png')) });
     throw error;
   }
-  const loadingChecks = await page.evaluate<boolean[]>('shareLoadingChecks');
+  const loadingChecks = await page.evaluate(() => shareLoadingChecks);
   assert.ok(loadingChecks.length > 0 && loadingChecks.every(Boolean));
   assert.deepEqual(
     await page.evaluate(
-      'FormulaClock.state.layout.code+String(FormulaClock.state.layout.seconds).padStart(2,"0")',
+      () =>
+        FormulaClock.state.layout!.code +
+        String(FormulaClock.state.layout!.seconds).padStart(2, '0'),
     ),
     '123430',
   );
-  assert.deepEqual(await page.evaluate<number>('FormulaClock.state.audio.length'), 0);
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.audio.length), 0);
   checks.push(
     'Shared state is applied before the first engine/frame; loading disables sharing; saved display/audio preferences stay intact',
   );
-  await page.evaluate(
-    script(`() => {
-      window.originalShareDigits=FormulaClock.digits;
-      window.shared=[];
-      document.querySelector('#share').addEventListener('click',()=>{
-        const l=FormulaClock.state.layout;window.beforeShare=l.code+String(l.seconds).padStart(2,'0');
-      },true);
-      Object.defineProperty(navigator,'share',{configurable:true,value:data=>{
-        window.shared.push({...data,activation:navigator.userActivation?.isActive,paused:FormulaClock.state.paused});return Promise.resolve();
-      }});
-    }`),
-  );
-  await page.evaluate("FormulaClock.preview('2000-01-15T12:34:31',false)");
-  await page.waitForFunction('FormulaClock.state.layout.seconds===31', undefined);
+  await page.evaluate(() => {
+    window.originalShareDigits = FormulaClock.digits;
+    window.shared = [];
+    document.querySelector('#share')!.addEventListener(
+      'click',
+      () => {
+        const l = FormulaClock.state.layout!;
+        window.beforeShare = l.code + String(l.seconds).padStart(2, '0');
+      },
+      true,
+    );
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: (data: { url: string; title?: string; text?: string }) => {
+        window.shared.push({
+          ...data,
+          activation: navigator.userActivation?.isActive,
+          paused: FormulaClock.state.paused,
+        });
+        return Promise.resolve();
+      },
+    });
+  });
+  await page.evaluate(() => FormulaClock.preview('2000-01-15T12:34:31', false));
+  await page.waitForFunction(() => FormulaClock.state.layout!.seconds === 31, undefined);
   await page.click('#share');
   await page.waitForFunction(
-    'shared.length || document.querySelector("#share-dialog").open',
+    () => shared.length || document.querySelector<HTMLDialogElement>('#share-dialog')!.open,
     undefined,
   );
   if (await page.locator('#share-dialog').isVisible()) {
     await page.click('#share-native');
     await page.keyboard.press('Escape');
   }
-  const actual = await page.evaluate<{
-    call: { paused: boolean; activation?: boolean; url: string };
-    before: string;
-    state: ClockState;
-  }>('({call:shared.at(-1),before:beforeShare,state:FormulaClock.state})');
+  const actual = await page.evaluate(() => ({
+    call: shared.at(-1)!,
+    before: beforeShare,
+    state: FormulaClock.state,
+  }));
   assert.ok(actual.state.layout);
   assert.ok(actual['call']['paused'] && actual['state']['paused']);
   assert.notDeepEqual(actual['call']['activation'], false);
@@ -139,22 +176,29 @@ test('share', async ({ browser, args, context: ctx }) => {
     division: 'fraction',
     ast: actual['state']['layout']['ast'],
   });
-  assert.deepEqual(await page.evaluate('location.pathname+location.search'), '/');
+  assert.deepEqual(await page.evaluate(() => location.pathname + location.search), '/');
   const audioCount = actual['state']['audio'].length;
   await page.waitForTimeout(850);
-  assert.deepEqual(await page.evaluate<number>('FormulaClock.state.audio.length'), audioCount);
-  assert.ok(await page.evaluate('FormulaClock.digits.every((d,i)=>d===originalShareDigits[i])'));
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.audio.length), audioCount);
+  assert.ok(
+    await page.evaluate(() => FormulaClock.digits.every((d, i) => d === originalShareDigits[i])),
+  );
   assert.deepEqual(
     await page.evaluate(
-      'FormulaClock.state.layout.code+String(FormulaClock.state.layout.seconds).padStart(2,"0")',
+      () =>
+        FormulaClock.state.layout!.code +
+        String(FormulaClock.state.layout!.seconds).padStart(2, '0'),
     ),
     actual['before'],
   );
   checks.push(
     'Sharing freezes the displayed second synchronously, keeps digit objects, cancels audio, and preserves native user activation',
   );
-  await page.evaluate(
-    "Object.defineProperty(navigator,'share',{configurable:true,value:()=>Promise.reject(new DOMException('cancelled','AbortError'))})",
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: () => Promise.reject(new DOMException('cancelled', 'AbortError')),
+    }),
   );
   await page.click('#share');
   await page.waitForTimeout(100);
@@ -162,67 +206,93 @@ test('share', async ({ browser, args, context: ctx }) => {
     (await page.locator('#share-dialog').isHidden()) &&
       (await page.locator('#share-status').innerText()) === '',
   );
-  assert.ok(await page.evaluate('FormulaClock.state.paused'));
-  await page.evaluate(
-    script(`() => {
-      Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:url=>{window.copied=url;return Promise.resolve();}}});
-      Object.defineProperty(navigator,'share',{configurable:true,value:()=>Promise.reject(new Error('unavailable'))});
-    }`),
-  );
+  assert.ok(await page.evaluate(() => FormulaClock.state.paused));
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: (url: string) => {
+          window.copied = url;
+          return Promise.resolve();
+        },
+      },
+    });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: () => Promise.reject(new Error('unavailable')),
+    });
+  });
   await page.click('#share');
-  await page.waitForFunction('document.querySelector("#share-dialog").open', undefined);
+  await page.waitForFunction(
+    () => document.querySelector<HTMLDialogElement>('#share-dialog')!.open,
+    undefined,
+  );
   await page.click('#share-copy');
-  await page.waitForFunction('window.copied', undefined);
+  await page.waitForFunction(() => window.copied, undefined);
   assert.deepEqual(await page.locator('#share-status').innerText(), '共有URLをコピーしました');
   await page.keyboard.press('Escape');
-  await page.evaluate(
-    "Object.defineProperty(navigator,'share',{configurable:true,value:undefined});window.copied=null",
-  );
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    window.copied = null;
+  });
   await page.click('#share');
-  await page.waitForFunction('window.copied', undefined);
-  await page.evaluate(
-    "Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>Promise.reject(new Error('denied'))}})",
+  await page.waitForFunction(() => window.copied, undefined);
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('denied')) },
+    }),
   );
   await page.click('#share');
   assert.ok(await page.locator('#share-dialog').isVisible());
-  assert.deepEqual(await page.evaluate('document.activeElement.id'), 'share-url');
+  assert.deepEqual(await page.evaluate(() => document.activeElement!.id), 'share-url');
   assert.ok(
     await page
       .locator('#share-url')
-      .evaluate(script('(input)=>input.selectionEnd-input.selectionStart===input.value.length')),
+      .evaluate(
+        (input: HTMLInputElement) =>
+          input.selectionEnd! - input.selectionStart! === input.value.length,
+      ),
   );
   await page.keyboard.press('Escape');
   assert.ok(
     (await page.locator('#share-dialog').isHidden()) &&
-      (await page.evaluate('document.activeElement.id')) === 'share',
+      (await page.evaluate(() => document.activeElement!.id)) === 'share',
   );
   checks.push(
     'Native cancellation stays quiet; failed native sharing offers share/copy controls; unavailable native sharing copies; clipboard failure opens a selected URL with focus restored on close',
   );
   await page.click('#go-live');
-  assert.ok(!(await page.evaluate('FormulaClock.state.preview')));
+  assert.ok(!(await page.evaluate(() => FormulaClock.state.preview)));
   assert.ok(await page.locator('#transport').isHidden());
-  await page.evaluate("FormulaClock.preview('2000-01-15T00:41:59',true)");
+  await page.evaluate(() => FormulaClock.preview('2000-01-15T00:41:59', true));
   await page.waitForFunction(
-    'FormulaClock.state.layout.code==="0041" && FormulaClock.state.layout.seconds===59 && !document.querySelector("#share").disabled',
+    () =>
+      FormulaClock.state.layout!.code === '0041' &&
+      FormulaClock.state.layout!.seconds === 59 &&
+      !document.querySelector<HTMLButtonElement>('#share')!.disabled,
     undefined,
   );
-  assert.deepEqual(await page.evaluate('FormulaClock.state.layout.mode'), 'time');
-  await page.evaluate(
-    "Object.defineProperty(navigator,'share',{configurable:true,value:data=>{window.nullShared=data;return Promise.resolve();}})",
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.layout!.mode), 'time');
+  await page.evaluate(() =>
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: (data: { url: string }) => {
+        window.nullShared = data;
+        return Promise.resolve();
+      },
+    }),
   );
   await page.click('#share');
   await page.waitForFunction(
-    'window.nullShared || document.querySelector("#share-dialog").open',
+    () => window.nullShared || document.querySelector<HTMLDialogElement>('#share-dialog')!.open,
     undefined,
   );
   if (await page.locator('#share-dialog').isVisible()) {
     await page.click('#share-native');
     await page.keyboard.press('Escape');
   }
-  const nullHtml = await (
-    await ctx.request.get(await page.evaluate<string>('nullShared.url'))
-  ).text();
+  const nullHtml = await (await ctx.request.get(await page.evaluate(() => nullShared.url))).text();
   const nullSnapshot = sharedSnapshot(nullHtml);
   assert.ok(nullSnapshot['t'] === '004159' && nullSnapshot['ast'] === null);
   checks.push(
@@ -232,24 +302,26 @@ test('share', async ({ browser, args, context: ctx }) => {
     await page.setViewportSize({ width: width, height: 800 });
     await page.waitForTimeout(100);
     assert.ok(
-      await page.evaluate('document.documentElement.scrollWidth<=innerWidth'),
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
       inspect(width),
     );
     assert.ok(await page.locator('#share').isVisible());
     await page.screenshot({ path: String(path.join(output, `share-${width}.png`)) });
   }
   checks.push('Header and controls remain usable at 320/390/768/1200 pixels');
-  report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
+  report['mathjax'] = await page.evaluate(() => FormulaClock.diagnostics().mathjax);
   assert.deepEqual(report['mathjax'], '4.1.3');
   for (const zone of ['America/Los_Angeles', 'Europe/London']) {
     const other = await browser.newContext({ locale: 'ja-JP', timezoneId: zone });
     const target = await other.newPage();
     await target.goto(args.url + '?t=023000', { waitUntil: 'domcontentloaded' });
-    await target.waitForFunction('window.FormulaClock', undefined);
+    await target.waitForFunction(() => window.FormulaClock, undefined);
     assert.deepEqual(
-      await target.evaluate(
-        '[new Date(FormulaClock.state.now).getHours(),new Date(FormulaClock.state.now).getMinutes(),FormulaClock.state.paused]',
-      ),
+      await target.evaluate(() => [
+        new Date(FormulaClock.state.now).getHours(),
+        new Date(FormulaClock.state.now).getMinutes(),
+        FormulaClock.state.paused,
+      ]),
       [2, 30, true],
     );
     await other.close();

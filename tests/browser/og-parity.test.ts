@@ -1,9 +1,7 @@
-import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual, inspect } from 'node:util';
-import type { Bounds, Typography } from '../../src/shared/types.ts';
 import { isRecord } from '../../src/shared/types.ts';
 import Share from '../../src/shared/share.ts';
 import { createServer, isRunnableDevEnvironment } from 'vite';
@@ -47,13 +45,15 @@ test('og-parity', async ({ browser, args, context: ctx }) => {
   page.on('request', (request) => requests.push(request.url()));
   await page.goto(args.url + '?t=123430', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(
-    'window.FormulaClock?.state.layout && !document.querySelector("#share").disabled',
+    () =>
+      window.FormulaClock?.state.layout &&
+      !document.querySelector<HTMLButtonElement>('#share')!.disabled,
     undefined,
     { timeout: 45000 },
   );
   // The static renderer omits motion markers; compare the same TeX settings.
-  await page.evaluate(
-    'FormulaClock.setDisplay({symbolMotion:false,structureMotion:false,symbolMorph:false})',
+  await page.evaluate(() =>
+    FormulaClock.setDisplay({ symbolMotion: false, structureMotion: false, symbolMorph: false }),
   );
   let profile = null;
   for (const entry of server.cases) {
@@ -61,36 +61,45 @@ test('og-parity', async ({ browser, args, context: ctx }) => {
     assert.ok(isRecord(sample) && isRecord(sample.state));
     assert.ok(typeof sample.name === 'string' && typeof sample.axisY === 'number');
     const state = Share.snapshot({ ...sample.state, ast: null });
-    const current = [state['font'], state['numerals'], state['division']];
+    const current = [state['font'], state['numerals'], state['division']] as const;
     if (!isDeepStrictEqual(profile, current)) {
       await page.evaluate(
-        script('([font,numerals,division])=>FormulaClock.setDisplay({font,numerals,division})'),
+        ([font, numerals, division]) => FormulaClock.setDisplay({ font, numerals, division }),
         current,
       );
       profile = current;
     }
     const t = state['t'];
-    await page.evaluate(script('(t)=>FormulaClock.preview(FormulaShare.localDate(t),true)'), t);
+    await page.evaluate((t) => FormulaClock.preview(FormulaShare.localDate(t), true), t);
     await page.waitForFunction(
-      script(
-        's=>{const l=FormulaClock.state.layout;return l?.code===s.t.slice(0,4)&&l.seconds===Number(s.t.slice(4))&&l.display.font===s.font&&l.display.numerals===s.numerals&&l.display.division===s.division&&!document.querySelector("#share").disabled}',
-      ),
+      (s) => {
+        const l = FormulaClock.state.layout;
+        return (
+          l?.code === s.t.slice(0, 4) &&
+          l.seconds === Number(s.t.slice(4)) &&
+          l.display.font === s.font &&
+          l.display.numerals === s.numerals &&
+          l.display.division === s.division &&
+          !document.querySelector<HTMLButtonElement>('#share')!.disabled
+        );
+      },
       state,
       { timeout: 45000 },
     );
-    const actual = await page.evaluate<{
-      tex: string;
-      axisY: number;
-      viewBox: Bounds;
-      typography: Typography;
-      slots: string[][];
-    }>(
-      script(`() => {
-          const layout=FormulaClock.state.layout;
-          const slots=[...FormulaClock.digits,...document.querySelectorAll('#math-scene .answer-digit')].map(group=>[...group.querySelectorAll('path')].map(path=>path.getAttribute('d')));
-          return {tex:layout.tex,axisY:layout.localAxisY,viewBox:layout.viewBox,typography:layout.typography,slots};
-        }`),
-    );
+    const actual = await page.evaluate(() => {
+      const layout = FormulaClock.state.layout!;
+      const slots = [
+        ...FormulaClock.digits,
+        ...document.querySelectorAll('#math-scene .answer-digit'),
+      ].map((group) => [...group.querySelectorAll('path')].map((path) => path.getAttribute('d')));
+      return {
+        tex: layout.tex,
+        axisY: layout.localAxisY,
+        viewBox: layout.viewBox,
+        typography: layout.typography,
+        slots,
+      };
+    });
     assert.deepEqual(actual['tex'], sample['tex'], inspect(sample['name']));
     assert.deepEqual(actual['slots'], sample['slots'], inspect(sample['name']));
     assert.ok(
@@ -133,7 +142,7 @@ test('og-parity', async ({ browser, args, context: ctx }) => {
     browser: args.browser,
     browserVersion: browser.version(),
     playwright: playwrightVersion,
-    mathjax: await page.evaluate('FormulaClock.diagnostics().mathjax'),
+    mathjax: await page.evaluate(() => FormulaClock.diagnostics().mathjax),
     cases: cases,
     errors: errors,
     requests: requests,

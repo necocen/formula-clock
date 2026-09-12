@@ -1,9 +1,8 @@
-import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import type { DisplayOptions } from '../../src/shared/types.ts';
+import type { DisplayOptions, Expr } from '../../src/shared/types.ts';
 import { test, createReport, playwrightVersion, zip, sorted } from '../helpers/browser.ts';
 interface GlyphBounds {
   key: string;
@@ -19,6 +18,16 @@ interface MorphSample {
   kind: string;
   morphing: boolean;
   parts: MorphPart[];
+}
+declare global {
+  var originalEqual: Element | null;
+  var geometry: () => GlyphBounds[];
+  var morphSample: (el: SVGElement) => MorphSample;
+  var rotating: SVGElement;
+  var gap1: SVGElement;
+  var gap2: SVGElement;
+  var arithmeticSign: SVGElement;
+  var multiSign: SVGElement;
 }
 test.use({
   viewport: { width: 1440, height: 1000 },
@@ -42,42 +51,59 @@ test('symbol-morph', async ({ browser, args, page }) => {
   page.on('console', (msg) => (msg.type() === 'warning' ? warnings.push(msg.text()) : null));
   await page.goto(args.url);
   await page.waitForFunction(
-    'window.FormulaClock?.state.engineReady && FormulaClock.state.layout',
+    () => window.FormulaClock?.state.engineReady && FormulaClock.state.layout,
     undefined,
   );
-  report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
+  report['mathjax'] = await page.evaluate(() => FormulaClock.diagnostics().mathjax);
   assert.deepEqual(report['mathjax'], '4.1.3');
-  assert.ok(await page.evaluate('FormulaClock.state.display.symbolMorph'));
-  await page.evaluate(
-    'FormulaClock.setDisplay({symbolMotion:false,structureMotion:false,symbolMorph:false})',
+  assert.ok(await page.evaluate(() => FormulaClock.state.display.symbolMorph));
+  await page.evaluate(() =>
+    FormulaClock.setDisplay({ symbolMotion: false, structureMotion: false, symbolMorph: false }),
   );
-  await page.evaluate(
-    script(`()=>{
-      window.originalDigits=FormulaClock.digits;window.originalEqual=document.querySelector('#equal-sign');
-      window.geometry=()=>[...document.querySelectorAll('#math-scene path,#math-scene rect')].map(el=>{
-        const r=el.getBoundingClientRect();return {key:el.localName==='path'?el.getAttribute('d'):'rule',box:[r.x,r.y,r.width,r.height]};
-      }).filter(x=>x.key&&x.box[2]&&x.box[3]).sort((a,b)=>a.key.localeCompare(b.key)||a.box[0]-b.box[0]||a.box[1]-b.box[1]);
-      window.morphSample=el=>({alive:el.isConnected,kind:el.dataset.kind,morphing:!!el.dataset.morphing,
-        parts:[...el.querySelectorAll('[data-morph-glyph]')].map(g=>({kind:g.dataset.morphGlyph,
-          angle:Number(g.getAttribute('transform').match(/rotate\\(([^)]+)\\)/)[1]),opacity:Number(g.getAttribute('opacity'))}))});
-    }`),
-  );
+  await page.evaluate(() => {
+    window.originalDigits = FormulaClock.digits;
+    window.originalEqual = document.querySelector('#equal-sign');
+    window.geometry = () =>
+      [...document.querySelectorAll('#math-scene path,#math-scene rect')]
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          return {
+            key: el.localName === 'path' ? el.getAttribute('d') : 'rule',
+            box: [r.x, r.y, r.width, r.height],
+          };
+        })
+        .filter((x): x is GlyphBounds => !!(x.key && x.box[2] && x.box[3]))
+        .sort((a, b) => a.key.localeCompare(b.key) || a.box[0] - b.box[0] || a.box[1] - b.box[1]);
+    window.morphSample = (el) => ({
+      alive: el.isConnected,
+      kind: el.dataset.kind!,
+      morphing: !!el.dataset.morphing,
+      parts: [...el.querySelectorAll<SVGElement>('[data-morph-glyph]')].map((g) => ({
+        kind: g.dataset.morphGlyph!,
+        angle: Number(g.getAttribute('transform')!.match(/rotate\(([^)]+)\)/)![1]),
+        opacity: Number(g.getAttribute('opacity')),
+      })),
+    });
+  });
   async function display(opts: Partial<DisplayOptions>) {
-    await page.evaluate(script('(opts)=>FormulaClock.setDisplay(opts)'), opts);
+    await page.evaluate((opts) => FormulaClock.setDisplay(opts), opts);
     await page.waitForFunction(
-      script(
-        '(opts)=>Object.entries(opts).every(([k,v])=>FormulaClock.state.layout.display[k]===v)',
-      ),
+      (opts) =>
+        Object.entries(opts).every(
+          ([k, v]) => FormulaClock.state.layout!.display[k as keyof DisplayOptions] === v,
+        ),
       opts,
     );
   }
   async function preview(time: string, wait = 0) {
-    await page.evaluate(script('(time)=>FormulaClock.preview("2026-09-08T"+time+"+09:00")'), time);
+    await page.evaluate((time) => FormulaClock.preview('2026-09-08T' + time + '+09:00'), time);
     await page.waitForFunction(
-      script(
-        '([c,s])=>FormulaClock.state.layout.code===c && FormulaClock.state.layout.seconds===s && typeof FormulaClock.state.coverage==="number" && !document.querySelector("#stage").classList.contains("loading")',
-      ),
-      [time.slice(0, 2) + time.slice(3, 5), Number(time.slice(6, 8))],
+      ([c, s]: [string, number]) =>
+        FormulaClock.state.layout!.code === c &&
+        FormulaClock.state.layout!.seconds === s &&
+        typeof FormulaClock.state.coverage === 'number' &&
+        !document.querySelector('#stage')!.classList.contains('loading'),
+      [time.slice(0, 2) + time.slice(3, 5), Number(time.slice(6, 8))] as [string, number],
     );
     if (wait) {
       await page.waitForTimeout(wait);
@@ -102,7 +128,7 @@ test('symbol-morph', async ({ browser, args, page }) => {
           symbolMorph: false,
         });
         await preview(time);
-        const baseline = await page.evaluate<GlyphBounds[]>('geometry()');
+        const baseline = await page.evaluate(() => geometry());
         for (const [basic, structure, morph] of [
           [false, false, false] as const,
           [true, false, false] as const,
@@ -111,7 +137,7 @@ test('symbol-morph', async ({ browser, args, page }) => {
           [true, true, true] as const,
         ]) {
           await display({ symbolMotion: basic, structureMotion: structure, symbolMorph: morph });
-          const actual = await page.evaluate<GlyphBounds[]>('geometry()');
+          const actual = await page.evaluate(() => geometry());
           assert.deepEqual(
             baseline.map((x) => x['key']),
             actual.map((x) => x['key']),
@@ -146,23 +172,41 @@ test('symbol-morph', async ({ browser, args, page }) => {
   report['checks'].push(
     'Every settled glyph/rule matches the original layout across all five permitted motion combinations in all four fonts and both numeral styles/division styles',
   );
-  await page.evaluate(
-    script(`()=>{
-      const L=i=>({op:'lit',i,j:i+1}),B=(op,a,b)=>({op,a,b});
-      const formulas={
-        10:B('add',B('add',B('add',L(0),L(1)),L(2)),L(3)),
-        9:B('add',B('add',B('mul',L(0),L(1)),L(2)),L(3)),
-        13:B('add',B('mul',B('add',L(0),L(1)),L(2)),L(3)),
-        6:B('add',B('add',B('sub',L(0),L(1)),L(2)),L(3)),
-        24:B('mul',B('mul',B('mul',L(0),L(1)),L(2)),L(3))
-      };
-      // 12 op 3 + 6 gives four distinct, valid seconds at the same b2 gap.
-      const arithmetic=Object.fromEntries(Object.entries({add:21,sub:15,mul:42,div:10}).map(([op,s])=>
-        [s,B('add',B(op,{op:'lit',i:0,j:2},L(2)),L(3))]));
-      FormulaClock.setDataProvider({async getMinute(hhmm){return {schema:'formula-clock/1',hhmm,
-        seconds:Array.from({length:60},(_,s)=>(hhmm==='1234'?formulas:hhmm==='1236'?arithmetic:{})[s]||null)};}});
-    }`),
-  );
+  await page.evaluate(() => {
+    const L = (i: 0 | 1 | 2 | 3): Expr => ({ op: 'lit', i, j: (i + 1) as 1 | 2 | 3 | 4 }),
+      B = (op: 'add' | 'sub' | 'mul' | 'div', a: Expr, b: Expr): Expr => ({ op, a, b });
+    const formulas: Record<number, Expr> = {
+      10: B('add', B('add', B('add', L(0), L(1)), L(2)), L(3)),
+      9: B('add', B('add', B('mul', L(0), L(1)), L(2)), L(3)),
+      13: B('add', B('mul', B('add', L(0), L(1)), L(2)), L(3)),
+      6: B('add', B('add', B('sub', L(0), L(1)), L(2)), L(3)),
+      24: B('mul', B('mul', B('mul', L(0), L(1)), L(2)), L(3)),
+    };
+    // 12 op 3 + 6 gives four distinct, valid seconds at the same b2 gap.
+    const arithmetic = Object.fromEntries(
+      Object.entries({ add: 21, sub: 15, mul: 42, div: 10 }).map(([op, s]): [number, Expr] => [
+        s,
+        B('add', B(op as 'add' | 'sub' | 'mul' | 'div', { op: 'lit', i: 0, j: 2 }, L(2)), L(3)),
+      ]),
+    );
+    FormulaClock.setDataProvider({
+      async getMinute(hhmm) {
+        return {
+          schema: 'formula-clock/1',
+          hhmm,
+          seconds: Array.from(
+            { length: 60 },
+            (_, s) =>
+              (hhmm === '1234'
+                ? formulas
+                : hhmm === '1236'
+                  ? arithmetic
+                  : ({} as Record<number, Expr>))[s] || null,
+          ),
+        };
+      },
+    });
+  });
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   for (const [font, numerals] of (['stix2', 'termes', 'fira', 'euler'] as const).flatMap((f) =>
     (['lining', 'oldstyle'] as const).map((n) => [f, n] as const),
@@ -176,13 +220,18 @@ test('symbol-morph', async ({ browser, args, page }) => {
       symbolMorph: true,
     });
     await preview('12:34:10', 750);
-    const samples = await page.evaluate<MorphSample[]>(
-      script(`async()=>{
-          const el=document.querySelector('[data-site="add-b1-0"]');window.rotating=el;
-          FormulaClock.preview('2026-09-08T12:34:09+09:00');const started=performance.now(),out=[];
-          while(performance.now()-started<850){await new Promise(requestAnimationFrame);out.push(morphSample(el));}return out;
-        }`),
-    );
+    const samples = await page.evaluate(async () => {
+      const el = document.querySelector<SVGElement>('[data-site="add-b1-0"]')!;
+      window.rotating = el;
+      FormulaClock.preview('2026-09-08T12:34:09+09:00');
+      const started = performance.now(),
+        out: MorphSample[] = [];
+      while (performance.now() - started < 850) {
+        await new Promise(requestAnimationFrame);
+        out.push(morphSample(el));
+      }
+      return out;
+    });
     assert.ok(samples.map((s) => s['alive']).every(Boolean));
     const middle = samples.filter((s) => s['morphing']).map((s) => s);
     assert.ok(middle.length > 10);
@@ -198,18 +247,14 @@ test('symbol-morph', async ({ browser, args, page }) => {
     // Reverse a partially completed rotation: reuse the same two glyphs.
     await preview('12:34:10', 750);
     await preview('12:34:09', 170);
-    const reversal = await page.evaluate<{
-      before: MorphSample;
-      after: MorphSample;
-      same: boolean;
-    }>(
-      script(`async()=>{
-          const el=document.querySelector('[data-site="mul-b1-0"]'),parts=[...el.children],before=morphSample(el);
-          FormulaClock.preview('2026-09-08T12:34:10+09:00');
-          while(FormulaClock.state.layout.seconds!==10)await new Promise(requestAnimationFrame);
-          return {before,after:morphSample(el),same:parts.every((p,i)=>p===el.children[i])};
-        }`),
-    );
+    const reversal = await page.evaluate(async () => {
+      const el = document.querySelector<SVGElement>('[data-site="mul-b1-0"]')!,
+        parts = [...el.children],
+        before = morphSample(el);
+      FormulaClock.preview('2026-09-08T12:34:10+09:00');
+      while (FormulaClock.state.layout!.seconds !== 10) await new Promise(requestAnimationFrame);
+      return { before, after: morphSample(el), same: parts.every((p, i) => p === el.children[i]) };
+    });
     assert.ok(reversal['same'], inspect(reversal));
     assert.ok(
       Math.abs(reversal['after']['parts'][0]['angle'] - reversal['before']['parts'][0]['angle']) <
@@ -218,23 +263,28 @@ test('symbol-morph', async ({ browser, args, page }) => {
     );
     await page.waitForTimeout(760);
     assert.deepEqual(await page.locator('[data-morphing]').count(), 0);
-    assert.ok(await page.evaluate("rotating.isConnected && rotating.dataset.kind==='+'"));
+    assert.ok(await page.evaluate(() => rotating.isConnected && rotating.dataset.kind === '+'));
     // Both signs may rotate, but each keeps its own HHMM boundary.
     await preview('12:34:13', 750);
-    await page.evaluate(
-      'window.gap1=document.querySelector(\'[data-site="add-b1-0"]\');window.gap2=document.querySelector(\'[data-site="mul-b2-0"]\')',
-    );
+    await page.evaluate(() => {
+      window.gap1 = document.querySelector<SVGElement>('[data-site="add-b1-0"]')!;
+      window.gap2 = document.querySelector<SVGElement>('[data-site="mul-b2-0"]')!;
+    });
     await preview('12:34:09', 200);
     assert.ok(
       await page.evaluate(
-        "gap1.dataset.site==='mul-b1-0' && gap2.dataset.site==='add-b2-0' && gap1.dataset.morphing && gap2.dataset.morphing",
+        () =>
+          gap1.dataset.site === 'mul-b1-0' &&
+          gap2.dataset.site === 'add-b2-0' &&
+          gap1.dataset.morphing &&
+          gap2.dataset.morphing,
       ),
     );
     await page.screenshot({
       path: String(path.join(args.outputDir, `rotating-${font}-${numerals}.png`)),
     });
     await preview('12:34:06', 750);
-    assert.ok(await page.evaluate("gap1.isConnected && gap1.dataset.kind==='−'"));
+    assert.ok(await page.evaluate(() => gap1.isConnected && gap1.dataset.kind === '−'));
     assert.deepEqual(await page.locator('[data-morphing]').count(), 0);
   }
   report['checks'].push(
@@ -262,7 +312,7 @@ test('symbol-morph', async ({ browser, args, page }) => {
     const baseline: Record<string, GlyphBounds[]> = {};
     for (const [kind, _op, second] of arithmetic) {
       await preview(`12:36:${String(second).padStart(2, '0')}`);
-      baseline[kind] = await page.evaluate<GlyphBounds[]>('geometry()');
+      baseline[kind] = await page.evaluate(() => geometry());
     }
     await display({ symbolMotion: true, structureMotion: true, symbolMorph: true });
     // Warm all frames so the samples measure animation, not typesetting latency.
@@ -276,14 +326,19 @@ test('symbol-morph', async ({ browser, args, page }) => {
           continue;
         }
         await preview(`12:36:${String(sourceSecond).padStart(2, '0')}`, 750);
-        const samples = await page.evaluate<MorphSample[], unknown>(
-          script(`async({site,second})=>{
-                  const el=document.querySelector(\`[data-site="\${site}"]\`);window.arithmeticSign=el;
-                  FormulaClock.preview(\`2026-09-08T12:36:\${String(second).padStart(2,'0')}+09:00\`);
-                  const started=performance.now(),out=[];
-                  while(performance.now()-started<760){await new Promise(requestAnimationFrame);out.push(morphSample(el));}
-                  return out;
-                }`),
+        const samples = await page.evaluate(
+          async ({ site, second }) => {
+            const el = document.querySelector<SVGElement>(`[data-site="${site}"]`)!;
+            window.arithmeticSign = el;
+            FormulaClock.preview(`2026-09-08T12:36:${String(second).padStart(2, '0')}+09:00`);
+            const started = performance.now(),
+              out: MorphSample[] = [];
+            while (performance.now() - started < 760) {
+              await new Promise(requestAnimationFrame);
+              out.push(morphSample(el));
+            }
+            return out;
+          },
           { site: `${sourceOp}-b2-0`, second: targetSecond },
         );
         assert.ok(
@@ -321,7 +376,7 @@ test('symbol-morph', async ({ browser, args, page }) => {
           inspect([font, source, target] as const),
         );
         assert.ok(!samples.at(-1)!['morphing'] && samples.at(-1)!['kind'] === target);
-        const actual = await page.evaluate<GlyphBounds[]>('geometry()');
+        const actual = await page.evaluate(() => geometry());
         assert.deepEqual(
           baseline[target].map((x) => x['key']),
           actual.map((x) => x['key']),
@@ -338,20 +393,22 @@ test('symbol-morph', async ({ browser, args, page }) => {
     }
     // A third/fourth destination keeps every still-visible glyph continuous.
     await preview('12:36:21', 750);
-    await page.evaluate('window.multiSign=document.querySelector(\'[data-site="add-b2-0"]\')');
+    await page.evaluate(() => {
+      window.multiSign = document.querySelector<SVGElement>('[data-site="add-b2-0"]')!;
+    });
     for (const second of [42, 15, 10, 21, 10, 42, 15]) {
-      const change = await page.evaluate<
-        { before: MorphSample; after: MorphSample; retained: boolean },
-        unknown
-      >(
-        script(`async(second)=>{
-              const before=morphSample(multiSign),parts=[...multiSign.children];
-              FormulaClock.preview(\`2026-09-08T12:36:\${String(second).padStart(2,'0')}+09:00\`);
-              while(FormulaClock.state.layout.seconds!==second)await new Promise(requestAnimationFrame);
-              return {before,after:morphSample(multiSign),retained:before.morphing?parts.every(p=>p.parentNode===multiSign):true};
-            }`),
-        second,
-      );
+      const change = await page.evaluate(async (second) => {
+        const before = morphSample(multiSign),
+          parts = [...multiSign.children];
+        FormulaClock.preview(`2026-09-08T12:36:${String(second).padStart(2, '0')}+09:00`);
+        while (FormulaClock.state.layout!.seconds !== second)
+          await new Promise(requestAnimationFrame);
+        return {
+          before,
+          after: morphSample(multiSign),
+          retained: before.morphing ? parts.every((p) => p.parentNode === multiSign) : true,
+        };
+      }, second);
       assert.ok(change['retained'] && change['after']['alive'], inspect(change));
       assert.ok(change['after']['parts'].length <= 4, inspect(change));
       const after = Object.fromEntries(
@@ -377,7 +434,8 @@ test('symbol-morph', async ({ browser, args, page }) => {
     await page.waitForTimeout(750);
     assert.ok(
       await page.evaluate(
-        "multiSign.isConnected && multiSign.dataset.kind==='−' && !multiSign.dataset.morphing",
+        () =>
+          multiSign.isConnected && multiSign.dataset.kind === '−' && !multiSign.dataset.morphing,
       ),
     );
     assert.deepEqual(await page.locator('[data-morph-glyph]').count(), 0);
@@ -385,7 +443,7 @@ test('symbol-morph', async ({ browser, args, page }) => {
     await preview('12:36:10', 80);
     await display({ division: 'fraction' });
     await page.waitForTimeout(750);
-    assert.ok(await page.evaluate('!multiSign.isConnected'));
+    assert.ok(await page.evaluate(() => !multiSign.isConnected));
     assert.deepEqual(await page.locator('[data-morph-glyph],[data-morphing]').count(), 0);
   }
   report['directedArithmeticPairs'] = directedPairs;
@@ -404,11 +462,11 @@ test('symbol-morph', async ({ browser, args, page }) => {
   assert.deepEqual(await page.locator('#operator-root > g').count(), 3);
   await preview('12:34:24', 100);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.waitForFunction('!document.querySelector("[data-morphing]")', undefined);
+  await page.waitForFunction(() => !document.querySelector('[data-morphing]'), undefined);
   assert.deepEqual(
     await page
       .locator('#operator-root')
-      .evaluate(script('(el)=>el.getAnimations({subtree:true}).length')),
+      .evaluate((el) => el.getAnimations({ subtree: true }).length),
     0,
   );
   await preview('00:00:08');
@@ -424,21 +482,23 @@ test('symbol-morph', async ({ browser, args, page }) => {
   }
   await page.check('#symbol-morph');
   await page.keyboard.press('Escape');
-  await page.waitForFunction('FormulaClock.state.layout.display.symbolMorph', undefined);
-  assert.ok(await page.evaluate('document.documentElement.scrollWidth<=innerWidth'));
+  await page.waitForFunction(() => FormulaClock.state.layout!.display.symbolMorph, undefined);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   assert.ok(
     await page.evaluate(
-      'FormulaClock.digits.every((el,i)=>el===originalDigits[i]) && document.querySelector("#equal-sign")===originalEqual',
+      () =>
+        FormulaClock.digits.every((el, i) => el === originalDigits[i]) &&
+        document.querySelector('#equal-sign') === originalEqual,
     ),
   );
   await page.reload();
   await page.waitForFunction(
-    'FormulaClock.state.engineReady && FormulaClock.state.layout',
+    () => FormulaClock.state.engineReady && FormulaClock.state.layout,
     undefined,
   );
   assert.ok(
     await page.evaluate(
-      'FormulaClock.state.display.symbolMorph && FormulaClock.state.display.symbolMotion',
+      () => FormulaClock.state.display.symbolMorph && FormulaClock.state.display.symbolMotion,
     ),
   );
   assert.ok(!(errors.length > 0), inspect(errors));

@@ -1,10 +1,10 @@
-import { script } from '../helpers/browser-script.ts';
 import { literal as L, binary as B, unary as U } from '../fixtures/ast.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual, inspect } from 'node:util';
-import type { Expr, DisplayOptions } from '../../src/shared/types.ts';
+import type { Expr, DisplayOptions, FormulaProvider } from '../../src/shared/types.ts';
+import type { Frame } from '../../src/browser/types.ts';
 import {
   test,
   createReport,
@@ -13,6 +13,15 @@ import {
   sorted,
   factorial,
 } from '../helpers/browser.ts';
+declare global {
+  var fixtures: (readonly [string, string, number, Expr])[];
+  var originalEqual: Element | null;
+  var fixtureProvider: FormulaProvider;
+  var oldRoot: SVGGElement[] | SVGGElement;
+  var oldRootKey: string | undefined;
+  var oldParens: SVGGElement[];
+  var oldParenKeys: (string | undefined)[];
+}
 interface StructureSample {
   state: {
     kind: string;
@@ -125,78 +134,152 @@ test('structure-motion', async ({ browser, args, page }) => {
   page.on('console', (msg) => (msg.type() === 'warning' ? warnings.push(msg.text()) : null));
   await page.goto(args.url);
   await page.waitForFunction(
-    'window.FormulaClock?.state.engineReady && FormulaClock.state.layout',
+    () => window.FormulaClock?.state.engineReady && FormulaClock.state.layout,
     undefined,
   );
-  assert.ok(await page.evaluate('FormulaClock.state.display.structureMotion'));
-  await page.evaluate(
-    'FormulaClock.setDisplay({symbolMotion:false,structureMotion:false,symbolMorph:false})',
+  assert.ok(await page.evaluate(() => FormulaClock.state.display.structureMotion));
+  await page.evaluate(() =>
+    FormulaClock.setDisplay({ symbolMotion: false, structureMotion: false, symbolMorph: false }),
   );
-  await page.evaluate('window.originalProvider=FORMULA_CLOCK_CONFIG.provider');
-  report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
+  await page.evaluate(() => {
+    window.originalProvider = FORMULA_CLOCK_CONFIG.provider!;
+  });
+  report['mathjax'] = await page.evaluate(() => FormulaClock.diagnostics().mathjax);
   assert.deepEqual(report['mathjax'], '4.1.3');
-  await page.evaluate(
-    script(`fixtures=>{
-      window.fixtures=fixtures;window.originalDigits=FormulaClock.digits;window.originalEqual=document.querySelector('#equal-sign');
-      const minutes={};
-      for(const [,code,seconds,ast] of fixtures){FormulaExpression.validateAst(ast,code);(minutes[code] ||= Array(60).fill(null))[seconds]=ast;}
-      window.fixtureProvider={async getMinute(hhmm){return {schema:'formula-clock/1',hhmm,seconds:minutes[hhmm] || Array(60).fill(null)};}};
-      FormulaClock.setDataProvider(fixtureProvider);
-    }`),
-    fixtures,
-  );
+  await page.evaluate((fixtures: (readonly [string, string, number, Expr])[]) => {
+    window.fixtures = fixtures;
+    window.originalDigits = FormulaClock.digits;
+    window.originalEqual = document.querySelector('#equal-sign');
+    const minutes: Record<string, (Expr | null)[]> = {};
+    for (const [, code, seconds, ast] of fixtures) {
+      FormulaExpression.validateAst(ast, code);
+      (minutes[code] ||= Array(60).fill(null))[seconds] = ast;
+    }
+    window.fixtureProvider = {
+      async getMinute(hhmm) {
+        return { schema: 'formula-clock/1', hhmm, seconds: minutes[hhmm] || Array(60).fill(null) };
+      },
+    };
+    FormulaClock.setDataProvider(fixtureProvider);
+  }, fixtures);
   // Compare every visible path/rectangle after reconstructing the actual frame.
   // This catches displaced bars, duplicate extraction and missing delimiter pieces.
-  report['geometry'] = await page.evaluate(
-    script(`async()=>{
-      const out=[],NS='http://www.w3.org/2000/svg';
-      function geometry(frame){
-        const svg=document.createElementNS(NS,'svg');
-        svg.setAttribute('width','20000');svg.setAttribute('height','20000');
-        svg.style.cssText='position:fixed;left:-100000px;top:0';
-        svg.append(frame.decorations.cloneNode(true));
-        for(const token of [...frame.tokens,...(frame.equality?[frame.equality]:[]),...frame.symbols]){
-          const group=token.shape.cloneNode(true);group.setAttribute('transform',\`matrix(\${token.matrix.join(' ')})\`);svg.append(group);
-        }
-        document.body.append(svg);
-        try{return [...svg.querySelectorAll('path,rect')].map(el=>{
-          const m=svg.getScreenCTM().inverse().multiply(el.getScreenCTM()),b=el.getBBox();
-          const points=[[b.x,b.y],[b.x+b.width,b.y],[b.x,b.y+b.height],[b.x+b.width,b.y+b.height]].map(([x,y])=>new DOMPoint(x,y).matrixTransform(m));
-          return {key:el.localName==='path'?el.getAttribute('d'):'rule',
-            box:[Math.min(...points.map(p=>p.x)),Math.min(...points.map(p=>p.y)),Math.max(...points.map(p=>p.x)),Math.max(...points.map(p=>p.y))]};
-        }).sort((a,b)=>a.key.localeCompare(b.key)||a.box[0]-b.box[0]||a.box[1]-b.box[1]);}
-        finally{svg.remove();}
+  report['geometry'] = await page.evaluate(async () => {
+    const out = [],
+      NS = 'http://www.w3.org/2000/svg';
+    function geometry(frame: Frame) {
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('width', '20000');
+      svg.setAttribute('height', '20000');
+      svg.style.cssText = 'position:fixed;left:-100000px;top:0';
+      svg.append(frame.decorations.cloneNode(true));
+      for (const token of [
+        ...frame.tokens,
+        ...(frame.equality ? [frame.equality] : []),
+        ...frame.symbols,
+      ]) {
+        const group = token.shape.cloneNode(true) as SVGGElement;
+        group.setAttribute('transform', `matrix(${token.matrix.join(' ')})`);
+        svg.append(group);
       }
-      for(const font of ['stix2','termes','fira','euler'])for(const numerals of ['lining','oldstyle']){
-        const engine=new FormulaTypesetter.Typesetter(font,numerals);await engine.boot;
-        for(const division of ['fraction','inline'])for(const [name,code,seconds,ast] of fixtures){
-          const baseline=await engine.frame(ast,code,seconds,{division});const expected=geometry(baseline);
-          for(const symbolMotion of [false,true])for(const structureMotion of [false,true]){
-            const frame=await engine.frame(ast,code,seconds,{division,symbolMotion,structureMotion});const actual=geometry(frame);
-            if(JSON.stringify(expected.map(p=>p.key))!==JSON.stringify(actual.map(p=>p.key)))throw Error('Glyph count/content changed: '+font+name);
-            const delta=Math.max(...expected.flatMap((p,i)=>p.box.map((x,j)=>Math.abs(x-actual[i].box[j]))));
-            // Firefox's SVGMatrix rounds off-screen coordinates to float32.
-            // One font unit is at most 0.112px at the app's maximum display scale.
-            if(delta>1)throw Error('Geometry changed: '+JSON.stringify({font,name,division,symbolMotion,structureMotion,delta,
-              differences:expected.map((p,i)=>({key:p.key.slice(0,40),before:p.box,after:actual[i].box})).filter(p=>p.before.some((x,j)=>Math.abs(x-p.after[j])>1)),
-              digitDelta:Math.max(...baseline.tokens.flatMap((t,i)=>t.matrix.map((x,j)=>Math.abs(x-frame.tokens[i].matrix[j]))))}));
-            if(JSON.stringify(baseline.viewBox)!==JSON.stringify(frame.viewBox))throw Error('ViewBox changed');
-            out.push({font,numerals,name,division,symbolMotion,structureMotion,delta});
+      document.body.append(svg);
+      try {
+        return [...svg.querySelectorAll<SVGPathElement | SVGRectElement>('path,rect')]
+          .map((el) => {
+            const m = svg.getScreenCTM()!.inverse().multiply(el.getScreenCTM()!),
+              b = el.getBBox();
+            const points = [
+              [b.x, b.y],
+              [b.x + b.width, b.y],
+              [b.x, b.y + b.height],
+              [b.x + b.width, b.y + b.height],
+            ].map(([x, y]) => new DOMPoint(x, y).matrixTransform(m));
+            return {
+              key: el.localName === 'path' ? el.getAttribute('d')! : 'rule',
+              box: [
+                Math.min(...points.map((p) => p.x)),
+                Math.min(...points.map((p) => p.y)),
+                Math.max(...points.map((p) => p.x)),
+                Math.max(...points.map((p) => p.y)),
+              ],
+            };
+          })
+          .sort((a, b) => a.key.localeCompare(b.key) || a.box[0] - b.box[0] || a.box[1] - b.box[1]);
+      } finally {
+        svg.remove();
+      }
+    }
+    for (const font of ['stix2', 'termes', 'fira', 'euler'] as const)
+      for (const numerals of ['lining', 'oldstyle'] as const) {
+        const engine = new FormulaTypesetter.Typesetter(font, numerals);
+        await engine.boot;
+        for (const division of ['fraction', 'inline'] as const)
+          for (const [name, code, seconds, ast] of window.fixtures) {
+            const baseline = await engine.frame(ast, code, seconds, { division });
+            const expected = geometry(baseline);
+            for (const symbolMotion of [false, true])
+              for (const structureMotion of [false, true]) {
+                const frame = await engine.frame(ast, code, seconds, {
+                  division,
+                  symbolMotion,
+                  structureMotion,
+                });
+                const actual = geometry(frame);
+                if (
+                  JSON.stringify(expected.map((p) => p.key)) !==
+                  JSON.stringify(actual.map((p) => p.key))
+                )
+                  throw Error('Glyph count/content changed: ' + font + name);
+                const delta = Math.max(
+                  ...expected.flatMap((p, i) =>
+                    p.box.map((x, j) => Math.abs(x - actual[i].box[j])),
+                  ),
+                );
+                // Firefox's SVGMatrix rounds off-screen coordinates to float32.
+                // One font unit is at most 0.112px at the app's maximum display scale.
+                if (delta > 1)
+                  throw Error(
+                    'Geometry changed: ' +
+                      JSON.stringify({
+                        font,
+                        name,
+                        division,
+                        symbolMotion,
+                        structureMotion,
+                        delta,
+                        differences: expected
+                          .map((p, i) => ({
+                            key: p.key.slice(0, 40),
+                            before: p.box,
+                            after: actual[i].box,
+                          }))
+                          .filter((p) => p.before.some((x, j) => Math.abs(x - p.after[j]) > 1)),
+                        digitDelta: Math.max(
+                          ...baseline.tokens.flatMap((t, i) =>
+                            t.matrix.map((x, j) => Math.abs(x - frame.tokens[i].matrix[j])),
+                          ),
+                        ),
+                      }),
+                  );
+                if (JSON.stringify(baseline.viewBox) !== JSON.stringify(frame.viewBox))
+                  throw Error('ViewBox changed');
+                out.push({ font, numerals, name, division, symbolMotion, structureMotion, delta });
+              }
           }
-        }
-        engine.staging.remove();
-      }return out;
-    }`),
-  );
+        engine['staging'].remove();
+      }
+    return out;
+  });
   report['checks'].push(
     'All glyph/rule bounds and viewBox match in all four fonts and both numeral styles, division styles and all four experiment combinations',
   );
   async function display(opts: Partial<DisplayOptions>) {
-    await page.evaluate(script('(opts)=>FormulaClock.setDisplay(opts)'), opts);
+    await page.evaluate((opts: Partial<DisplayOptions>) => FormulaClock.setDisplay(opts), opts);
     await page.waitForFunction(
-      script(
-        '(opts)=>Object.entries(opts).every(([k,v])=>FormulaClock.state.layout.display[k]===v)',
-      ),
+      (opts: Partial<DisplayOptions>) =>
+        Object.entries(opts).every(
+          ([k, v]) => FormulaClock.state.layout!.display[k as keyof DisplayOptions] === v,
+        ),
       opts,
     );
     await page.waitForTimeout(740);
@@ -208,37 +291,70 @@ test('structure-motion', async ({ browser, args, page }) => {
         : (['null', '0000', 8, null] as const);
     const [, code, seconds] = fixture;
     await page.evaluate(
-      script(
-        '([code,s])=>FormulaClock.preview(`2026-09-08T${code.slice(0,2)}:${code.slice(2)}:${String(s).padStart(2,"0")}+09:00`)',
-      ),
-      [code, seconds],
+      ([code, s]: readonly [string, number]) =>
+        FormulaClock.preview(
+          `2026-09-08T${code.slice(0, 2)}:${code.slice(2)}:${String(s).padStart(2, '0')}+09:00`,
+        ),
+      [code, seconds] as const,
     );
     await page.waitForFunction(
-      script(
-        '([c,s])=>FormulaClock.state.layout.code===c && FormulaClock.state.layout.seconds===s && !FormulaClock.state.engineError',
-      ),
-      [code, seconds],
+      ([c, s]: readonly [string, number]) =>
+        FormulaClock.state.layout!.code === c &&
+        FormulaClock.state.layout!.seconds === s &&
+        !FormulaClock.state.engineError,
+      [code, seconds] as const,
     );
     if (wait) {
       await page.waitForTimeout(wait);
     }
   }
-  async function sampleTransition(target: string, kinds: string[]) {
+  async function sampleTransition(target: string, kinds: string[]): Promise<StructureSample[]> {
     const fixture = fixtures.filter((x) => x[0] === target).map((x) => x)[0]!;
-    return await page.evaluate<StructureSample[], unknown>(
-      script(`async([code,seconds,kinds])=>{
-          const find=kind=>document.querySelector(\`#operator-root [data-kind="\${kind}"]\`);
-          const old=kinds.map(kind=>{const el=find(kind);if(!el)throw Error('Missing '+kind);return {kind,el,shape:el.firstChild};});
-          function capture(){
-            const state=old.map(({el,shape,kind})=>{const r=el.getBoundingClientRect();return {kind,same:el.isConnected&&el.firstChild===shape,x:r.x,y:r.y,width:r.width,height:r.height,opacity:getComputedStyle(el).opacity};});
-            const sign=find('root-sign'),rule=find('root-rule');let junction=null;
-            if(sign&&rule){const m=rule.getScreenCTM(),inv=sign.getScreenCTM().inverse(),p=new DOMPoint(m.e,m.f).matrixTransform(inv);junction=[p.x,p.y];}
-            return {state,junction};
+    return await page.evaluate(
+      async ([code, seconds, kinds]: readonly [string, number, string[]]) => {
+        const find = (kind: string) =>
+          document.querySelector<SVGGElement>(`#operator-root [data-kind="${kind}"]`);
+        const old = kinds.map((kind) => {
+          const el = find(kind);
+          if (!el) throw Error('Missing ' + kind);
+          return { kind, el, shape: el.firstChild };
+        });
+        function capture() {
+          const state = old.map(({ el, shape, kind }) => {
+            const r = el.getBoundingClientRect();
+            return {
+              kind,
+              same: el.isConnected && el.firstChild === shape,
+              x: r.x,
+              y: r.y,
+              width: r.width,
+              height: r.height,
+              opacity: getComputedStyle(el).opacity,
+            };
+          });
+          const sign = find('root-sign'),
+            rule = find('root-rule');
+          let junction = null;
+          if (sign && rule) {
+            const m = rule.getScreenCTM()!,
+              inv = sign.getScreenCTM()!.inverse(),
+              p = new DOMPoint(m.e, m.f).matrixTransform(inv);
+            junction = [p.x, p.y];
           }
-          const samples=[capture()];FormulaClock.preview(\`2026-09-08T\${code.slice(0,2)}:\${code.slice(2)}:\${String(seconds).padStart(2,'0')}+09:00\`);
-          const start=performance.now();while(performance.now()-start<850){await new Promise(requestAnimationFrame);samples.push(capture());}return samples;
-        }`),
-      [fixture[1], fixture[2], kinds],
+          return { state, junction };
+        }
+        const samples = [capture()];
+        FormulaClock.preview(
+          `2026-09-08T${code.slice(0, 2)}:${code.slice(2)}:${String(seconds).padStart(2, '0')}+09:00`,
+        );
+        const start = performance.now();
+        while (performance.now() - start < 850) {
+          await new Promise(requestAnimationFrame);
+          samples.push(capture());
+        }
+        return samples;
+      },
+      [fixture[1], fixture[2], kinds] as const,
     );
   }
   const motion: { font: string; numerals: string; maxRootJunctionDriftEm: number }[] = [];
@@ -291,18 +407,28 @@ test('structure-motion', async ({ browser, args, page }) => {
     );
     // <0.224px at the largest 112px/em rendering scale.
     assert.ok(drift < 2, inspect([font, drift] as const));
-    await page.evaluate(
-      'window.oldRoot=[...document.querySelectorAll(\'[data-kind="root-sign"],[data-kind="root-rule"]\')];window.oldRootKey=oldRoot[0].dataset.glyphKey',
-    );
+    await page.evaluate(() => {
+      window.oldRoot = [
+        ...document.querySelectorAll<SVGGElement>(
+          '[data-kind="root-sign"],[data-kind="root-rule"]',
+        ),
+      ];
+      window.oldRootKey = (oldRoot as SVGGElement[])[0].dataset.glyphKey;
+    });
     await preview('root-tall');
     assert.ok(
       await page.evaluate(
-        'oldRoot.every(x=>!x.isConnected) && document.querySelector(\'[data-kind="root-sign"]\').dataset.glyphKey!==oldRootKey',
+        () =>
+          (oldRoot as SVGGElement[]).every((x) => !x.isConnected) &&
+          document.querySelector<SVGGElement>('[data-kind="root-sign"]')!.dataset.glyphKey !==
+            oldRootKey,
       ),
     );
     assert.ok(
       await page.evaluate(
-        'document.querySelector(\'[data-kind="root-sign"]\').dataset.glyphKey===document.querySelector(\'[data-kind="root-rule"]\').dataset.glyphKey',
+        () =>
+          document.querySelector<SVGGElement>('[data-kind="root-sign"]')!.dataset.glyphKey ===
+          document.querySelector<SVGGElement>('[data-kind="root-rule"]')!.dataset.glyphKey,
       ),
     );
     await page.screenshot({
@@ -315,39 +441,52 @@ test('structure-motion', async ({ browser, args, page }) => {
         .flatMap((s) => s['state'].map((r) => r['same'] && r['opacity'] === '1'))
         .every(Boolean),
     );
-    await page.evaluate(
-      'window.oldParens=[...document.querySelectorAll(\'[data-kind="paren-left"],[data-kind="paren-right"]\')];window.oldParenKeys=oldParens.map(x=>x.dataset.glyphKey)',
-    );
+    await page.evaluate(() => {
+      window.oldParens = [
+        ...document.querySelectorAll<SVGGElement>(
+          '[data-kind="paren-left"],[data-kind="paren-right"]',
+        ),
+      ];
+      window.oldParenKeys = oldParens.map((x) => x.dataset.glyphKey);
+    });
     await preview('paren-tall');
     assert.ok(
       await page.evaluate(
-        'oldParens.every(x=>!x.isConnected) && [...document.querySelectorAll(\'[data-kind="paren-left"],[data-kind="paren-right"]\')].every(x=>!oldParenKeys.includes(x.dataset.glyphKey))',
+        () =>
+          oldParens.every((x) => !x.isConnected) &&
+          [
+            ...document.querySelectorAll<SVGGElement>(
+              '[data-kind="paren-left"],[data-kind="paren-right"]',
+            ),
+          ].every((x) => !oldParenKeys.includes(x.dataset.glyphKey)),
       ),
     );
     await preview('root-wide');
-    await page.evaluate('window.oldRoot=document.querySelector(\'[data-kind="root-sign"]\')');
+    await page.evaluate(() => {
+      window.oldRoot = document.querySelector<SVGGElement>('[data-kind="root-sign"]')!;
+    });
     await preview('root-attachment');
-    assert.ok(await page.evaluate('!oldRoot.isConnected'));
+    assert.ok(await page.evaluate(() => !(oldRoot as SVGGElement).isConnected));
     await preview('assembled-root');
     // Larger radicals assembled from pieces still fade.
     assert.ok((await page.locator('#notation-root path').count()) > 0);
-    assert.deepEqual(await page.evaluate('FormulaClock.state.layout.mode'), 'formula');
+    assert.deepEqual(await page.evaluate(() => FormulaClock.state.layout!.mode), 'formula');
     motion.push({ font: font, numerals: numerals, maxRootJunctionDriftEm: drift / 1000 });
   }
   report['checks'].push(
     'Rules resize continuously with independent thickness; same radicals/parentheses retain DOM and glyphs; size/attachment changes replace them; assembled radicals keep fading',
   );
   // Real dataset, rapid interruptions, resize, settings persistence and reduced motion.
-  await page.evaluate('FormulaClock.setDataProvider(originalProvider)');
+  await page.evaluate(() => FormulaClock.setDataProvider(originalProvider));
   for (const i of Array.from({ length: 30 }, (_, i) => i)) {
     await page.evaluate(
-      script('(s)=>FormulaClock.preview("2026-09-08T12:34:"+String(s).padStart(2,"0")+"+09:00")'),
+      (s: number) =>
+        FormulaClock.preview('2026-09-08T12:34:' + String(s).padStart(2, '0') + '+09:00'),
       i,
     );
     await page.waitForFunction(
-      script(
-        '(s)=>FormulaClock.state.layout.code==="1234" && FormulaClock.state.layout.seconds===s',
-      ),
+      (s: number) =>
+        FormulaClock.state.layout!.code === '1234' && FormulaClock.state.layout!.seconds === s,
       i,
     );
   }
@@ -356,14 +495,14 @@ test('structure-motion', async ({ browser, args, page }) => {
     await page
       .locator('#operator-root > g')
       .evaluateAll(
-        script(
-          '(els)=>new Set(els.map(x=>[x.dataset.kind,x.dataset.site,x.dataset.glyphKey].join(":"))).size===els.length',
-        ),
+        (els) =>
+          new Set(els.map((x) => [x.dataset.kind, x.dataset.site, x.dataset.glyphKey].join(':')))
+            .size === els.length,
       ),
   );
   await page.setViewportSize({ width: 320, height: 640 });
   await page.waitForTimeout(800);
-  assert.ok(await page.evaluate('document.documentElement.scrollWidth<=innerWidth'));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.click('#settings-open');
   if ((await page.locator('#advanced-settings').getAttribute('open')) === null) {
     await page.click('#advanced-settings summary');
@@ -372,12 +511,12 @@ test('structure-motion', async ({ browser, args, page }) => {
   await page.check('#structure-motion');
   await page.keyboard.press('Escape');
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.evaluate('FormulaClock.setDataProvider(fixtureProvider)');
+  await page.evaluate(() => FormulaClock.setDataProvider(fixtureProvider));
   await preview('root-wide', 80);
   assert.deepEqual(
     await page
       .locator('#operator-root')
-      .evaluate(script('(el)=>el.getAnimations({subtree:true}).length')),
+      .evaluate((el) => el.getAnimations({ subtree: true }).length),
     0,
   );
   await page.screenshot({ path: String(path.join(args.outputDir, 'mobile.png')) });
@@ -390,18 +529,20 @@ test('structure-motion', async ({ browser, args, page }) => {
   assert.deepEqual(await page.locator('#operator-root [data-kind="root-sign"]').count(), 1);
   assert.ok(
     await page.evaluate(
-      'FormulaClock.digits.every((el,i)=>el===originalDigits[i]) && document.querySelector("#equal-sign")===originalEqual',
+      () =>
+        FormulaClock.digits.every((el, i) => el === originalDigits[i]) &&
+        document.querySelector('#equal-sign') === originalEqual,
     ),
   );
   await page.reload();
   await page.waitForFunction(
-    'FormulaClock.state.engineReady && FormulaClock.state.layout',
+    () => FormulaClock.state.engineReady && FormulaClock.state.layout,
     undefined,
   );
   await page.waitForTimeout(750);
   assert.ok(
     await page.evaluate(
-      'FormulaClock.state.display.structureMotion && FormulaClock.state.display.symbolMotion',
+      () => FormulaClock.state.display.structureMotion && FormulaClock.state.display.symbolMotion,
     ),
   );
   report['checks'].push(

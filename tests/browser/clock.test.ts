@@ -1,26 +1,21 @@
-import { script } from '../helpers/browser-script.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { inspect } from 'node:util';
-import type {
-  Expr,
-  DisplayOptions,
-  ClockDiagnostics,
-  ClockLayout,
-  GlyphDiagnostic,
-  AudioEvent,
-} from '../../src/shared/types.ts';
+import type { Expr, DisplayOptions } from '../../src/shared/types.ts';
 import { test, createReport, playwrightVersion, zip, sorted } from '../helpers/browser.ts';
-interface SourceClockGeometry {
-  font: string;
-  numerals: string;
-  text: string;
-  persistent: boolean;
-  digits: { x: number; y: number; inside: boolean }[];
-  colons: { x: number; y: number; inside: boolean }[];
-  glyphFonts: string[];
+
+declare global {
+  var originalSourceDigits: SVGGElement[];
+  var originalSourceColons: SVGGElement[];
+  var beforeStyle: string | null;
+  var sourceChildren: (ChildNode | null)[];
+  var colonChildren: (ChildNode | null)[];
+  var customAst: Expr;
+  var late: (() => void)[];
+  var prefetchReads: string[];
 }
+
 test.use({
   locale: 'ja-JP',
   viewport: { width: 1440, height: 1000 },
@@ -49,32 +44,39 @@ test('clock', async ({ browser, args, context: ctx }) => {
     structureMotion: args.structureMotion,
     symbolMorph: args.symbolMorph,
   });
-  await ctx.addInitScript(
-    "localStorage.setItem('formula-clock-display-v2'," + JSON.stringify(saved) + ')',
-  );
+  await ctx.addInitScript((s) => localStorage.setItem('formula-clock-display-v2', s), saved);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (msg) => (msg.type() === 'warning' ? warnings.push(msg.text()) : null));
   page.on('request', (request) => requests.push(request.url()));
   await page.goto(args.url, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(
-    'window.FormulaClock?.state.engineReady && FormulaClock.state.layout',
+    () => window.FormulaClock?.state.engineReady && FormulaClock.state.layout,
     undefined,
     { timeout: 35000 },
   );
-  await page.evaluate('window.originalDigits=FormulaClock.digits');
-  await page.evaluate(
-    "window.originalSourceDigits=[...document.querySelectorAll('#source-time .source-digit')];window.originalSourceColons=[...document.querySelectorAll('#source-time .colon')]",
-  );
-  await page.evaluate('window.originalProvider=FORMULA_CLOCK_CONFIG.provider');
-  report['mathjax'] = await page.evaluate('FormulaClock.diagnostics().mathjax');
+  await page.evaluate(() => {
+    window.originalDigits = FormulaClock.digits;
+  });
+  await page.evaluate(() => {
+    window.originalSourceDigits = [
+      ...document.querySelectorAll<SVGGElement>('#source-time .source-digit'),
+    ];
+    window.originalSourceColons = [
+      ...document.querySelectorAll<SVGGElement>('#source-time .colon'),
+    ];
+  });
+  await page.evaluate(() => {
+    window.originalProvider = FORMULA_CLOCK_CONFIG.provider!;
+  });
+  report['mathjax'] = await page.evaluate(() => FormulaClock.diagnostics().mathjax);
   assert.deepEqual(report['mathjax'], '4.1.3');
-  assert.deepEqual(await page.evaluate('FormulaClock.state.display.font'), 'stix2');
-  assert.deepEqual(await page.evaluate('FormulaClock.state.display.numerals'), 'oldstyle');
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.display.font), 'stix2');
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.display.numerals), 'oldstyle');
   assert.deepEqual(
     await page
       .locator('#numeral-choice input')
-      .evaluateAll(script('(options)=>options.map(x=>x.value)')),
+      .evaluateAll((options: HTMLInputElement[]) => options.map((x) => x.value)),
     ['lining', 'oldstyle'] as const,
   );
   assert.deepEqual(await page.locator('#symbol-motion').isChecked(), args.symbolMotion);
@@ -83,13 +85,13 @@ test('clock', async ({ browser, args, context: ctx }) => {
   assert.deepEqual(
     await page
       .locator('#font-choice option')
-      .evaluateAll(script('(options)=>options.map(x=>x.value)')),
+      .evaluateAll((options: HTMLOptionElement[]) => options.map((x) => x.value)),
     ['stix2', 'termes', 'fira', 'euler'] as const,
   );
   assert.deepEqual(
     await page
       .locator('#division-choice input')
-      .evaluateAll(script('(options)=>options.map(x=>x.value)')),
+      .evaluateAll((options: HTMLInputElement[]) => options.map((x) => x.value)),
     ['fraction', 'inline', 'slash'] as const,
   );
   assert.deepEqual(
@@ -109,15 +111,17 @@ test('clock', async ({ browser, args, context: ctx }) => {
   const stageBefore = await page.locator('#stage').boundingBox();
   await page.click('#settings-open');
   assert.ok(await page.locator('#settings').isVisible());
-  assert.deepEqual(await page.evaluate('document.activeElement.id'), 'settings-close');
+  assert.deepEqual(await page.evaluate(() => document.activeElement!.id), 'settings-close');
   await page.locator('.settings-links a').focus();
   await page.keyboard.press('Tab');
   assert.ok(
-    await page.evaluate("document.querySelector('#settings').contains(document.activeElement)"),
+    await page.evaluate(() =>
+      document.querySelector('#settings')!.contains(document.activeElement),
+    ),
   );
   await page.keyboard.press('Escape');
   assert.ok(await page.locator('#settings').isHidden());
-  assert.deepEqual(await page.evaluate('document.activeElement.id'), 'settings-open');
+  assert.deepEqual(await page.evaluate(() => document.activeElement!.id), 'settings-open');
   await page.click('#settings-open');
   await page.click('#settings-close');
   assert.ok(await page.locator('#settings').isHidden());
@@ -128,17 +132,17 @@ test('clock', async ({ browser, args, context: ctx }) => {
   await page.click('#settings-open');
   await page.click('#licenses-open');
   assert.ok(await page.locator('#licenses').isVisible());
-  assert.deepEqual(await page.evaluate('document.activeElement.id'), 'licenses-close');
-  assert.deepEqual(await page.locator('#licenses').evaluate(script('(el)=>el.scrollTop')), 0);
+  assert.deepEqual(await page.evaluate(() => document.activeElement!.id), 'licenses-close');
+  assert.deepEqual(await page.locator('#licenses').evaluate((el) => el.scrollTop), 0);
   assert.ok((await page.locator('#licenses').innerText()).includes('Latin Modern'));
   await page.locator('#licenses summary').last().focus();
   await page.keyboard.press('Tab');
-  assert.deepEqual(await page.evaluate('document.activeElement.id'), 'licenses-close');
+  assert.deepEqual(await page.evaluate(() => document.activeElement!.id), 'licenses-close');
   await page.keyboard.press('Escape');
   assert.ok(
     (await page.locator('#licenses').isHidden()) && (await page.locator('#settings').isVisible()),
   );
-  assert.deepEqual(await page.evaluate('document.activeElement.id'), 'licenses-open');
+  assert.deepEqual(await page.evaluate(() => document.activeElement!.id), 'licenses-open');
   await page.click('#licenses-open');
   await page.click('#licenses-close');
   await page.click('#licenses-open');
@@ -154,7 +158,7 @@ test('clock', async ({ browser, args, context: ctx }) => {
   await page.fill('#custom-time', '16:39:19');
   await page.click('#custom-go');
   await page.waitForFunction(
-    "FormulaClock.state.layout?.code==='1639' && FormulaClock.state.layout?.seconds===19",
+    () => FormulaClock.state.layout?.code === '1639' && FormulaClock.state.layout?.seconds === 19,
     undefined,
   );
   assert.ok(await page.locator('#settings').isHidden());
@@ -167,85 +171,115 @@ test('clock', async ({ browser, args, context: ctx }) => {
     'Minimal UI, four fonts and an independent numeral selector, dialog dismissal/focus trapping, custom preview, stable stage position',
   );
   async function preview(time: string, wait = 700) {
-    await page.evaluate(script('(t)=>FormulaClock.preview("2026-09-08T"+t+"+09:00",true)'), time);
+    await page.evaluate((t) => FormulaClock.preview('2026-09-08T' + t + '+09:00', true), time);
     const code = time.slice(0, 2) + time.slice(3, 5);
     const sec = Number(time.slice(6, 8));
     await page.waitForFunction(
-      script(
-        '([c,s])=>FormulaClock.state.layout?.code===c && FormulaClock.state.layout?.seconds===s && FormulaClock.state.coverage!==undefined',
-      ),
-      [code, sec],
+      ([c, s]) =>
+        FormulaClock.state.layout?.code === c &&
+        FormulaClock.state.layout?.seconds === s &&
+        FormulaClock.state.coverage !== undefined,
+      [code, sec] as const,
     );
     if (wait) {
       await page.waitForTimeout(wait);
     }
-    assert.ok(!(await page.evaluate('FormulaClock.state.engineError')));
+    assert.ok(!(await page.evaluate(() => FormulaClock.state.engineError)));
   }
-  async function settings(font: string, division: string, numerals = 'oldstyle') {
+  async function settings(
+    font: DisplayOptions['font'],
+    division: DisplayOptions['division'],
+    numerals: DisplayOptions['numerals'] = 'oldstyle',
+  ) {
     await page.evaluate(
-      script('([font,division,numerals])=>FormulaClock.setDisplay({font,division,numerals})'),
-      [font, division, numerals],
+      ([font, division, numerals]) => FormulaClock.setDisplay({ font, division, numerals }),
+      [font, division, numerals] as const,
     );
     await page.waitForFunction(
-      script(
-        '([f,d,n])=>FormulaClock.state.layout?.display.font===f && FormulaClock.state.layout?.display.division===d && FormulaClock.state.layout?.display.numerals===n',
-      ),
-      [font, division, numerals],
+      ([f, d, n]) =>
+        FormulaClock.state.layout?.display.font === f &&
+        FormulaClock.state.layout?.display.division === d &&
+        FormulaClock.state.layout?.display.numerals === n,
+      [font, division, numerals] as const,
     );
     await page.waitForTimeout(720);
   }
   async function checkGeometry() {
-    const diag = await page.evaluate<ClockDiagnostics>('FormulaClock.diagnostics()');
+    const diag = await page.evaluate(() => FormulaClock.diagnostics());
     assert.ok(diag.typography);
     assert.ok(
       diag['glyphs'].map((x) => x['inStage'] && x['visibility'] === 'visible').every(Boolean),
       inspect(diag),
     );
     assert.ok(
-      await page.evaluate('FormulaClock.digits.every((el,i)=>el===window.originalDigits[i])'),
+      await page.evaluate(() =>
+        FormulaClock.digits.every((el, i) => el === window.originalDigits[i]),
+      ),
     );
-    const delta = await page.evaluate<number | null>(
-      script(`()=>{
-          const stage=document.querySelector('#stage'), sr=stage.getBoundingClientRect();
-          if(FormulaClock.state.layout.mode!=='formula')return null;
-          const paths=[...document.querySelectorAll('#equal-sign path[data-c="3D"]')];
-          if(!paths.length)throw new Error('Missing persistent equality');
-          const rects=paths.map(p=>p.getBoundingClientRect());
-          return (Math.min(...rects.map(r=>r.top))+Math.max(...rects.map(r=>r.bottom)))/2-sr.top-sr.height/2;
-        }`),
-    );
+    const delta = await page.evaluate(() => {
+      const stage = document.querySelector('#stage')!,
+        sr = stage.getBoundingClientRect();
+      if (FormulaClock.state.layout!.mode !== 'formula') return null;
+      const paths = [...document.querySelectorAll('#equal-sign path[data-c="3D"]')];
+      if (!paths.length) throw new Error('Missing persistent equality');
+      const rects = paths.map((p) => p.getBoundingClientRect());
+      return (
+        (Math.min(...rects.map((r) => r.top)) + Math.max(...rects.map((r) => r.bottom))) / 2 -
+        sr.top -
+        sr.height / 2
+      );
+    });
     if (delta !== null) {
       assert.ok(Math.abs(delta) < 0.12, inspect([delta, diag] as const));
       assert.deepEqual(
         await page
           .locator('#equal-sign path')
           .first()
-          .evaluate(script('(el)=>getComputedStyle(el).fill')),
+          .evaluate((el) => getComputedStyle(el).fill),
         'rgb(195, 200, 186)',
       );
     }
-    const formula = await page.evaluate("FormulaClock.state.layout.mode==='formula'");
+    const formula = await page.evaluate(() => FormulaClock.state.layout!.mode === 'formula');
     assert.deepEqual(await page.locator('#source-time').isVisible(), formula);
     assert.ok(
       await page.evaluate(
-        "getComputedStyle(document.querySelector('#source-second')).fontSize===getComputedStyle(document.querySelector('#source-time [data-digit]')).fontSize",
+        () =>
+          getComputedStyle(document.querySelector('#source-second')!).fontSize ===
+          getComputedStyle(document.querySelector('#source-time [data-digit]')!).fontSize,
       ),
     );
-    const source = await page.evaluate<SourceClockGeometry>(
-      script(`()=>{
-          const el=document.querySelector('#source-time'),svg=el.querySelector('svg'),inverse=svg.getScreenCTM().inverse();
-          const digits=[...el.querySelectorAll('.source-digit')],colons=[...el.querySelectorAll('.colon')];
-          function bounds(g){
-            const r=g.getBoundingClientRect(),p=new DOMPoint((r.left+r.right)/2,(r.top+r.bottom)/2).matrixTransform(inverse);
-            return {x:p.x,y:p.y,inside:r.left>=el.getBoundingClientRect().left && r.right<=el.getBoundingClientRect().right && r.top>=el.getBoundingClientRect().top && r.bottom<=el.getBoundingClientRect().bottom};
-          }
-          return {font:el.dataset.font,numerals:el.dataset.numerals,text:digits.map(g=>g.dataset.value).join(''),
-            persistent:digits.every((g,i)=>g===originalSourceDigits[i]) && colons.every((g,i)=>g===originalSourceColons[i]),
-            digits:digits.map(bounds),colons:colons.map(bounds),
-            glyphFonts:digits.map(g=>g.querySelector('path').getAttribute('data-glyph-key'))};
-        }`),
-    );
-    const state = await page.evaluate<ClockLayout>('FormulaClock.state.layout');
+    const source = await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>('#source-time')!,
+        svg = el.querySelector('svg')!,
+        inverse = svg.getScreenCTM()!.inverse();
+      const digits = [...el.querySelectorAll<SVGGElement>('.source-digit')],
+        colons = [...el.querySelectorAll('.colon')];
+      function bounds(g: Element) {
+        const r = g.getBoundingClientRect(),
+          p = new DOMPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2).matrixTransform(inverse);
+        return {
+          x: p.x,
+          y: p.y,
+          inside:
+            r.left >= el.getBoundingClientRect().left &&
+            r.right <= el.getBoundingClientRect().right &&
+            r.top >= el.getBoundingClientRect().top &&
+            r.bottom <= el.getBoundingClientRect().bottom,
+        };
+      }
+      return {
+        font: el.dataset.font,
+        numerals: el.dataset.numerals,
+        text: digits.map((g) => g.dataset.value).join(''),
+        persistent:
+          digits.every((g, i) => g === originalSourceDigits[i]) &&
+          colons.every((g, i) => g === originalSourceColons[i]),
+        digits: digits.map(bounds),
+        colons: colons.map(bounds),
+        glyphFonts: digits.map((g) => g.querySelector('path')!.getAttribute('data-glyph-key')!),
+      };
+    });
+    const state = await page.evaluate(() => FormulaClock.state.layout!);
     assert.ok(source['font'] === state['display']['font'] && source['persistent'], inspect(source));
     assert.deepEqual(source['numerals'], state['display']['numerals'], inspect(source));
     assert.deepEqual(
@@ -283,12 +317,19 @@ test('clock', async ({ browser, args, context: ctx }) => {
       inspect(source),
     );
     assert.ok(
-      await page.evaluate(
-        script(`()=>[...document.querySelectorAll('#source-time .source-digit')].every((g,i,all)=>{
-          const lower=i<4?FormulaClock.digits[i]:document.querySelector('.answer-digit[data-second="'+(i-4)+'"]');
-          const paths=el=>JSON.stringify([...el.querySelectorAll('path')].map(p=>p.getAttribute('d')));
-          return paths(g)===paths(lower) && (!i || all[i-1].getBoundingClientRect().right<g.getBoundingClientRect().left);
-        })`),
+      await page.evaluate(() =>
+        [...document.querySelectorAll('#source-time .source-digit')].every((g, i, all) => {
+          const lower =
+            i < 4
+              ? FormulaClock.digits[i]
+              : document.querySelector('.answer-digit[data-second="' + (i - 4) + '"]')!;
+          const paths = (el: Element) =>
+            JSON.stringify([...el.querySelectorAll('path')].map((p) => p.getAttribute('d')));
+          return (
+            paths(g) === paths(lower) &&
+            (!i || all[i - 1].getBoundingClientRect().right < g.getBoundingClientRect().left)
+          );
+        }),
       ),
     );
     assert.deepEqual(await page.locator('#notation-root path[data-c="3D"]').count(), 0);
@@ -324,7 +365,7 @@ test('clock', async ({ browser, args, context: ctx }) => {
               .getAttribute('d');
           }
         }
-        const diag = await page.evaluate<ClockDiagnostics>('FormulaClock.diagnostics()');
+        const diag = await page.evaluate(() => FormulaClock.diagnostics());
         assert.ok(diag.typography);
         assert.deepEqual(diag['typography']['numerals'], numerals);
         if (numerals === 'oldstyle') {
@@ -362,32 +403,44 @@ test('clock', async ({ browser, args, context: ctx }) => {
   await preview('12:34:08');
   await page.click('#settings-open');
   await page.selectOption('#font-choice', 'fira');
-  await page.waitForFunction("FormulaClock.state.layout.display.font==='fira'", undefined);
-  assert.deepEqual(await page.evaluate('FormulaClock.state.display.numerals'), 'lining');
-  await page.evaluate(
-    "window.beforeStyle=[...document.querySelectorAll('#source-time .source-digit')][2].querySelector('path').getAttribute('d')",
-  );
+  await page.waitForFunction(() => FormulaClock.state.layout!.display.font === 'fira', undefined);
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.display.numerals), 'lining');
+  await page.evaluate(() => {
+    window.beforeStyle = [...document.querySelectorAll('#source-time .source-digit')][2]
+      .querySelector('path')!
+      .getAttribute('d');
+  });
   await page.locator('#numeral-choice input[value=oldstyle]').check();
-  await page.waitForFunction("FormulaClock.state.layout.display.numerals==='oldstyle'", undefined);
+  await page.waitForFunction(
+    () => FormulaClock.state.layout!.display.numerals === 'oldstyle',
+    undefined,
+  );
   await page.waitForTimeout(750);
   assert.notDeepEqual(
     await page.locator('#source-time [data-digit="2"] path').first().getAttribute('d'),
-    await page.evaluate('beforeStyle'),
+    await page.evaluate(() => beforeStyle),
   );
-  assert.deepEqual(await page.evaluate('FormulaClock.state.layout.code'), '1234');
-  assert.deepEqual(await page.evaluate('FormulaClock.state.layout.seconds'), 8);
-  const stored = await page.evaluate<DisplayOptions>(
-    "JSON.parse(localStorage.getItem('formula-clock-display-v2'))",
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.layout!.code), '1234');
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.layout!.seconds), 8);
+  const stored = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('formula-clock-display-v2')!) as DisplayOptions,
   );
   assert.ok(stored['font'] === 'fira' && stored['numerals'] === 'oldstyle');
   await page.keyboard.press('Escape');
   // Rapid switches can complete out of order. Both the main and small clock
   // must settle to the last font AND numeral style.
-  await page.evaluate(
-    "Promise.all([FormulaClock.setDisplay({font:'euler',numerals:'lining'}),FormulaClock.setDisplay({font:'termes',numerals:'oldstyle'}),FormulaClock.setDisplay({font:'fira',numerals:'lining'}),FormulaClock.setDisplay({font:'stix2',numerals:'oldstyle'})])",
+  await page.evaluate(() =>
+    Promise.all([
+      FormulaClock.setDisplay({ font: 'euler', numerals: 'lining' }),
+      FormulaClock.setDisplay({ font: 'termes', numerals: 'oldstyle' }),
+      FormulaClock.setDisplay({ font: 'fira', numerals: 'lining' }),
+      FormulaClock.setDisplay({ font: 'stix2', numerals: 'oldstyle' }),
+    ]),
   );
   await page.waitForFunction(
-    "FormulaClock.state.layout.display.font==='stix2' && FormulaClock.state.layout.display.numerals==='oldstyle'",
+    () =>
+      FormulaClock.state.layout!.display.font === 'stix2' &&
+      FormulaClock.state.layout!.display.numerals === 'oldstyle',
     undefined,
   );
   await page.waitForTimeout(750);
@@ -398,22 +451,31 @@ test('clock', async ({ browser, args, context: ctx }) => {
   // Reusing unchanged small-clock digits must preserve their glyph children too.
   await settings('stix2', 'fraction');
   await preview('12:34:30');
-  await page.evaluate(
-    'window.sourceChildren=originalSourceDigits.map(g=>g.firstChild);window.colonChildren=originalSourceColons.map(g=>g.firstChild)',
-  );
+  await page.evaluate(() => {
+    window.sourceChildren = originalSourceDigits.map((g) => g.firstChild);
+    window.colonChildren = originalSourceColons.map((g) => g.firstChild);
+  });
   await preview('12:34:31');
   assert.ok(
     await page.evaluate(
-      'originalSourceDigits.slice(0,5).every((g,i)=>g.firstChild===sourceChildren[i]) && originalSourceColons.every((g,i)=>g.firstChild===colonChildren[i])',
+      () =>
+        originalSourceDigits.slice(0, 5).every((g, i) => g.firstChild === sourceChildren[i]) &&
+        originalSourceColons.every((g, i) => g.firstChild === colonChildren[i]),
     ),
   );
-  assert.ok(await page.evaluate('originalSourceDigits[5].firstChild!==sourceChildren[5]'));
+  assert.ok(await page.evaluate(() => originalSourceDigits[5].firstChild !== sourceChildren[5]));
   assert.ok(
-    await page.evaluate(
-      script(`()=>originalSourceDigits.every((g,i)=>{
-      const lower=i<4?FormulaClock.digits[i]:document.querySelector('.answer-digit[data-second="'+(i-4)+'"]');
-      return JSON.stringify([...g.querySelectorAll('path')].map(p=>p.getAttribute('d')))===JSON.stringify([...lower.querySelectorAll('path')].map(p=>p.getAttribute('d')));
-    })`),
+    await page.evaluate(() =>
+      originalSourceDigits.every((g, i) => {
+        const lower =
+          i < 4
+            ? FormulaClock.digits[i]
+            : document.querySelector('.answer-digit[data-second="' + (i - 4) + '"]')!;
+        return (
+          JSON.stringify([...g.querySelectorAll('path')].map((p) => p.getAttribute('d'))) ===
+          JSON.stringify([...lower.querySelectorAll('path')].map((p) => p.getAttribute('d')))
+        );
+      }),
     ),
   );
   report['checks'].push(
@@ -421,16 +483,15 @@ test('clock', async ({ browser, args, context: ctx }) => {
   );
   await settings('stix2', 'inline');
   await preview('12:34:08');
-  const glyphs = await page.evaluate<GlyphDiagnostic[]>('FormulaClock.diagnostics().glyphs');
+  const glyphs = await page.evaluate(() => FormulaClock.diagnostics().glyphs);
   assert.ok(glyphs[2]['height'] > glyphs[0]['height'] * 1.25);
   assert.ok(
-    await page.evaluate(
-      script(`()=>{
-      const s=document.querySelector('#stage').getBoundingClientRect();
-      const el=FormulaClock.digits[2], r=el.getBoundingClientRect();
-      return r.bottom-s.top > FormulaClock.state.layout.items[2].matrix[5]+10;
-    }`),
-    ),
+    await page.evaluate(() => {
+      const s = document.querySelector('#stage')!.getBoundingClientRect();
+      const el = FormulaClock.digits[2],
+        r = el.getBoundingClientRect();
+      return r.bottom - s.top > FormulaClock.state.layout!.items[2].matrix[5] + 10;
+    }),
   );
   report['checks'].push(
     'Oldstyle 3 descends below the baseline; 1 is shorter; native axis is preserved',
@@ -439,12 +500,12 @@ test('clock', async ({ browser, args, context: ctx }) => {
     await page.screenshot({ path: String(path.join(out, 'stix2-inline.png')), fullPage: true });
   }
   // Switching changes typography, not the active expression, slots, or transport.
-  const ast = await page.evaluate<string>('JSON.stringify(FormulaClock.state.layout.ast)');
-  for (const font of ['euler', 'termes', 'fira', 'stix2']) {
+  const ast = await page.evaluate(() => JSON.stringify(FormulaClock.state.layout!.ast));
+  for (const font of ['euler', 'termes', 'fira', 'stix2'] as const) {
     for (const numerals of ['lining', 'oldstyle'] as const) {
       await settings(font, 'fraction', numerals);
       assert.deepEqual(
-        await page.evaluate<string>('JSON.stringify(FormulaClock.state.layout.ast)'),
+        await page.evaluate(() => JSON.stringify(FormulaClock.state.layout!.ast)),
         ast,
       );
       await checkGeometry();
@@ -461,7 +522,9 @@ test('clock', async ({ browser, args, context: ctx }) => {
       for (const time of ['23:59:10', '12:34:59', '00:00:08']) {
         await preview(time);
         await checkGeometry();
-        assert.ok(await page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'));
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        );
       }
     }
     await page.click('#settings-open');
@@ -471,7 +534,7 @@ test('clock', async ({ browser, args, context: ctx }) => {
     assert.ok(r['y'] >= 0 && r['y'] + r['height'] <= 840);
     if ((await page.locator('#advanced-settings').getAttribute('open')) === null)
       await page.click('#advanced-settings summary');
-    assert.ok(await page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'));
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     if (args.screenshots) {
       await page.screenshot({
         path: String(path.join(out, `settings-${width}.png`)),
@@ -485,7 +548,7 @@ test('clock', async ({ browser, args, context: ctx }) => {
       r['x'] >= 0 && r['x'] + r['width'] <= width + 1 && r['y'] >= 0 && r['y'] + r['height'] <= 840,
     );
     await page.locator('#licenses summary').first().click();
-    assert.ok(await page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'));
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     if (args.screenshots) {
       await page.screenshot({
         path: String(path.join(out, `licenses-${width}.png`)),
@@ -528,57 +591,75 @@ test('clock', async ({ browser, args, context: ctx }) => {
     },
   };
   await preview('12:48:05');
-  await page.evaluate(
-    script(
-      "ast=>{window.customAst=ast;FormulaClock.setDataProvider({async getMinute(hhmm){const seconds=Array(60).fill(null);if(hhmm==='1248')seconds[5]=ast;return {schema:'formula-clock/1',hhmm,seconds};}});}",
-    ),
-    nested,
-  );
+  await page.evaluate((ast) => {
+    window.customAst = ast;
+    FormulaClock.setDataProvider({
+      async getMinute(hhmm) {
+        const seconds = Array(60).fill(null);
+        if (hhmm === '1248') seconds[5] = ast;
+        return { schema: 'formula-clock/1', hhmm, seconds };
+      },
+    });
+  }, nested);
   await page.waitForFunction(
-    "FormulaClock.state.coverage===1 && FormulaClock.state.layout?.mode==='formula'",
+    () => FormulaClock.state.coverage === 1 && FormulaClock.state.layout?.mode === 'formula',
     undefined,
   );
   await settings('stix2', 'inline');
   await checkGeometry();
-  let tex = await page.evaluate<string>('FormulaClock.state.layout.tex');
+  let tex = await page.evaluate(() => FormulaClock.state.layout!.tex);
   assert.ok(
     tex.split('\\div').length - 1 === 2 && tex.split('\\left(').length - 1 === 1,
     inspect(tex),
   );
   await settings('stix2', 'slash');
   await checkGeometry();
-  tex = await page.evaluate<string>('FormulaClock.state.layout.tex');
+  tex = await page.evaluate(() => FormulaClock.state.layout!.tex);
   assert.ok(tex.split('/').length - 1 === 2 && tex.split('\\left(').length - 1 === 1, inspect(tex));
   assert.deepEqual(await page.locator('#operator-root path[data-c="2F"]').count(), 2);
-  assert.deepEqual(await page.evaluate<Expr | null>('FormulaClock.state.layout.ast'), nested);
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.layout!.ast), nested);
   report['checks'].push(
     'Nested obelus and slash division preserve denominator parentheses, the AST and persistent digits',
   );
   // A provider is allowed to ignore AbortSignal: revision checks still reject late data.
-  await page.evaluate(
-    script(`()=>{
-      window.late=[];
-      FormulaClock.setDataProvider({getMinute(hhmm){return new Promise(resolve=>late.push(()=>resolve({schema:'formula-clock/1',hhmm,seconds:Array(60).fill(null)})));}});
-    }`),
-  );
-  await page.waitForFunction('late.length>=1', undefined);
-  await page.evaluate(
-    script(
-      "()=>FormulaClock.setDataProvider({async getMinute(hhmm){const seconds=Array(60).fill(null);if(hhmm==='1248')seconds[5]=customAst;return {schema:'formula-clock/1',hhmm,seconds};}})",
-    ),
+  await page.evaluate(() => {
+    window.late = [];
+    FormulaClock.setDataProvider({
+      getMinute(hhmm) {
+        return new Promise((resolve) =>
+          late.push(() =>
+            resolve({ schema: 'formula-clock/1', hhmm, seconds: Array(60).fill(null) }),
+          ),
+        );
+      },
+    });
+  });
+  await page.waitForFunction(() => late.length >= 1, undefined);
+  await page.evaluate(() =>
+    FormulaClock.setDataProvider({
+      async getMinute(hhmm) {
+        const seconds = Array(60).fill(null);
+        if (hhmm === '1248') seconds[5] = customAst;
+        return { schema: 'formula-clock/1', hhmm, seconds };
+      },
+    }),
   );
   await page.waitForFunction(
-    "FormulaClock.state.coverage===1 && FormulaClock.state.layout?.mode==='formula'",
+    () => FormulaClock.state.coverage === 1 && FormulaClock.state.layout?.mode === 'formula',
     undefined,
   );
-  await page.evaluate('late.forEach(resolve=>resolve())');
+  await page.evaluate(() => late.forEach((resolve) => resolve()));
   await page.waitForTimeout(300);
-  assert.deepEqual(await page.evaluate('FormulaClock.state.coverage'), 1);
-  await page.evaluate(
-    "FormulaClock.setDataProvider({async getMinute(){throw new Error('Test transport failure')}})",
+  assert.deepEqual(await page.evaluate(() => FormulaClock.state.coverage), 1);
+  await page.evaluate(() =>
+    FormulaClock.setDataProvider({
+      async getMinute() {
+        throw new Error('Test transport failure');
+      },
+    }),
   );
   await page.waitForFunction(
-    "FormulaClock.state.dataError && FormulaClock.state.layout?.mode==='time'",
+    () => FormulaClock.state.dataError && FormulaClock.state.layout?.mode === 'time',
     undefined,
   );
   await page.waitForTimeout(700);
@@ -587,25 +668,29 @@ test('clock', async ({ browser, args, context: ctx }) => {
   report['checks'].push(
     'Late old-provider response discarded; failed data delivery is distinct from null and displays ordinary time',
   );
-  await page.evaluate('FormulaClock.setDataProvider(originalProvider)');
+  await page.evaluate(() => FormulaClock.setDataProvider(originalProvider));
   await preview('12:34:30');
   await settings('stix2', 'inline');
   // The equal sign retains its group AND paths while moving between formulas.
-  const equality = await page.evaluate<
-    { x: number; axis: number; opacity: string; same: boolean }[]
-  >(
-    script(`async()=>{
-      const el=document.querySelector('#equal-sign'), child=el.firstChild, samples=[];
-      FormulaClock.preview('2026-09-08T12:34:31+09:00');
-      const started=performance.now();
-      while(performance.now()-started<850){
-        await new Promise(requestAnimationFrame);
-        const r=el.getBoundingClientRect(),stage=document.querySelector('#stage').getBoundingClientRect();
-        samples.push({x:r.x,axis:(r.top+r.bottom)/2-stage.top-stage.height/2,
-          opacity:getComputedStyle(el).opacity,same:el.firstChild===child});
-      }return samples;
-    }`),
-  );
+  const equality = await page.evaluate(async () => {
+    const el = document.querySelector('#equal-sign')!,
+      child = el.firstChild,
+      samples = [];
+    FormulaClock.preview('2026-09-08T12:34:31+09:00');
+    const started = performance.now();
+    while (performance.now() - started < 850) {
+      await new Promise(requestAnimationFrame);
+      const r = el.getBoundingClientRect(),
+        stage = document.querySelector('#stage')!.getBoundingClientRect();
+      samples.push({
+        x: r.x,
+        axis: (r.top + r.bottom) / 2 - stage.top - stage.height / 2,
+        opacity: getComputedStyle(el).opacity,
+        same: el.firstChild === child,
+      });
+    }
+    return samples;
+  });
   assert.ok(
     equality
       .map((s) => s['same'] && s['opacity'] === '1' && Math.abs(s['axis']) < 0.12)
@@ -622,16 +707,16 @@ test('clock', async ({ browser, args, context: ctx }) => {
   );
   await preview('12:34:30');
   // Sample the actual animated transforms at 30 -> 31 (all HHMM stay on baseline).
-  const samples = await page.evaluate<number[][]>(
-    script(`async()=>{
-      const out=[];FormulaClock.preview('2026-09-08T12:34:31+09:00');
-      const started=performance.now();
-      while(performance.now()-started<850){
-        await new Promise(requestAnimationFrame);
-        out.push(FormulaClock.digits.map(x=>x.transform.baseVal.consolidate().matrix.f));
-      }return out;
-    }`),
-  );
+  const samples = await page.evaluate(async () => {
+    const out = [];
+    FormulaClock.preview('2026-09-08T12:34:31+09:00');
+    const started = performance.now();
+    while (performance.now() - started < 850) {
+      await new Promise(requestAnimationFrame);
+      out.push(FormulaClock.digits.map((x) => x.transform.baseVal.consolidate()!.matrix.f));
+    }
+    return out;
+  });
   const ranges = Array.from({ length: 4 }, (_, i) => i).map(
     (i) => Math.max(...samples.map((x) => x[i])) - Math.min(...samples.map((x) => x[i])),
   );
@@ -643,47 +728,49 @@ test('clock', async ({ browser, args, context: ctx }) => {
   if (args.screenshots) {
     await page.screenshot({ path: String(path.join(out, 'stix2-163919.png')), fullPage: true });
   }
-  await page.evaluate('FormulaClock.live()');
+  await page.evaluate(() => FormulaClock.live());
   await page.waitForTimeout(1000);
   if (args.screenshots) {
     await page.screenshot({ path: String(path.join(out, 'live.png')), fullPage: true });
   }
   if (await page.locator('#fullscreen').isVisible()) {
     await preview('12:34:30');
-    const normalSize = await page.evaluate<number>('FormulaClock.state.layout.fontSize');
+    const normalSize = await page.evaluate(() => FormulaClock.state.layout!.fontSize);
     await page.click('#fullscreen');
     await page.waitForFunction(
-      'document.fullscreenElement || document.webkitFullscreenElement',
+      () => document.fullscreenElement || document.webkitFullscreenElement,
       undefined,
     );
     assert.deepEqual(await page.locator('#fullscreen').getAttribute('aria-pressed'), 'true');
     await page.waitForFunction(
-      script('size=>FormulaClock.state.layout.fontSize>size*1.4'),
+      (size) => FormulaClock.state.layout!.fontSize > size * 1.4,
       normalSize,
     );
-    assert.ok((await page.evaluate<number>('FormulaClock.state.layout.fontSize')) <= 160.01);
-    assert.ok(await page.evaluate('FormulaClock.digits.every((el,i)=>el===originalDigits[i])'));
+    assert.ok((await page.evaluate(() => FormulaClock.state.layout!.fontSize)) <= 160.01);
+    assert.ok(
+      await page.evaluate(() => FormulaClock.digits.every((el, i) => el === originalDigits[i])),
+    );
     await page.click('#fullscreen');
     await page.waitForFunction(
-      '!document.fullscreenElement && !document.webkitFullscreenElement',
+      () => !document.fullscreenElement && !document.webkitFullscreenElement,
       undefined,
     );
     assert.deepEqual(await page.locator('#fullscreen').getAttribute('aria-pressed'), 'false');
     await page.waitForFunction(
-      script('size=>Math.abs(FormulaClock.state.layout.fontSize-size)<.01'),
+      (size) => Math.abs(FormulaClock.state.layout!.fontSize - size) < 0.01,
       normalSize,
     );
     report['checks'].push(
       'Native fullscreen enlarges the clock within 160px, preserves digit elements and restores the normal size on exit',
     );
   } else {
-    assert.ok(!(await page.evaluate("document.body.classList.contains('fullscreen')")));
+    assert.ok(!(await page.evaluate(() => document.body.classList.contains('fullscreen'))));
     report['checks'].push('Unsupported fullscreen control is hidden');
   }
   await page.click('#sound');
-  await page.evaluate("FormulaClock.preview('2026-09-08T23:59:56.700+09:00',false)");
+  await page.evaluate(() => FormulaClock.preview('2026-09-08T23:59:56.700+09:00', false));
   await page.waitForTimeout(4750);
-  const audio = await page.evaluate<AudioEvent[]>('FormulaClock.state.audio');
+  const audio = await page.evaluate(() => FormulaClock.state.audio);
   const midnight = audio.filter((x) => ['countdown', 'minute'].includes(x['type'])).map((x) => x);
   assert.deepEqual(
     midnight.slice(-4).map((x) => x['frequency']),
@@ -698,57 +785,59 @@ test('clock', async ({ browser, args, context: ctx }) => {
   await page.click('#sound');
   async function liveAt(time: string) {
     await page.clock.setFixedTime('2026-09-09T' + time + '+09:00');
-    await page.evaluate('FormulaClock.live()');
+    await page.evaluate(() => FormulaClock.live());
   }
   async function trackPrefetch() {
-    await page.evaluate(
-      script(`()=>{
-          Math.random=()=>.5;
-          window.prefetchReads=[];
-          FormulaClock.setDataProvider({async getMinute(hhmm){
-            prefetchReads.push(hhmm);
-            return {schema:'formula-clock/1',hhmm,seconds:Array(60).fill(null)};
-          }});
-        }`),
-    );
-    await page.waitForFunction('FormulaClock.state.coverage===0', undefined);
+    await page.evaluate(() => {
+      Math.random = () => 0.5;
+      window.prefetchReads = [];
+      FormulaClock.setDataProvider({
+        async getMinute(hhmm) {
+          prefetchReads.push(hhmm);
+          return { schema: 'formula-clock/1', hhmm, seconds: Array(60).fill(null) };
+        },
+      });
+    });
+    await page.waitForFunction(() => FormulaClock.state.coverage === 0, undefined);
   }
   await liveAt('12:59:00');
   await trackPrefetch();
-  assert.deepEqual(await page.evaluate('prefetchReads'), ['1259']);
+  assert.deepEqual(await page.evaluate(() => prefetchReads), ['1259']);
   // A redraw must not draw a new deadline.
-  await page.evaluate('Math.random=()=>0');
+  await page.evaluate(() => {
+    Math.random = () => 0;
+  });
   await liveAt('12:59:14');
-  assert.deepEqual(await page.evaluate('prefetchReads'), ['1259']);
+  assert.deepEqual(await page.evaluate(() => prefetchReads), ['1259']);
   await liveAt('12:59:15');
-  await page.waitForFunction("prefetchReads.includes('1300')", undefined);
+  await page.waitForFunction(() => prefetchReads.includes('1300'), undefined);
   await liveAt('12:59:29');
-  assert.deepEqual(await page.evaluate('prefetchReads'), ['1259', '1300']);
+  assert.deepEqual(await page.evaluate(() => prefetchReads), ['1259', '1300']);
   await liveAt('23:59:00');
   await trackPrefetch();
-  assert.deepEqual(await page.evaluate('prefetchReads'), ['2359']);
+  assert.deepEqual(await page.evaluate(() => prefetchReads), ['2359']);
   await liveAt('23:59:15');
-  await page.waitForFunction("prefetchReads.includes('0000')", undefined);
-  assert.deepEqual(await page.evaluate('prefetchReads'), ['2359', '0000']);
+  await page.waitForFunction(() => prefetchReads.includes('0000'), undefined);
+  assert.deepEqual(await page.evaluate(() => prefetchReads), ['2359', '0000']);
   await liveAt('12:59:00');
   await trackPrefetch();
-  await page.evaluate("FormulaClock.preview('2026-09-09T12:59:00+09:00')");
-  await page.waitForFunction("prefetchReads.includes('1300')", undefined);
-  assert.deepEqual(await page.evaluate('prefetchReads'), ['1259', '1300']);
+  await page.evaluate(() => FormulaClock.preview('2026-09-09T12:59:00+09:00'));
+  await page.waitForFunction(() => prefetchReads.includes('1300'), undefined);
+  assert.deepEqual(await page.evaluate(() => prefetchReads), ['1259', '1300']);
   await liveAt('13:59:50');
   await trackPrefetch();
-  await page.waitForFunction("prefetchReads.includes('1400')", undefined);
-  assert.deepEqual(await page.evaluate('prefetchReads'), ['1359', '1400']);
+  await page.waitForFunction(() => prefetchReads.includes('1400'), undefined);
+  assert.deepEqual(await page.evaluate(() => prefetchReads), ['1359', '1400']);
   await liveAt('12:59:00');
   await trackPrefetch();
   // Resume after skipping the pending hour boundary.
   await liveAt('14:00:00');
-  await page.waitForFunction("prefetchReads.includes('1401')", undefined);
-  assert.deepEqual(await page.evaluate('prefetchReads'), ['1259', '1400', '1401']);
+  await page.waitForFunction(() => prefetchReads.includes('1401'), undefined);
+  assert.deepEqual(await page.evaluate(() => prefetchReads), ['1259', '1400', '1401']);
   // Replacing the provider must discard the earlier plan.
   await trackPrefetch();
   await liveAt('14:00:30');
-  assert.deepEqual(await page.evaluate('prefetchReads'), ['1400', '1401']);
+  assert.deepEqual(await page.evaluate(() => prefetchReads), ['1400', '1401']);
   report['checks'].push(
     'Live hour prefetch is jittered once within :59:00–30; midnight, immediate current/preview/late-entry requests and skipped-minute/provider cleanup',
   );
@@ -764,31 +853,32 @@ test('clock', async ({ browser, args, context: ctx }) => {
     const migration = await migrationCtx.newPage();
     // A session flag applies the input once, allowing reload to read the
     // settings written by the real controls/API on the previous page load.
-    await migration.addInitScript(
-      "if(!sessionStorage.fontMigration){localStorage.setItem('formula-clock-display-v2'," +
-        JSON.stringify(JSON.stringify(saved)) +
-        ");sessionStorage.fontMigration='1';}",
-    );
+    await migration.addInitScript((s) => {
+      if (!sessionStorage.fontMigration) {
+        localStorage.setItem('formula-clock-display-v2', s);
+        sessionStorage.fontMigration = '1';
+      }
+    }, JSON.stringify(saved));
     await migration.goto(args.url);
     await migration.waitForFunction(
-      'window.FormulaClock?.state.engineReady && FormulaClock.state.layout',
+      () => window.FormulaClock?.state.engineReady && FormulaClock.state.layout,
       undefined,
     );
-    assert.deepEqual(await migration.evaluate('FormulaClock.state.display.font'), font);
-    assert.deepEqual(await migration.evaluate('FormulaClock.state.display.numerals'), numerals);
+    assert.deepEqual(await migration.evaluate(() => FormulaClock.state.display.font), font);
+    assert.deepEqual(await migration.evaluate(() => FormulaClock.state.display.numerals), numerals);
     assert.deepEqual(await migration.locator('#font-choice').inputValue(), font);
     assert.deepEqual(
       await migration.locator('#numeral-choice input:checked').inputValue(),
       numerals,
     );
-    await migration.evaluate("FormulaClock.setDisplay({font:'fira',numerals:'lining'})");
+    await migration.evaluate(() => FormulaClock.setDisplay({ font: 'fira', numerals: 'lining' }));
     await migration.reload();
     await migration.waitForFunction(
-      'window.FormulaClock?.state.engineReady && FormulaClock.state.layout',
+      () => window.FormulaClock?.state.engineReady && FormulaClock.state.layout,
       undefined,
     );
-    assert.deepEqual(await migration.evaluate('FormulaClock.state.display.font'), 'fira');
-    assert.deepEqual(await migration.evaluate('FormulaClock.state.display.numerals'), 'lining');
+    assert.deepEqual(await migration.evaluate(() => FormulaClock.state.display.font), 'fira');
+    assert.deepEqual(await migration.evaluate(() => FormulaClock.state.display.numerals), 'lining');
     await migrationCtx.close();
   }
   report['checks'].push(
