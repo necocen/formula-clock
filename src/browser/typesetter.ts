@@ -48,6 +48,7 @@ class Typesetter {
   private eng: Engine | null = null;
   private staging: HTMLDivElement;
   readonly cache = new Map<string, Promise<Frame>>();
+  private pending = new Map<string, (() => boolean)[]>();
   private tail: Promise<unknown> = Promise.resolve();
   private clockFaceTask?: Promise<ClockFace>;
   readonly boot: Promise<void>;
@@ -169,6 +170,7 @@ class Typesetter {
     code: string,
     seconds: number,
     settings: Partial<TexOptions> = {},
+    isCurrent: () => boolean = () => true,
   ): Promise<Frame> {
     const tex = frameTex(ast, code, seconds, {
       ...settings,
@@ -176,14 +178,28 @@ class Typesetter {
       centerOperators: this.profile.centerOperators,
     });
     if (this.cache.has(tex)) {
+      this.pending.get(tex)?.push(isCurrent);
       const hit = this.cache.get(tex)!;
       this.cache.delete(tex);
       this.cache.set(tex, hit);
       return hit;
     }
+    const readers = [isCurrent];
+    this.pending.set(tex, readers);
     const task = this.tail
       .then(() => this.boot)
-      .then(() => this.convert(tex, code, seconds, false, settings.division));
+      .then(() => {
+        // Requests can become stale while waiting for boot or another frame.
+        // A cached pending frame may still have another reader that needs it.
+        if (!readers.some((current) => current())) {
+          if (this.cache.get(tex) === task) this.cache.delete(tex);
+          throw new DOMException('Typesetting request superseded', 'AbortError');
+        }
+        return this.convert(tex, code, seconds, false, settings.division);
+      })
+      .finally(() => {
+        if (this.pending.get(tex) === readers) this.pending.delete(tex);
+      });
     // A failed conversion must not poison subsequent frames.
     this.tail = task.catch(() => {});
     this.cache.set(tex, task);

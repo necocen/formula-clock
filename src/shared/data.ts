@@ -14,17 +14,21 @@ interface Manifest {
   version: string;
   urls: Readonly<Record<string, string>>;
 }
-type HourRecords = Map<string, MinuteRecord>;
 /* Delivery is independent of expression syntax and display options.
  * Provider contract: getMinute(hhmm, {signal}) -> Promise<MinuteRecord>.
  */
 import * as Expr from './expression.ts';
 const SCHEMA = 'formula-clock/1';
+// Only this module's validated, deeply frozen records can skip revalidation
+// at another provider boundary. A frozen object supplied by a caller cannot.
+const normalizedMinutes = new WeakMap<object, MinuteRecord>();
 function checkAbort(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 }
 function normalizeMinute(record: unknown, expectedCode: string): MinuteRecord {
   Expr.assertCode(expectedCode);
+  const normalized = isRecord(record) ? normalizedMinutes.get(record) : undefined;
+  if (normalized?.hhmm === expectedCode) return normalized;
   if (
     !isRecord(record) ||
     record.schema !== SCHEMA ||
@@ -36,7 +40,13 @@ function normalizeMinute(record: unknown, expectedCode: string): MinuteRecord {
   }
   // Array.from visits holes, so an omitted element cannot silently mean null.
   const seconds = Array.from(record.seconds, (ast) => Expr.validateAst(ast, expectedCode));
-  return Object.freeze({ schema: SCHEMA, hhmm: expectedCode, seconds: Object.freeze(seconds) });
+  const minute = Object.freeze({
+    schema: SCHEMA,
+    hhmm: expectedCode,
+    seconds: Object.freeze(seconds),
+  });
+  normalizedMinutes.set(minute, minute);
+  return minute;
 }
 function tableHeader(table: unknown): asserts table is RawTable {
   if (!isRecord(table) || table.schema !== SCHEMA || !isRecord(table.minutes)) {
@@ -114,8 +124,8 @@ class FetchHourProvider implements FormulaProvider {
   private url: string;
   private manifest: Manifest | null = null;
   private manifestTask: Promise<Manifest> | null = null;
-  private hours = new Map<string, HourRecords>();
-  private pending = new Map<string, Promise<HourRecords>>();
+  private hours = new Map<string, InlineProvider>();
+  private pending = new Map<string, Promise<InlineProvider>>();
   constructor(
     manifestUrl: string | URL,
     { fetch: fetcher = (...args) => fetch(...args), initial }: FetchHourOptions = {},
@@ -177,7 +187,7 @@ class FetchHourProvider implements FormulaProvider {
       if (this.manifestTask === task) this.manifestTask = null;
     }
   }
-  private async loadHour(hour: string, manifest: Manifest): Promise<HourRecords> {
+  private async loadHour(hour: string, manifest: Manifest): Promise<InlineProvider> {
     const key = `${manifest.version}/${hour}`;
     if (this.hours.has(key)) {
       const records = this.hours.get(key)!;
@@ -194,14 +204,14 @@ class FetchHourProvider implements FormulaProvider {
       tableHeader(table);
       if (Object.keys(table.minutes).length !== 60)
         throw new TypeError(`Hour ${hour} must contain exactly 60 minutes`);
-      const records: HourRecords = new Map();
       for (let minute = 0; minute < 60; minute++) {
         const hhmm = hour + String(minute).padStart(2, '0');
-        records.set(
-          hhmm,
-          normalizeMinute({ schema: table.schema, hhmm, seconds: table.minutes[hhmm] }, hhmm),
-        );
+        if (!Object.hasOwn(table.minutes, hhmm))
+          throw new TypeError(`Hour ${hour} is missing minute ${hhmm}`);
       }
+      // Validate the hour envelope now, then normalize/freeze each minute only
+      // when requested. Other minutes' ASTs must not delay the current frame.
+      const records = new InlineProvider(table);
       // A download that finishes after a manifest refresh must not refill the cache.
       if (this.manifest !== manifest)
         throw new StaleManifestError('The dataset changed during download');
@@ -227,7 +237,18 @@ class FetchHourProvider implements FormulaProvider {
         checkAbort(signal);
         if (manifest !== this.manifest)
           throw new StaleManifestError('The dataset changed during download');
-        return records.get(hhmm)!;
+        try {
+          const minute = await records.getMinute(hhmm, { signal });
+          checkAbort(signal);
+          if (manifest !== this.manifest)
+            throw new StaleManifestError('The dataset changed during minute validation');
+          return minute;
+        } catch (error) {
+          // Keep malformed data retryable, just as an invalid eager hour was.
+          const key = `${manifest.version}/${hhmm.slice(0, 2)}`;
+          if (!signal?.aborted && this.hours.get(key) === records) this.hours.delete(key);
+          throw error;
+        }
       } catch (error) {
         checkAbort(signal);
         if (

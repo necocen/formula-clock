@@ -71,6 +71,10 @@ const renderer = createRenderer({
   face: (font, numerals) => settings.face(font, numerals),
   snapshotAt: (code, seconds) => sharing.snapshotAt(code, seconds),
   onFrameCommitted: (commit) => sharing.frameCommitted(commit),
+  prepare: () => {
+    settings.prepareFace();
+    clock.prepareNext();
+  },
 });
 const sharing = createSharing({
   t,

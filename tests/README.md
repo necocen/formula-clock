@@ -43,7 +43,7 @@ pnpm run test:browser i18n.test.ts --project webkit
 pnpm run test:browser --project chromium --project webkit
 ```
 
-引数なしでは設定済みの全ブラウザとOG画像差分を実行します。Chromium・WebKitは全13スイート、Firefoxは対応する9スイートです。テストファイル名か`--grep`で絞り込み、`--project`でブラウザを選択します。`share`など名前が重なる場合は`--grep '^share$'`でテスト名を完全一致させてください。アニメーションの計測に競合が出ないよう、実行workerは1に固定しています。
+引数なしでは設定済みの全ブラウザとOG画像差分を実行します。Chromium・WebKitは全14スイート、Firefoxは対応する10スイートです。テストファイル名か`--grep`で絞り込み、`--project`でブラウザを選択します。`share`など名前が重なる場合は`--grep '^share$'`でテスト名を完全一致させてください。アニメーションの計測に競合が出ないよう、実行workerは1に固定しています。
 
 実行時に配信版をViteでビルドし、`vite preview`のHTTP Workerを自動で起動・終了します。`--list` / `--help`ではビルドやサーバー起動は行いません。既定のHTTP URLは`http://127.0.0.1:8787/`です。開発中に同じポートでWorkerが動いていれば再利用し、CIでは既存サーバーとの競合をエラーにします。
 
@@ -60,6 +60,7 @@ pnpm run test:browser transport.test.ts --project chromium
 | スイート                                              | 主な確認                                            |
 | ----------------------------------------------------- | --------------------------------------------------- |
 | `clock`                                               | 4書体・数字スタイル・除算・桁の同一性・配置・画面幅 |
+| `startup`                                             | 初回数式の優先、データ遅延、古い描画要求の取り消し  |
 | `i18n`                                                | 日本語・英語・言語フォールバック・ライセンス全文    |
 | `transport`                                           | 左右キー・一時停止・現在時刻への復帰                |
 | `fullscreen`                                          | 全画面API・利用不可・拒否・接頭辞付きAPI            |

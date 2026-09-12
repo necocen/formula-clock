@@ -1,6 +1,6 @@
 import { test, vi } from 'vitest';
 import assert from 'node:assert/strict';
-import { FetchHourProvider } from '../../src/shared/data.ts';
+import { FetchHourProvider, InlineProvider } from '../../src/shared/data.ts';
 const origin = 'https://clock.test/data/manifest.json';
 const version = (letter: string) => letter.repeat(64);
 const manifest = (letter = 'a') => ({
@@ -87,6 +87,22 @@ test('hour and midnight boundaries request only the required hours', async () =>
     hourCalls(calls).map((x) => new URL(x.url).pathname.slice(12, 14)),
     ['12', '13', '23', '00'],
   );
+});
+test('only requested minutes are validated; malformed minutes fail on use and can retry', async () => {
+  const badHour = table('12');
+  badHour.minutes['1259'][0] = { op: 'lit', i: 0, j: 5 };
+  let downloads = 0;
+  const calls = mockHTTP((url) =>
+    url.includes('/hours/') && ++downloads === 1 ? response(badHour, url) : undefined,
+  );
+  const provider = new FetchHourProvider(origin);
+  const minute = await provider.getMinute('1200');
+  assert.equal(await provider.getMinute('1200'), minute);
+  assert.equal((await provider.getMinute('1230')).hhmm, '1230');
+  assert.equal(hourCalls(calls).length, 1);
+  await assert.rejects(provider.getMinute('1259'), TypeError);
+  assert.equal((await provider.getMinute('1259')).seconds[0], null);
+  assert.equal(hourCalls(calls).length, 2);
 });
 test('completed hour cache retains the two most recently used hours', async () => {
   const calls = mockHTTP(),
@@ -205,6 +221,35 @@ test('hour URLs resolve against the manifest response location, allowing a futur
   );
   await new FetchHourProvider(origin).getMinute('1200');
   assert.ok(hourCalls(calls)[0].url.startsWith('https://data.test/releases/hours/12.'));
+});
+test('a manifest refreshed while a minute is resolving cannot return an old record', async () => {
+  const gate = deferred(),
+    started = deferred();
+  let count = 0;
+  const calls = mockHTTP((url) => {
+    if (url === origin) return response(manifest(++count === 1 ? 'a' : 'b'), url);
+    if (url.includes(`13.${version('a')}`)) return response({}, url, 404);
+  });
+  const getMinute = InlineProvider.prototype.getMinute;
+  let delayed = false;
+  vi.spyOn(InlineProvider.prototype, 'getMinute').mockImplementation(
+    async function (this: InlineProvider, hhmm, options) {
+      const minute = await getMinute.call(this, hhmm, options);
+      if (hhmm === '1200' && !delayed) {
+        delayed = true;
+        started.resolve();
+        await gate.promise;
+      }
+      return minute;
+    },
+  );
+  const provider = new FetchHourProvider(origin),
+    old = provider.getMinute('1200');
+  await started.promise;
+  await provider.getMinute('1300');
+  gate.resolve();
+  await old;
+  assert.equal(calls.filter((x) => x.url.includes(`12.${version('b')}`)).length, 1);
 });
 test('malformed manifests and incomplete or foreign hours are rejected', async () => {
   const badManifest = manifest();

@@ -45,6 +45,7 @@ export interface Clock {
   settle(epoch: number): void;
   forgetMinute(): void;
   renderResize(): void;
+  prepareNext(): void;
   start(): void;
   readonly preview: Preview | null;
   readonly generation: number;
@@ -66,16 +67,35 @@ export function createClock(deps: ClockDeps): Clock {
   });
   // Warm only the immediately upcoming frames; do not queue a minute of work
   // ahead of interactive previews. The LRU retains recent typesetting results.
-  function prepareNext(now: Date) {
+  function prepareNext() {
     if (!deps.engine().ready || preview?.paused || document.hidden) return;
+    const now = getNow(),
+      engine = deps.engine(),
+      view = deps.view(),
+      revision = generation;
     for (const offset of [1, 2]) {
       const next = new Date(+now + offset * 1000),
         code = timeCode(next),
         result = deps.getMinute(code);
       if (result)
-        deps
-          .engine()
-          .frame(result.solutions[next.getSeconds()] || null, code, next.getSeconds(), deps.view())
+        engine
+          .frame(result.solutions[next.getSeconds()] || null, code, next.getSeconds(), view, () => {
+            const current = getNow(),
+              currentView = deps.view();
+            return (
+              !preview?.paused &&
+              !document.hidden &&
+              revision === generation &&
+              deps.engine() === engine &&
+              currentView.division === view.division &&
+              currentView.symbolMotion === view.symbolMotion &&
+              currentView.structureMotion === view.structureMotion &&
+              currentView.symbolMorph === view.symbolMorph &&
+              deps.getMinute(code) === result &&
+              Math.floor(+next / 1000) >= Math.floor(+current / 1000) &&
+              +next - +current <= 2000
+            );
+          })
           .catch(() => {});
     }
   }
@@ -168,7 +188,6 @@ export function createClock(deps: ClockDeps): Clock {
     const snapshot = deps.snapshotAt(code, seconds),
       ast = snapshot ? snapshot.ast : result?.solutions[seconds] || null;
     deps.render(ast, code, seconds, !result);
-    prepareNext(now);
     ticks.forEach((el, i) => {
       const saved = deps.snapshotAt(code, i),
         entry = saved ? saved.ast : result?.solutions[i];
@@ -273,6 +292,7 @@ export function createClock(deps: ClockDeps): Clock {
       lastCode = null;
     },
     renderResize,
+    prepareNext,
     start,
     get preview() {
       return preview;

@@ -55,6 +55,7 @@ export interface RendererDeps {
   face(font: DisplayOptions['font'], numerals: DisplayOptions['numerals']): ClockFace | undefined;
   snapshotAt(code: string, seconds: number): SharedSnapshot | null;
   onFrameCommitted(commit: FrameCommit): void;
+  prepare(): void;
 }
 
 export interface Renderer {
@@ -108,7 +109,8 @@ export function createRenderer(deps: RendererDeps): Renderer {
   let latestLayout: ClockLayout | null = null,
     displayedFrame: DisplayedFrame | null = null;
   let requestSerial = 0,
-    animationId = 0;
+    animationId = 0,
+    preparationId = 0;
   let engineError: string | null = null;
   const reportedRenderErrors = new Set<string>();
   const mathNS = 'http://www.w3.org/2000/svg';
@@ -462,6 +464,17 @@ export function createRenderer(deps: RendererDeps): Renderer {
     displayedFrame = { frame, ast, code, seconds, view };
     deps.onFrameCommitted({ code, seconds, loading, view, ast });
     firstFrame = false;
+    // Let the current frame reach a rendering opportunity before preparing
+    // the small clock and upcoming seconds, including after a font change.
+    cancelAnimationFrame(preparationId);
+    if (!loading) {
+      const serial = requestSerial;
+      preparationId = requestAnimationFrame(() => {
+        preparationId = requestAnimationFrame(() => {
+          if (serial === requestSerial && !document.hidden) deps.prepare();
+        });
+      });
+    }
   }
   function renderExpression(
     ast: Expr | null,
@@ -482,11 +495,12 @@ export function createRenderer(deps: RendererDeps): Renderer {
     if (lastVisual === key && !instant) return;
     lastVisual = key;
     const serial = ++requestSerial;
+    const isCurrent = () => serial === requestSerial;
     if (!engine.ready)
       plainFallback(code, seconds, t(engine.error ? 'typesettingFailed' : 'preparing'));
     if (engine.error) return;
     engine
-      .frame(ast, code, seconds, view)
+      .frame(ast, code, seconds, view, isCurrent)
       .then((frame) => {
         if (serial !== requestSerial) return; // Discard any stale async result.
         engineError = null;
@@ -502,7 +516,7 @@ export function createRenderer(deps: RendererDeps): Renderer {
         // Never let a typesetting/network failure freeze the clock.
         if (ast && engine.ready) {
           try {
-            const clockFrame = await engine.frame(null, code, seconds, view);
+            const clockFrame = await engine.frame(null, code, seconds, view, isCurrent);
             if (serial !== requestSerial) return;
             applyFrame(clockFrame, null, code, seconds, false, instant, view);
             renderStatus(t('formulaFailed'));

@@ -10,6 +10,23 @@ import {
 import { loadTable } from '../helpers/table.ts';
 import writeReport from '../helpers/report.ts';
 const table = loadTable();
+test('only previously validated immutable minutes can bypass repeated validation', () => {
+  const raw = { schema: SCHEMA, hhmm: '1234', seconds: [...table.minutes['1234']] };
+  const minute = normalizeMinute(raw, '1234');
+  assert.equal(normalizeMinute(minute, '1234'), minute);
+  assert.notEqual(minute.seconds, raw.seconds);
+  raw.seconds[0] = null;
+  assert.deepEqual(minute.seconds[0], table.minutes['1234'][0]);
+  assert.ok(Object.isFrozen(minute));
+  assert.ok(Object.isFrozen(minute.seconds));
+  assert.ok(Object.isFrozen(minute.seconds.find(Boolean)));
+  assert.throws(() => normalizeMinute(minute, '1235'), /1235/);
+  const forged = Object.freeze({
+    ...minute,
+    seconds: Object.freeze(Array(60).fill({ op: 'lit', i: 0, j: 5 })),
+  });
+  assert.throws(() => normalizeMinute(forged, '1234'));
+});
 test('minute providers validate data and handle sharing, retry and abort', async () => {
   const checks = [];
   const inline = new InlineProvider(table);

@@ -18,6 +18,7 @@ export interface Settings {
   view(): DisplayOptions;
   engine(): Typesetter;
   face(font: DisplayOptions['font'], numerals: DisplayOptions['numerals']): ClockFace | undefined;
+  prepareFace(): void;
   setDisplay(changes: Partial<DisplayOptions>): Promise<void>;
   adoptView(view: Pick<DisplayOptions, 'font' | 'numerals' | 'division'>): void;
 }
@@ -68,7 +69,8 @@ export function createSettings(deps: SettingsDeps): Settings {
   // MathJax computes the layout; persistent digits and equality display it.
   // The four HHMM objects are never recreated, including ordinary clock mode.
   const engines = new Map<string, Typesetter>(),
-    clockFaces = new Map<string, ClockFace>();
+    clockFaces = new Map<string, ClockFace>(),
+    requestedFaces = new Set<string>();
   const typographyKey = (font: DisplayOptions['font'], numerals: DisplayOptions['numerals']) =>
     `${font}:${numerals}`;
   function engineFor(
@@ -80,16 +82,6 @@ export function createSettings(deps: SettingsDeps): Settings {
     if (!engines.has(key)) {
       const engine = new FormulaTypesetter.Typesetter(font, numerals);
       engines.set(key, engine);
-      engine
-        .clockFace()
-        .then((face) => {
-          clockFaces.set(key, face);
-          if (selected()) {
-            deps.invalidate();
-            deps.kick();
-          }
-        })
-        .catch((error) => console.warn('[Formula Clock] Small clock font unavailable.', error));
       engine.boot
         .then(() => {
           if (selected()) {
@@ -106,6 +98,22 @@ export function createSettings(deps: SettingsDeps): Settings {
         });
     }
     return engines.get(key)!;
+  }
+  function prepareFace() {
+    const { font, numerals } = displaySettings;
+    const key = typographyKey(font, numerals);
+    if (requestedFaces.has(key)) return;
+    requestedFaces.add(key);
+    typesetter
+      .clockFace()
+      .then((face) => {
+        clockFaces.set(key, face);
+        if (typographyKey(displaySettings.font, displaySettings.numerals) === key) {
+          deps.invalidate();
+          deps.kick();
+        }
+      })
+      .catch((error) => console.warn('[Formula Clock] Small clock font unavailable.', error));
   }
   let typesetter = engineFor(displaySettings.font, displaySettings.numerals);
   const segmentedChoices = [
@@ -189,6 +197,7 @@ export function createSettings(deps: SettingsDeps): Settings {
     view: () => activeDisplay(),
     engine: () => typesetter,
     face: (font, numerals) => clockFaces.get(typographyKey(font, numerals)),
+    prepareFace,
     setDisplay,
     adoptView(view) {
       Object.assign(displaySettings, view);
