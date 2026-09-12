@@ -3,75 +3,31 @@ import {
   type FormulaProvider,
   type MinuteRecord,
   type FetchHourOptions,
+  type FormulaTable,
 } from './types.ts';
 type ReadOptions = { signal?: AbortSignal };
-// Only the header is checked here; each minute/AST is validated when consumed.
-interface RawTable {
-  schema: 'formula-clock/1';
-  minutes: Record<string, unknown>;
-}
 interface Manifest {
   version: string;
   urls: Readonly<Record<string, string>>;
 }
 /* Delivery is independent of expression syntax and display options.
  * Provider contract: getMinute(hhmm, {signal}) -> Promise<MinuteRecord>.
+ * All providers consume canonical data verified before publication. Callers
+ * must not mutate returned ASTs; runtime delivery does not validate/copy them.
  */
 import * as Expr from './expression.ts';
 const SCHEMA = 'formula-clock/1';
-// Only this module's validated, deeply frozen records can skip revalidation
-// at another provider boundary. A frozen object supplied by a caller cannot.
-const normalizedMinutes = new WeakMap<object, MinuteRecord>();
 function checkAbort(signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 }
-function normalizeMinute(record: unknown, expectedCode: string): MinuteRecord {
-  Expr.assertCode(expectedCode);
-  const normalized = isRecord(record) ? normalizedMinutes.get(record) : undefined;
-  if (normalized?.hhmm === expectedCode) return normalized;
-  if (
-    !isRecord(record) ||
-    record.schema !== SCHEMA ||
-    record.hhmm !== expectedCode ||
-    !Array.isArray(record.seconds) ||
-    record.seconds.length !== 60
-  ) {
-    throw new TypeError(`Expected ${SCHEMA}, hhmm=${expectedCode}, and exactly 60 second entries`);
-  }
-  // Array.from visits holes, so an omitted element cannot silently mean null.
-  const seconds = Array.from(record.seconds, (ast) => Expr.validateAst(ast, expectedCode));
-  const minute = Object.freeze({
-    schema: SCHEMA,
-    hhmm: expectedCode,
-    seconds: Object.freeze(seconds),
-  });
-  normalizedMinutes.set(minute, minute);
-  return minute;
-}
-function tableHeader(table: unknown): asserts table is RawTable {
-  if (!isRecord(table) || table.schema !== SCHEMA || !isRecord(table.minutes)) {
-    throw new TypeError('Invalid formula table');
-  }
-  Object.keys(table.minutes).forEach(Expr.assertCode);
-}
 class InlineProvider implements FormulaProvider {
-  private table: RawTable;
-  private cache = new Map<string, MinuteRecord>();
-  constructor(table: unknown) {
-    tableHeader(table);
-    this.table = table;
-  }
+  constructor(private table: FormulaTable) {}
   async getMinute(hhmm: string, { signal }: ReadOptions = {}): Promise<MinuteRecord> {
     Expr.assertCode(hhmm);
     checkAbort(signal);
     if (!Object.hasOwn(this.table.minutes, hhmm))
       throw new Error(`Minute ${hhmm} is absent from the dataset`);
-    if (!this.cache.has(hhmm))
-      this.cache.set(
-        hhmm,
-        normalizeMinute({ schema: SCHEMA, hhmm, seconds: this.table.minutes[hhmm] }, hhmm),
-      );
-    return this.cache.get(hhmm)!;
+    return { schema: SCHEMA, hhmm, seconds: this.table.minutes[hhmm] };
   }
 }
 class FetchMinuteProvider implements FormulaProvider {
@@ -85,7 +41,8 @@ class FetchMinuteProvider implements FormulaProvider {
     checkAbort(signal);
     const response = await fetch(this.urlForMinute(hhmm), { signal, credentials: 'same-origin' });
     if (!response.ok) throw new Error(`Formula data HTTP ${response.status} (${hhmm})`);
-    return normalizeMinute(await response.json(), hhmm);
+    // This endpoint supplies canonical records verified by its producer.
+    return response.json() as Promise<MinuteRecord>;
   }
 }
 // Cancel an individual reader without cancelling a download shared by other minutes.
@@ -200,17 +157,8 @@ class FetchHourProvider implements FormulaProvider {
       const url = manifest.urls[hour];
       const response = await this.fetch(url, { credentials: 'same-origin' });
       if (!response.ok) throw new DataHTTPError(response.status, url);
-      const table: unknown = await response.json();
-      tableHeader(table);
-      if (Object.keys(table.minutes).length !== 60)
-        throw new TypeError(`Hour ${hour} must contain exactly 60 minutes`);
-      for (let minute = 0; minute < 60; minute++) {
-        const hhmm = hour + String(minute).padStart(2, '0');
-        if (!Object.hasOwn(table.minutes, hhmm))
-          throw new TypeError(`Hour ${hour} is missing minute ${hhmm}`);
-      }
-      // Validate the hour envelope now, then normalize/freeze each minute only
-      // when requested. Other minutes' ASTs must not delay the current frame.
+      // Generated assets are validated at build time; trust their canonical ASTs.
+      const table = (await response.json()) as FormulaTable;
       const records = new InlineProvider(table);
       // A download that finishes after a manifest refresh must not refill the cache.
       if (this.manifest !== manifest)
@@ -237,18 +185,11 @@ class FetchHourProvider implements FormulaProvider {
         checkAbort(signal);
         if (manifest !== this.manifest)
           throw new StaleManifestError('The dataset changed during download');
-        try {
-          const minute = await records.getMinute(hhmm, { signal });
-          checkAbort(signal);
-          if (manifest !== this.manifest)
-            throw new StaleManifestError('The dataset changed during minute validation');
-          return minute;
-        } catch (error) {
-          // Keep malformed data retryable, just as an invalid eager hour was.
-          const key = `${manifest.version}/${hhmm.slice(0, 2)}`;
-          if (!signal?.aborted && this.hours.get(key) === records) this.hours.delete(key);
-          throw error;
-        }
+        const minute = await records.getMinute(hhmm, { signal });
+        checkAbort(signal);
+        if (manifest !== this.manifest)
+          throw new StaleManifestError('The dataset changed during minute lookup');
+        return minute;
       } catch (error) {
         checkAbort(signal);
         if (
@@ -265,11 +206,11 @@ class FetchHourProvider implements FormulaProvider {
     throw new Error('Formula data retries exhausted');
   }
 }
-// Also works for an imported file or an asynchronously fetched all-day table.
+// Load a canonical all-day table already verified by its producer.
 class TableProvider implements FormulaProvider {
-  private loadTable: () => unknown | Promise<unknown>;
+  private loadTable: () => FormulaTable | Promise<FormulaTable>;
   private task: Promise<InlineProvider> | null = null;
-  constructor(loadTable: () => unknown | Promise<unknown>) {
+  constructor(loadTable: () => FormulaTable | Promise<FormulaTable>) {
     if (typeof loadTable !== 'function') throw new TypeError('Expected an async table loader');
     this.loadTable = loadTable;
     this.task = null;
@@ -291,16 +232,15 @@ class TableProvider implements FormulaProvider {
     return provider.getMinute(hhmm, { signal });
   }
 }
-async function loadEmbedded(element: HTMLElement | null): Promise<unknown> {
+async function loadEmbedded(element: HTMLElement | null): Promise<FormulaTable> {
   if (!element) throw new Error('Embedded formula table is missing');
   if (element.dataset.encoding !== 'gzip-base64') return JSON.parse(element.textContent || '');
   const bytes = Uint8Array.from(atob((element.textContent || '').trim()), (c) => c.charCodeAt(0));
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(stream).json();
+  return new Response(stream).json() as Promise<FormulaTable>;
 }
 const api = {
   SCHEMA,
-  normalizeMinute,
   loadEmbedded,
   InlineProvider,
   FetchMinuteProvider,
@@ -309,7 +249,6 @@ const api = {
 };
 export {
   SCHEMA,
-  normalizeMinute,
   loadEmbedded,
   InlineProvider,
   FetchMinuteProvider,

@@ -173,6 +173,17 @@ test('repeated saves of one snapshot share one request; accepted exact snapshots
   release();
   assert.equal(await first, 'Abc0123X9z');
   assert.equal(cache.peek(snapshot), 'Abc0123X9z');
+  assert.ok(snapshot.ast?.op === 'mul');
+  const reordered: SharedSnapshot = {
+    ast: { b: snapshot.ast.b, a: snapshot.ast.a, op: 'mul' },
+    division: snapshot.division,
+    numerals: snapshot.numerals,
+    font: snapshot.font,
+    t: snapshot.t,
+    v: snapshot.v,
+  };
+  assert.equal(cache.peek(reordered), 'Abc0123X9z');
+  assert.equal(await cache.prepare(reordered), 'Abc0123X9z');
   for (const changes of [
     { t: '123422' },
     { font: 'termes' },

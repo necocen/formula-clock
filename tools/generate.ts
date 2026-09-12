@@ -4,7 +4,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { createSolver } from './solver.ts';
-import { normalizeMinute, SCHEMA } from '../src/shared/data.ts';
+import { normalizeMinute, SCHEMA } from './validate-data.ts';
 import type { SecondEntries } from '../src/shared/types.ts';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const solver = createSolver(),

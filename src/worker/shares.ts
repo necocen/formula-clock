@@ -1,5 +1,5 @@
 import Share from '../shared/share.ts';
-import type { SharedView } from '../shared/types.ts';
+import type { SharedSnapshot, SharedView } from '../shared/types.ts';
 import type { Env, Context } from './types.ts';
 
 export class ShareError extends Error {
@@ -114,7 +114,9 @@ export async function readShare(id: string, env: Env): Promise<SharedView> {
   const raw = await env.SHARES.get(shareKey(id), 'text');
   if (raw === null) throw new ShareError(404, 'share-not-found');
   try {
-    return Share.view({ id, snapshot: JSON.parse(raw) });
+    // This store only contains canonical snapshots accepted by createShare.
+    const snapshot: SharedSnapshot = JSON.parse(raw);
+    return { id, snapshot };
   } catch {
     throw new ShareError(503, 'invalid-stored-snapshot');
   }

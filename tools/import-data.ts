@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeMinute, SCHEMA } from '../src/shared/data.ts';
+import { normalizeMinute, SCHEMA } from './validate-data.ts';
 import { isRecord } from '../src/shared/types.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));

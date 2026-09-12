@@ -7,7 +7,7 @@
 
 - 表示アプリの原本は`src/browser/`（マークアップ`index.html`・CSS`styles.css`・合成ルート`app.ts`・役割別モジュール`dom.ts` / `audio.ts` / `data-source.ts` / `settings.ts` / `renderer.ts` / `clock.ts` / `sharing.ts` / `fullscreen.ts` / `shortcuts.ts` / `typesetter.ts`）と`src/shared/`（`i18n.ts` / `display.ts` / `share.ts` / `expression.ts` / `data.ts` / `symbols.ts`）。ビルド時に`<!-- clock-licenses -->`へライセンス表示を挿入する。共有画像と配信処理は `src/worker/`。
 - ライセンスの取得先・SHA-256・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。本文は取得してGit管理外の`licenses/texts/`へキャッシュする。通常ビルドでも自動生成し、`pnpm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版とハッシュを更新する。
-- アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行し、PythonはSymPyの厳密計算だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、外部JSONの実行時検証を型アサーションだけで置き換えない。
+- アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行し、PythonはSymPyの厳密計算だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、信頼境界を型とAPIの契約に明記する。管理下の式データは生成・取り込み・ビルド時に検証し、実行時のAST検証・複製・凍結は行わない。公開の共有作成APIが受け取る外部JSONはサーバーで検証する。
 - モジュール間の依存はESモジュールのimportで宣言する。`bootstrap.ts`の`window`公開はブラウザテスト・コンソール用の公開面で、アプリ内部の参照には使わない。ブラウザの各モジュールは`createX(deps)`ファクトリでモジュールトップレベルの副作用を持たず、合成順序・リスナー登録順（ショートカット→時報再開のkeydown）は`app.ts`が管理する。遅延バインドのクロージャはイベント・Promise継続・タイマーからのみ発火させる。世代カウンタ（`dataRevision` / `requestSerial` / `shareSerial` / `TimeSignal.revision`）はガードと継続を同一モジュール内に保つ。ビルドはVite、Worker・WASM・配布設定はCloudflare公式プラグインを使う。`tools/vite-clock.ts`には式データとライセンス固有の処理だけを置き、独自バンドラーやWASMローダーを追加しない。
 - `dist/` は生成物。配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。`public/data/`もVite起動時に生成する入力でGit管理外。
 - 整形はOxfmt、lintはOxlint。編集後に`pnpm run format`で原本を整形し、`pnpm run check`で整形・lint・型を確認する。`pnpm test`はテスト実行のみで、この確認を含まない。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
@@ -38,6 +38,7 @@
 - データの正規形式は `formula-clock/1` のAST。TeX文字列には置き換えない。
 - 表示上の優先度と結合性は `src/shared/expression.ts` で処理する。文字列置換による分数→÷変換は行わない。
 - データ取得は `getMinute(hhmm, {signal})` で統一する。埋め込みと非同期の選択をアプリ全体に持ち込まない。
+- 全プロバイダーは生成側で確認済みの正規データを返す。`InlineProvider`・`TableProvider`・独自プロバイダーも同じ契約とし、返したASTを後から変更しない。`tools/validate-data.ts`を生成・取り込み・ビルドの検証に使い、検証済みASTを表示・共有・OG描画で再検証しない。
 - ブラウザ用コードにソルバを含めない。値と定義域の検証は生成・テスト側の責務。
 - 測定用SVGと数字パスには同じ基準の `getScreenCTM()` を使う。過去の数字消失を再発させない。
 - 書体×数字スタイルごとに独立したエンジン（SVG出力とフォントインスタンス）を保ち、軸キャリブレーションを他のエンジンへ漏らさない。エンジン生成は`src/browser/engine.ts`に集約し、Workerの`render.ts`と構成を揃える。

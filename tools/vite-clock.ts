@@ -5,8 +5,9 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
-import type { FormulaTable, SecondEntries } from '../src/shared/types.ts';
+import type { SecondEntries } from '../src/shared/types.ts';
 import { renderLicenses } from './licenses.ts';
+import { validateTable } from './validate-data.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const hash = (value: string) => crypto.createHash('sha256').update(value).digest('hex');
@@ -21,11 +22,11 @@ export function clockContent(): Plugin {
     async configResolved() {
       licenses = await renderLicenses(root);
       const data = await fs.readFile(path.join(root, 'data/expressions.json'), 'utf8');
+      const table = validateTable(JSON.parse(data));
       // Generated public assets are ignored by Git and copied/served by Vite.
       const folder = path.join(root, 'public/data');
       await fs.rm(folder, { recursive: true, force: true });
       await fs.mkdir(path.join(folder, 'hours'), { recursive: true });
-      const table: FormulaTable = JSON.parse(data);
       const hours: Record<string, string> = {};
       for (let h = 0; h < 24; h++) {
         const hour = String(h).padStart(2, '0');

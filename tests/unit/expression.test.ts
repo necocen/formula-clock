@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import * as E from '../../src/shared/expression.ts';
-import * as D from '../../src/shared/data.ts';
+import * as D from '../../tools/validate-data.ts';
 import { createSolver } from '../../tools/solver.ts';
 import type { Expr } from '../../src/shared/types.ts';
 import { literal, binary as bin, unary as un } from '../fixtures/ast.ts';

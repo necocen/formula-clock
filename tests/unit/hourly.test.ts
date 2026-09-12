@@ -73,7 +73,6 @@ test('one manifest and one hour request serve concurrent minutes, preserving nul
   assert.equal(b.hhmm, '1235');
   assert.equal(a.seconds.length, 60);
   assert.equal(a.seconds[0], null);
-  assert.ok(Object.isFrozen(a.seconds));
   await provider.getMinute('1259');
   assert.equal(calls.length, 2);
   assert.equal(calls[0].options.cache, 'no-cache');
@@ -87,22 +86,6 @@ test('hour and midnight boundaries request only the required hours', async () =>
     hourCalls(calls).map((x) => new URL(x.url).pathname.slice(12, 14)),
     ['12', '13', '23', '00'],
   );
-});
-test('only requested minutes are validated; malformed minutes fail on use and can retry', async () => {
-  const badHour = table('12');
-  badHour.minutes['1259'][0] = { op: 'lit', i: 0, j: 5 };
-  let downloads = 0;
-  const calls = mockHTTP((url) =>
-    url.includes('/hours/') && ++downloads === 1 ? response(badHour, url) : undefined,
-  );
-  const provider = new FetchHourProvider(origin);
-  const minute = await provider.getMinute('1200');
-  assert.equal(await provider.getMinute('1200'), minute);
-  assert.equal((await provider.getMinute('1230')).hhmm, '1230');
-  assert.equal(hourCalls(calls).length, 1);
-  await assert.rejects(provider.getMinute('1259'), TypeError);
-  assert.equal((await provider.getMinute('1259')).seconds[0], null);
-  assert.equal(hourCalls(calls).length, 2);
 });
 test('completed hour cache retains the two most recently used hours', async () => {
   const calls = mockHTTP(),
@@ -251,24 +234,14 @@ test('a manifest refreshed while a minute is resolving cannot return an old reco
   await old;
   assert.equal(calls.filter((x) => x.url.includes(`12.${version('b')}`)).length, 1);
 });
-test('malformed manifests and incomplete or foreign hours are rejected', async () => {
+test('malformed manifests are rejected and a missing requested minute remains an error', async () => {
   const badManifest = manifest();
   delete badManifest.hours['23'];
-  const badHour = table('12');
-  delete badHour.minutes['1259'];
-  const foreignHour = table('13');
-  const badAst = table('12');
-  badAst.minutes['1200'][0] = { op: 'lit', i: 0, j: 5 };
-  for (const [m, h] of [
-    [badManifest, table('12')],
-    [manifest(), badHour],
-    [manifest(), foreignHour],
-    [manifest(), badAst],
-  ]) {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: URL | RequestInfo) =>
-      response(String(url) === origin ? m : h, String(url)),
-    );
-    await assert.rejects(new FetchHourProvider(origin).getMinute('1200'), TypeError);
-    vi.restoreAllMocks();
-  }
+  mockHTTP((url) => (url === origin ? response(badManifest, url) : undefined));
+  await assert.rejects(new FetchHourProvider(origin).getMinute('1200'), TypeError);
+  vi.restoreAllMocks();
+  const missing = table('12');
+  delete missing.minutes['1259'];
+  mockHTTP((url) => (url.includes('/hours/') ? response(missing, url) : undefined));
+  await assert.rejects(new FetchHourProvider(origin).getMinute('1259'), /absent/);
 });

@@ -5,15 +5,14 @@ import {
   InlineProvider,
   FetchMinuteProvider,
   TableProvider,
-  normalizeMinute,
 } from '../../src/shared/data.ts';
+import { normalizeMinute, validateTable } from '../../tools/validate-data.ts';
 import { loadTable } from '../helpers/table.ts';
 import writeReport from '../helpers/report.ts';
 const table = loadTable();
-test('only previously validated immutable minutes can bypass repeated validation', () => {
+test('producer validation checks and copies canonical minutes before publication', () => {
   const raw = { schema: SCHEMA, hhmm: '1234', seconds: [...table.minutes['1234']] };
   const minute = normalizeMinute(raw, '1234');
-  assert.equal(normalizeMinute(minute, '1234'), minute);
   assert.notEqual(minute.seconds, raw.seconds);
   raw.seconds[0] = null;
   assert.deepEqual(minute.seconds[0], table.minutes['1234'][0]);
@@ -27,13 +26,13 @@ test('only previously validated immutable minutes can bypass repeated validation
   });
   assert.throws(() => normalizeMinute(forged, '1234'));
 });
-test('minute providers validate data and handle sharing, retry and abort', async () => {
+test('canonical minute providers preserve ASTs and handle sharing, retry and abort', async () => {
   const checks = [];
   const inline = new InlineProvider(table);
   const minute = await inline.getMinute('1234');
   assert.equal(minute.seconds.length, 60);
-  assert.ok(Object.isFrozen(minute.seconds));
-  assert.deepEqual(minute.seconds[8], table.minutes['1234'][8]);
+  assert.equal(minute.seconds, table.minutes['1234']);
+  assert.equal(minute.seconds[8], table.minutes['1234'][8]);
   const missing = new InlineProvider({ schema: SCHEMA, minutes: { 1234: Array(60).fill(null) } });
   await assert.rejects(missing.getMinute('0000'), /absent/);
   assert.equal((await missing.getMinute('1234')).seconds[0], null);
@@ -71,18 +70,27 @@ test('minute providers validate data and handle sharing, retry and abort', async
     assert.equal(seen.url, 'https://example.test/1234.json');
     global.fetch = async () => new Response(null, { status: 404 });
     await assert.rejects(fetcher.getMinute('1234'), /404/);
-    global.fetch = async () => Response.json({ ...minute, hhmm: '1235' });
-    await assert.rejects(fetcher.getMinute('1234'), /1234/);
   } finally {
     global.fetch = original;
   }
-  checks.push('Async minute fetching checks HTTP status and HHMM identity');
+  checks.push('Async minute fetching keeps HTTP failures distinct from explicit null');
   for (const bad of [undefined, {}, [], { op: 'lit', i: 0, j: 5 }])
     assert.throws(() =>
       normalizeMinute({ schema: SCHEMA, hhmm: '1234', seconds: Array(60).fill(bad) }, '1234'),
     );
-  checks.push('Malformed trees, absent second entries and invalid intervals are rejected');
+  checks.push('Producer validation rejects malformed trees and invalid intervals');
   const report = { build: 'r6-minimal', checks };
   console.log(report);
   writeReport('provider-results.json', report);
+});
+
+test('build validation rejects malformed tables before publication', () => {
+  for (const bad of [
+    null,
+    {},
+    { schema: SCHEMA, minutes: { '1234': Array(60) } },
+    { schema: SCHEMA, minutes: { '1234': Array(60).fill({ op: 'lit', i: 0, j: 5 }) } },
+  ])
+    assert.throws(() => validateTable(bad));
+  assert.deepEqual(validateTable(table), table);
 });

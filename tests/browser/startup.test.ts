@@ -155,3 +155,69 @@ test('queued frames skip stale readers, retain active readers and allow a cancel
     retry: '123411',
   });
 });
+
+test('canonical provider ASTs reach every display style unchanged', async ({ page, args }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(args.url, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.FormulaClock?.state.engineReady);
+  const count = await page.evaluate(async () => {
+    const provider = FORMULA_CLOCK_CONFIG.provider!;
+    const records = new Map<string, Awaited<ReturnType<typeof provider.getMinute>>>();
+    for (const code of ['2359', '1234', '0000']) {
+      const minute = await provider.getMinute(code);
+      // A canonical custom provider has the same trusted contract as bundled data.
+      records.set(code, { ...minute, seconds: [...minute.seconds] });
+    }
+    const digits = FormulaClock.digits;
+    FormulaClock.setDataProvider({
+      async getMinute(hhmm) {
+        return (
+          records.get(hhmm) ?? { schema: 'formula-clock/1', hhmm, seconds: Array(60).fill(null) }
+        );
+      },
+    });
+    let checked = 0;
+    for (const font of ['stix2', 'termes', 'fira', 'euler'] as const)
+      for (const numerals of ['lining', 'oldstyle'] as const)
+        for (const division of ['fraction', 'inline', 'slash'] as const) {
+          await FormulaClock.setDisplay({ font, numerals, division });
+          for (const [code, seconds] of [
+            ['2359', 10],
+            ['1234', 59],
+            ['0000', 8],
+          ] as const) {
+            FormulaClock.preview(
+              new Date(2026, 8, 12, Number(code.slice(0, 2)), Number(code.slice(2)), seconds),
+              true,
+            );
+            const deadline = performance.now() + 5000;
+            for (;;) {
+              const state = FormulaClock.state,
+                layout = state.layout;
+              if (state.dataError || state.engineError) throw new Error(JSON.stringify(state));
+              if (
+                layout?.code === code &&
+                layout.seconds === seconds &&
+                layout.display.font === font &&
+                layout.display.numerals === numerals &&
+                layout.display.division === division &&
+                state.coverage !== undefined
+              ) {
+                if (layout.ast !== records.get(code)!.seconds[seconds])
+                  throw new Error('The provider AST was copied or replaced');
+                if (!FormulaClock.digits.every((digit, index) => digit === digits[index]))
+                  throw new Error('Persistent digits were replaced');
+                if (!FormulaClock.diagnostics().glyphs.every((glyph) => glyph.inStage))
+                  throw new Error('A digit is outside the stage');
+                checked++;
+                break;
+              }
+              if (performance.now() > deadline) throw new Error('Canonical frame did not render');
+              await new Promise(requestAnimationFrame);
+            }
+          }
+        }
+    return checked;
+  });
+  assert.equal(count, 72);
+});

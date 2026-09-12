@@ -13,7 +13,7 @@ export type Expr =
       };
     }['add' | 'sub' | 'mul' | 'div' | 'pow'];
 
-/** Exactly 60 entries; enforced at runtime. null requests an ordinary clock. */
+/** Exactly 60 entries, verified before publication. null requests an ordinary clock. */
 export type SecondEntries = readonly (Expr | null)[];
 export interface MinuteRecord {
   readonly schema: 'formula-clock/1';
@@ -30,6 +30,7 @@ export interface HourManifest {
   readonly hours: Readonly<Record<string, string>>;
 }
 export interface FormulaProvider {
+  /** Return canonical, producer-validated data; do not mutate it after publication. */
   getMinute(hhmm: string, options?: { signal?: AbortSignal }): Promise<MinuteRecord>;
 }
 /** Optional second argument to FormulaData.FetchHourProvider; default is browser fetch. */
@@ -54,6 +55,7 @@ export interface DisplayOptions {
 export interface FormulaClockAPI {
   /** Saves selected preferences. Disabled motion options retain their values and resume when their prerequisite is on. */
   setDisplay(options: Partial<DisplayOptions>): Promise<void>;
+  /** Providers must supply canonical data already validated by their producer. */
   setDataProvider(provider: FormulaProvider): void;
   preview(time: string | Date, paused?: boolean): void;
   live(): void;

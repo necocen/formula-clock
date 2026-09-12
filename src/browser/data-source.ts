@@ -1,4 +1,3 @@
-import FormulaData from '../shared/data.ts';
 import type { FormulaProvider, SecondEntries } from '../shared/types.ts';
 
 export interface MinuteSolutions {
@@ -27,8 +26,6 @@ export interface DataSource {
   replaceProvider(next: FormulaProvider): void;
 }
 
-const { normalizeMinute } = FormulaData;
-
 export function createDataSource(deps: DataSourceDeps): DataSource {
   const cache = new Map<string, MinuteSolutions>(),
     pending = new Map<string, AbortController>();
@@ -49,9 +46,8 @@ export function createDataSource(deps: DataSourceDeps): DataSource {
     pending.set(code, controller);
     Promise.resolve()
       .then(() => currentProvider.getMinute(code, { signal: controller.signal }))
-      .then((raw) => {
+      .then((minute) => {
         if (revision !== dataRevision || controller.signal.aborted) return;
-        const minute = normalizeMinute(raw, code);
         cache.set(code, {
           input: code,
           solutions: minute.seconds,

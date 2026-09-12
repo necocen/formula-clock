@@ -23,7 +23,8 @@ export function readInitialShare() {
   try {
     const embedded = document.querySelector('#shared-clock');
     if (embedded) {
-      const candidate = FormulaShare.view(JSON.parse(embedded.textContent || ''));
+      // The Worker embeds its canonical saved snapshot, validated on creation.
+      const candidate: SharedView = JSON.parse(embedded.textContent || '');
       if (candidate.id === FormulaShare.id(location.pathname)) sharedView = candidate;
     }
   } catch (error) {
@@ -169,14 +170,14 @@ export function createSharing(deps: SharingDeps): Sharing {
     const snapshot = deps.displayedFrame();
     if (shareButton.disabled || !snapshot) return;
     const { code, seconds, view } = snapshot;
-    const state = FormulaShare.snapshot({
+    const state: SharedSnapshot = {
       v: 1,
       t: code + pad(seconds),
       font: view.font,
       numerals: view.numerals,
       division: view.division,
       ast: snapshot.ast,
-    });
+    };
     // Invalidate work for a newer second and settle the frame the user saw.
     // Capture the AST before any network await, including an ordinary null frame.
     deps.adoptView({ font: state.font, numerals: state.numerals, division: state.division });

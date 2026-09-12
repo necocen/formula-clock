@@ -135,6 +135,21 @@ interface PreparedLink {
   promise: Promise<string>;
   controller: AbortController | null;
 }
+// Canonical key order without revalidating ASTs already accepted by their producer.
+const snapshotKey = (state: SharedSnapshot) =>
+  JSON.stringify(state, [
+    'v',
+    't',
+    'font',
+    'numerals',
+    'division',
+    'ast',
+    'op',
+    'i',
+    'j',
+    'a',
+    'b',
+  ]);
 /** Small per-page cache: repeated saves of the same snapshot share one request. */
 class LinkCache {
   private entries = new Map<string, PreparedLink>();
@@ -144,19 +159,18 @@ class LinkCache {
     private timeoutMs = 15000,
   ) {
     if (initial) {
-      const saved = view(initial);
-      this.entries.set(JSON.stringify(saved.snapshot), {
-        id: saved.id,
-        promise: Promise.resolve(saved.id),
+      this.entries.set(snapshotKey(initial.snapshot), {
+        id: initial.id,
+        promise: Promise.resolve(initial.id),
         controller: null,
       });
     }
   }
   peek(state: SharedSnapshot): string | null {
-    return this.entries.get(JSON.stringify(snapshot(state)))?.id || null;
+    return this.entries.get(snapshotKey(state))?.id || null;
   }
   prepare(state: SharedSnapshot): Promise<string> {
-    const key = JSON.stringify(snapshot(state)),
+    const key = snapshotKey(state),
       existing = this.entries.get(key);
     if (existing) {
       this.entries.delete(key);

@@ -225,7 +225,7 @@ function paint(svg: LiteElement, ast: Expr | null) {
 }
 export async function renderSvg({ state, ast }: RenderInput) {
   Share.params(state); // Public renderer accepts only the same finite state space as URLs.
-  ast = Expression.validateAst(ast, state.t.slice(0, 4));
+  // ASTs come from the validated build output or the share-creation boundary.
   if (!wasmReady) throw new Error('OG renderer has not been initialized');
   await wasmReady;
   const engine = await engineFor(state.font, state.numerals);
