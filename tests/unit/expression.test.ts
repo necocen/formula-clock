@@ -173,130 +173,135 @@ function parseText(text: string, code: string): Expr {
   assert.equal(slot, 4);
   return ast;
 }
-test('canonical data and generated TeX/text preserve exact values, domains and slots', () => {
-  const profiles = [
-    { oldstyle: false, centerOperators: true },
-    { oldstyle: true, centerOperators: false },
-  ];
-  // A radical power needs no visible parentheses; the bar groups its base.
-  const rootPower = table.minutes['0220'][33];
-  assert.ok(rootPower);
-  for (const structureMotion of [false, true]) {
-    const tex = E.expressionTex(rootPower, '0220', { structureMotion });
-    assert.doesNotMatch(tex, /\\left\(|fc-struct-paren/);
-    assert.deepEqual(parse(tex), rootPower);
-  }
-  assert.equal(E.compact(rootPower, '0220'), '0!+(√(√2))^20');
-  // Unlike a superscript, a radical's postfix factorial gets an explicit group.
-  const rootFactorial = table.minutes['0858'][46];
-  assert.ok(rootFactorial);
-  for (const structureMotion of [false, true]) {
-    const tex = E.expressionTex(rootFactorial, '0858', { structureMotion });
-    assert.equal((tex.match(/\\left\(/g) || []).length, 1);
-    assert.equal((tex.match(/\\right\)/g) || []).length, 1);
-    assert.deepEqual(parse(tex), rootFactorial);
-  }
-  assert.equal(E.compact(rootFactorial, '0858'), '(√(0!+8))!+5×8');
-  let equations = 0,
-    serializations = 0,
-    textSerializations = 0,
-    rest = 0;
-  const start = Date.now();
-  function roundtrip(ast: Expr, code: string) {
-    for (const text of [
-      E.plain(ast, code),
-      E.plain(ast, code, { division: '/' }),
-      E.compact(ast, code),
-    ]) {
-      assert.deepEqual(canonical(parseText(text, code)), canonical(ast), `${code}: ${text}`);
-      assert.ok(!text.includes('!!'));
-      textSerializations++;
+// The SymPy oracle sweeps the full day and needs headroom under parallel load.
+test(
+  'canonical data and generated TeX/text preserve exact values, domains and slots',
+  { timeout: 120_000 },
+  () => {
+    const profiles = [
+      { oldstyle: false, centerOperators: true },
+      { oldstyle: true, centerOperators: false },
+    ];
+    // A radical power needs no visible parentheses; the bar groups its base.
+    const rootPower = table.minutes['0220'][33];
+    assert.ok(rootPower);
+    for (const structureMotion of [false, true]) {
+      const tex = E.expressionTex(rootPower, '0220', { structureMotion });
+      assert.doesNotMatch(tex, /\\left\(|fc-struct-paren/);
+      assert.deepEqual(parse(tex), rootPower);
     }
-    for (const profile of profiles)
-      for (const division of ['fraction', 'inline', 'slash'] as const)
-        for (const symbolMotion of [false, true])
-          for (const structureMotion of [false, true])
-            for (const symbolMorph of [false, true]) {
-              const opt = { ...profile, division, symbolMotion, structureMotion, symbolMorph },
-                tex = E.expressionTex(ast, code, opt),
-                parsed = parse(tex);
-              assert.deepEqual(canonical(parsed), canonical(ast), `${code}: ${tex}`);
-              assert.ok(!tex.includes('!!'));
-              assert.deepEqual(
-                [...tex.matchAll(/\{fc-d(\d)\}/g)].map((m) => +m[1]),
-                [0, 1, 2, 3],
-              );
-              serializations++;
-            }
-  }
-  for (const [code, seconds] of Object.entries(table.minutes)) {
-    D.normalizeMinute({ schema: D.SCHEMA, hhmm: code, seconds }, code);
-    seconds.forEach((ast, sec) => {
-      if (!ast) {
-        rest++;
-        return;
+    assert.equal(E.compact(rootPower, '0220'), '0!+(√(√2))^20');
+    // Unlike a superscript, a radical's postfix factorial gets an explicit group.
+    const rootFactorial = table.minutes['0858'][46];
+    assert.ok(rootFactorial);
+    for (const structureMotion of [false, true]) {
+      const tex = E.expressionTex(rootFactorial, '0858', { structureMotion });
+      assert.equal((tex.match(/\\left\(/g) || []).length, 1);
+      assert.equal((tex.match(/\\right\)/g) || []).length, 1);
+      assert.deepEqual(parse(tex), rootFactorial);
+    }
+    assert.equal(E.compact(rootFactorial, '0858'), '(√(0!+8))!+5×8');
+    let equations = 0,
+      serializations = 0,
+      textSerializations = 0,
+      rest = 0;
+    const start = Date.now();
+    function roundtrip(ast: Expr, code: string) {
+      for (const text of [
+        E.plain(ast, code),
+        E.plain(ast, code, { division: '/' }),
+        E.compact(ast, code),
+      ]) {
+        assert.deepEqual(canonical(parseText(text, code)), canonical(ast), `${code}: ${text}`);
+        assert.ok(!text.includes('!!'));
+        textSerializations++;
       }
-      if (!solver.verify(ast, [...code].map(Number), sec))
-        extended.push({ code, second: sec, ast });
-      roundtrip(ast, code);
-      equations++;
-    });
-  }
-  // The generator's limits are search budgets, not the external AST's value domain.
-  // Check unsupported values symbolically without approximate equality or skipped cases.
-  const exact = verifyExact(extended);
-  exact.results.forEach((result, i) =>
-    assert.ok(result.valid, `${extended[i].code}:${extended[i].second}: ${result.reason}`),
-  );
-  // Random shapes include operators that the cost-limited generator may not choose.
-  let seed = 20260908;
-  const random = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
-  const choose = <T>(xs: readonly T[]): T => xs[Math.floor(random() * xs.length)];
-  function tree(i: number, j: number): Expr {
-    let x: Expr;
-    if (j - i === 1 || random() < 0.18) x = literal(i, j);
-    else {
-      const k = i + 1 + Math.floor(random() * (j - i - 1));
-      x = bin(choose(['add', 'sub', 'mul', 'div', 'pow'] as const), tree(i, k), tree(k, j));
+      for (const profile of profiles)
+        for (const division of ['fraction', 'inline', 'slash'] as const)
+          for (const symbolMotion of [false, true])
+            for (const structureMotion of [false, true])
+              for (const symbolMorph of [false, true]) {
+                const opt = { ...profile, division, symbolMotion, structureMotion, symbolMorph },
+                  tex = E.expressionTex(ast, code, opt),
+                  parsed = parse(tex);
+                assert.deepEqual(canonical(parsed), canonical(ast), `${code}: ${tex}`);
+                assert.ok(!tex.includes('!!'));
+                assert.deepEqual(
+                  [...tex.matchAll(/\{fc-d(\d)\}/g)].map((m) => +m[1]),
+                  [0, 1, 2, 3],
+                );
+                serializations++;
+              }
     }
-    for (let k = 0; k < 2 && random() < 0.38; k++)
-      x = un(choose(['sqrt', 'neg', 'fact'] as const), x);
-    return x;
-  }
-  const fuzz = 5000;
-  for (let k = 0; k < fuzz; k++) roundtrip(tree(0, 4), '1234');
-  const L = literal;
-  assert.throws(() => E.validateAst({ op: 'add', a: L(0), b: L(0) }, '1234'));
-  assert.throws(() =>
-    D.normalizeMinute({ schema: D.SCHEMA, hhmm: '1234', seconds: Array(60) }, '1234'),
-  );
-  assert.throws(() =>
-    D.normalizeMinute({ schema: D.SCHEMA, hhmm: '1234', seconds: Array(59).fill(null) }, '1234'),
-  );
-  assert.throws(() =>
-    D.normalizeMinute({ schema: D.SCHEMA, hhmm: '1235', seconds: Array(60).fill(null) }, '1234'),
-  );
-  assert.throws(() => E.validateAst({ op: 'lit', i: 0, j: 4 }, '0000'));
-  assert.throws(() => E.validateAst({ op: 'tex', source: '1+2+3+4' }, '1234'));
-  const cycle: { op: string; a?: unknown } = { op: 'neg' };
-  cycle.a = cycle;
-  assert.throws(() => E.validateAst(cycle, '1234'));
-  for (const code of ['2400', '2360', '123', '1234x']) assert.throws(() => E.assertCode(code));
-  const report = {
-    build: 'r6-minimal',
-    minutes: Object.keys(table.minutes).length,
-    equations,
-    rest,
-    fuzzTrees: fuzz,
-    checkedSerializations: serializations,
-    textSerializations,
-    profiles: 2,
-    divisionModes: 3,
-    boundedVerified: equations - extended.length,
-    symbolicallyVerified: extended.length,
-    sympy: exact.sympy,
-    elapsedMs: Date.now() - start,
-  };
-  writeReport('expression-results.json', report);
-  console.log(report);
-});
+    for (const [code, seconds] of Object.entries(table.minutes)) {
+      D.normalizeMinute({ schema: D.SCHEMA, hhmm: code, seconds }, code);
+      seconds.forEach((ast, sec) => {
+        if (!ast) {
+          rest++;
+          return;
+        }
+        if (!solver.verify(ast, [...code].map(Number), sec))
+          extended.push({ code, second: sec, ast });
+        roundtrip(ast, code);
+        equations++;
+      });
+    }
+    // The generator's limits are search budgets, not the external AST's value domain.
+    // Check unsupported values symbolically without approximate equality or skipped cases.
+    const exact = verifyExact(extended);
+    exact.results.forEach((result, i) =>
+      assert.ok(result.valid, `${extended[i].code}:${extended[i].second}: ${result.reason}`),
+    );
+    // Random shapes include operators that the cost-limited generator may not choose.
+    let seed = 20260908;
+    const random = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+    const choose = <T>(xs: readonly T[]): T => xs[Math.floor(random() * xs.length)];
+    function tree(i: number, j: number): Expr {
+      let x: Expr;
+      if (j - i === 1 || random() < 0.18) x = literal(i, j);
+      else {
+        const k = i + 1 + Math.floor(random() * (j - i - 1));
+        x = bin(choose(['add', 'sub', 'mul', 'div', 'pow'] as const), tree(i, k), tree(k, j));
+      }
+      for (let k = 0; k < 2 && random() < 0.38; k++)
+        x = un(choose(['sqrt', 'neg', 'fact'] as const), x);
+      return x;
+    }
+    const fuzz = 5000;
+    for (let k = 0; k < fuzz; k++) roundtrip(tree(0, 4), '1234');
+    const L = literal;
+    assert.throws(() => E.validateAst({ op: 'add', a: L(0), b: L(0) }, '1234'));
+    assert.throws(() =>
+      D.normalizeMinute({ schema: D.SCHEMA, hhmm: '1234', seconds: Array(60) }, '1234'),
+    );
+    assert.throws(() =>
+      D.normalizeMinute({ schema: D.SCHEMA, hhmm: '1234', seconds: Array(59).fill(null) }, '1234'),
+    );
+    assert.throws(() =>
+      D.normalizeMinute({ schema: D.SCHEMA, hhmm: '1235', seconds: Array(60).fill(null) }, '1234'),
+    );
+    assert.throws(() => E.validateAst({ op: 'lit', i: 0, j: 4 }, '0000'));
+    assert.throws(() => E.validateAst({ op: 'tex', source: '1+2+3+4' }, '1234'));
+    const cycle: { op: string; a?: unknown } = { op: 'neg' };
+    cycle.a = cycle;
+    assert.throws(() => E.validateAst(cycle, '1234'));
+    for (const code of ['2400', '2360', '123', '1234x']) assert.throws(() => E.assertCode(code));
+    const report = {
+      build: 'r6-minimal',
+      minutes: Object.keys(table.minutes).length,
+      equations,
+      rest,
+      fuzzTrees: fuzz,
+      checkedSerializations: serializations,
+      textSerializations,
+      profiles: 2,
+      divisionModes: 3,
+      boundedVerified: equations - extended.length,
+      symbolicallyVerified: extended.length,
+      sympy: exact.sympy,
+      elapsedMs: Date.now() - start,
+    };
+    writeReport('expression-results.json', report);
+    console.log(report);
+  },
+);
