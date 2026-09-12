@@ -144,6 +144,15 @@ button:hover:not(:disabled) {
   width: 40px;
   padding: 10px;
 }
+#sound[aria-busy='true'] #sound-waves {
+  transform-origin: 16px 12px;
+  animation: sound-starting 0.8s linear infinite;
+}
+@keyframes sound-starting {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .tool[aria-pressed='true'] {
   color: var(--c2);
 }
@@ -760,6 +769,9 @@ main {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  #sound[aria-busy='true'] #sound-waves {
+    animation: none;
+  }
   *,
   *:before {
     scroll-behavior: auto !important;

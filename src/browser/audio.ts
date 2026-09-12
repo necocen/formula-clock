@@ -5,6 +5,7 @@ import type { Translate } from './types.ts';
 
 export interface TimeSignalDeps {
   t: Translate;
+  notify(text: string): void;
   getNow(): Date;
   isPaused(): boolean;
   generation(): number;
@@ -14,10 +15,10 @@ export interface TimeSignalDeps {
 class TimeSignal {
   ctx: AudioContext | null = null;
   master: GainNode | null = null;
-  enabled: boolean;
+  enabled = false;
   volume: number;
   revision = 0;
-  error: string | null = null;
+  private starting = false;
   scheduled = new Map<string, number>();
   voices = new Set<OscillatorNode>();
   private events: AudioEvent[] = [];
@@ -29,7 +30,7 @@ class TimeSignal {
     } catch {}
     this.ctx = null;
     this.master = null;
-    this.enabled = saved.enabled === true;
+    // Sound is opt-in for this page. Older saved on/off values are ignored.
     this.volume =
       typeof saved.volume === 'number' &&
       Number.isFinite(saved.volume) &&
@@ -38,43 +39,36 @@ class TimeSignal {
         ? saved.volume
         : 0.25;
     this.revision = 0;
-    this.error = null;
     this.scheduled = new Map();
     this.voices = new Set();
   }
   get ready() {
-    return this.enabled && this.ctx?.state === 'running';
+    return this.enabled && !this.starting && this.ctx?.state === 'running';
   }
   history(): AudioEvent[] {
     return this.events.slice();
   }
-  save() {
+  private saveVolume() {
     try {
-      localStorage.setItem(
-        'formula-clock-audio-v1',
-        JSON.stringify({ enabled: this.enabled, volume: this.volume }),
-      );
+      localStorage.setItem('formula-clock-audio-v1', JSON.stringify({ volume: this.volume }));
     } catch {}
   }
   async toggle() {
-    this.enabled = !this.enabled;
-    this.revision++;
-    this.error = null;
-    this.save();
-    this.paint();
-    if (!this.enabled) {
+    const revision = ++this.revision;
+    if (this.enabled && (this.ready || this.starting)) {
+      this.enabled = false;
+      this.starting = false;
       this.cancel();
+      this.paint();
       return;
     }
-    await this.resume(true);
-  }
-  async resume(feedback = false) {
-    if (!this.enabled) return;
-    const revision = this.revision;
+    this.enabled = true;
+    this.starting = true;
+    this.paint();
     try {
       const Audio = window.AudioContext || window.webkitAudioContext;
       if (!Audio) throw new Error('Web Audio API is unavailable');
-      if (!this.ctx) {
+      if (!this.ctx || this.ctx.state === 'closed') {
         this.ctx = new Audio();
         this.master = this.ctx.createGain();
         this.master.gain.value = this.volume * 0.32;
@@ -84,40 +78,50 @@ class TimeSignal {
           this.paint();
         });
       }
-      // A blocked resume may remain pending until a later user gesture.
-      // Keep the saved preference, and allow that gesture to call resume again.
+      // Resume is requested only by the sound button or its shortcut.
+      // The same control can cancel an outstanding request.
       await this.ctx.resume();
       if (!this.enabled || revision !== this.revision) return;
-      this.error = null;
+      this.starting = false;
       this.paint();
-      if (feedback && this.ready) this.tone(1000, this.ctx.currentTime + 0.02, 0.15, 0.28);
-    } catch (error) {
+      if (this.ready) this.tone(1000, this.ctx.currentTime + 0.02, 0.15, 0.28);
+    } catch {
       if (!this.enabled || revision !== this.revision) return;
-      this.error = String(error);
+      this.enabled = false;
+      this.starting = false;
+      this.cancel();
       this.paint();
+      this.deps.notify(this.deps.t('soundFailed'));
     }
   }
   paint() {
     const label = this.deps.t(
       !this.enabled
         ? 'soundOff'
-        : this.ready
-          ? 'soundOn'
-          : this.error
-            ? 'soundError'
-            : 'soundPending',
+        : this.starting
+          ? 'soundStarting'
+          : this.ready
+            ? 'soundOn'
+            : 'soundPaused',
     );
-    $<HTMLButtonElement>('#sound').setAttribute('aria-pressed', String(this.enabled));
+    $<HTMLButtonElement>('#sound').setAttribute('aria-pressed', String(this.ready));
+    $<HTMLButtonElement>('#sound').setAttribute('aria-busy', String(this.starting));
     $<HTMLButtonElement>('#sound').setAttribute('aria-label', label);
     $<HTMLButtonElement>('#sound').title = this.deps.t('shortcut', { label, key: 'M' });
     $<SVGPathElement>('#sound-waves').setAttribute(
       'd',
-      this.enabled ? 'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14' : 'm16 9 6 6m0-6-6 6',
+      this.starting
+        ? 'M16 8a4 4 0 1 1-4 4'
+        : this.ready
+          ? 'M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14'
+          : this.enabled
+            ? 'M16 8v8m5-8v8'
+            : 'm16 9 6 6m0-6-6 6',
     );
   }
   setVolume(v: number) {
     this.volume = Math.max(0, Math.min(1, v));
-    this.save();
+    this.saveVolume();
     if (this.master && this.ctx)
       this.master.gain.setTargetAtTime(this.volume * 0.32, this.ctx.currentTime, 0.035);
   }
@@ -162,8 +166,7 @@ class TimeSignal {
     this.voices.clear();
   }
   poll() {
-    if (!this.enabled || this.ctx?.state !== 'running' || document.hidden || this.deps.isPaused())
-      return;
+    if (!this.ready || !this.ctx || document.hidden || this.deps.isPaused()) return;
     const now = +this.deps.getNow(),
       second = Math.floor(now / 1000);
     for (const boundary of [second * 1000, (second + 1) * 1000]) {
@@ -192,14 +195,6 @@ class TimeSignal {
       if (this.events.length > 30) this.events.shift();
     }
   }
-  resumeGesture(event: MouseEvent | KeyboardEvent) {
-    if (!event.isTrusted || !this.enabled || this.ready) return;
-    const togglesSound =
-      event.target instanceof Element &&
-      event.target.closest('#sound') &&
-      (event.type === 'click' || ('key' in event && (event.key === ' ' || event.key === 'Enter')));
-    if (!togglesSound) this.resume();
-  }
 }
 
 export type Sound = TimeSignal;
@@ -208,7 +203,6 @@ export function createTimeSignal(deps: TimeSignalDeps): Sound {
   const sound = new TimeSignal(deps);
   $<HTMLInputElement>('#volume').value = String(sound.volume * 100);
   sound.paint();
-  if (sound.enabled) sound.resume();
   $<HTMLButtonElement>('#sound').addEventListener('click', () => sound.toggle());
   $<HTMLInputElement>('#volume').addEventListener('input', (e) =>
     sound.setVolume(Number((e.target as HTMLInputElement).value) / 100),

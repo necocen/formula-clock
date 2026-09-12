@@ -50,10 +50,11 @@ const messages = {
   },
   reload: { ja: '再読み込み', en: 'Reload' },
   // Sound/fullscreen icon labels and hover titles; failure is a visible notice.
-  soundOff: { ja: '時報 OFF', en: 'Time signals off' },
-  soundOn: { ja: '時報 ON', en: 'Time signals on' },
-  soundError: { ja: '時報 ON（再生できません）', en: 'Time signals on (audio unavailable)' },
-  soundPending: { ja: '時報 ON（画面を操作すると再開）', en: 'Time signals on (tap to start)' },
+  soundOff: { ja: '時報をオンにする', en: 'Turn time signals on' },
+  soundOn: { ja: '時報をオフにする', en: 'Turn time signals off' },
+  soundStarting: { ja: '時報の開始を取り消す', en: 'Cancel starting time signals' },
+  soundPaused: { ja: '時報を再開する', en: 'Resume time signals' },
+  soundFailed: { ja: '時報を再生できませんでした', en: 'Could not play time signals' },
   fullscreen: { ja: '全画面表示', en: 'Fullscreen' },
   exitFullscreen: { ja: '全画面表示を終了', en: 'Exit fullscreen' },
   fullscreenFailed: {

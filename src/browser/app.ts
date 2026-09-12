@@ -98,6 +98,7 @@ const sharing = createSharing({
 
 const sound = createTimeSignal({
   t,
+  notify: (text) => sharing.showNotice(text),
   getNow: () => clock.getNow(),
   isPaused: () => !!clock.preview?.paused,
   generation: () => clock.generation,
@@ -138,8 +139,6 @@ installShortcuts({
     fullscreen.toggle();
   },
 });
-document.addEventListener('click', (event) => sound.resumeGesture(event));
-document.addEventListener('keydown', (event) => sound.resumeGesture(event));
 clock.start();
 setInterval(() => sound.poll(), 60);
 // Read-only handles for tests, with explicit transport controls for reproducible previews.

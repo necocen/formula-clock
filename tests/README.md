@@ -70,7 +70,7 @@ pnpm run test:browser transport.test.ts --project chromium
 | `i18n`                                                | 日本語・英語・言語フォールバック・ライセンス全文    |
 | `transport`                                           | 左右キー・一時停止・現在時刻への復帰                |
 | `fullscreen`                                          | 全画面API・利用不可・拒否・接頭辞付きAPI            |
-| `audio` / `audio-settings`                            | 時報の波形・音量・保存復元・自動再生待ち            |
+| `audio` / `audio-settings`                            | 時報の波形・音量保存・毎回オフ・開始と取り消し      |
 | `motion-settings`                                     | 記号アニメーション設定の依存関係・保存復元          |
 | `symbol-motion` / `structure-motion` / `symbol-morph` | 記号・構造・変形の各アニメーション                  |
 | `share` / `kv-share`                                  | 共有URL・保存済みAST・競合                          |

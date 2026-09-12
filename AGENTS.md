@@ -8,7 +8,7 @@
 - 表示アプリの原本は`src/browser/`（マークアップ`index.html`・CSS`styles.css`・合成ルート`app.ts`・役割別モジュール`dom.ts` / `audio.ts` / `data-source.ts` / `settings.ts` / `renderer.ts` / `clock.ts` / `sharing.ts` / `fullscreen.ts` / `shortcuts.ts` / `typesetter.ts`）と`src/shared/`（`i18n.ts` / `display.ts` / `share.ts` / `expression.ts` / `data.ts` / `symbols.ts` / `typography.ts` / `mathjax/` / `palette.css`）。ビルド時に`<!-- clock-licenses -->`へライセンス表示を挿入する。共有画像と配信処理は `src/worker/`。
 - ライセンスの取得先・SHA-256・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。本文は取得してGit管理外の`licenses/texts/`へキャッシュする。通常ビルドでも自動生成し、`pnpm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版とハッシュを更新する。
 - アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行し、PythonはSymPyの厳密計算だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、信頼境界を型とAPIの契約に明記する。管理下の式データは生成・取り込み・ビルド時に検証し、実行時のAST検証・複製・凍結は行わない。公開の共有作成APIが受け取る外部JSONはサーバーで検証する。
-- モジュール間の依存はESモジュールのimportで宣言する。`bootstrap.ts`の`window`公開はブラウザテスト・コンソール用の公開面で、アプリ内部の参照には使わない。ブラウザの各モジュールは`createX(deps)`ファクトリでモジュールトップレベルの副作用を持たず、合成順序・リスナー登録順（ショートカット→時報再開のkeydown）は`app.ts`が管理する。遅延バインドのクロージャはイベント・Promise継続・タイマーからのみ発火させる。世代カウンタ（`dataRevision` / `requestSerial` / `shareSerial` / `TimeSignal.revision`）はガードと継続を同一モジュール内に保つ。ビルドはVite、Worker・WASM・配布設定はCloudflare公式プラグインを使う。`tools/vite-clock.ts`には式データとライセンス固有の処理だけを置き、独自バンドラーやWASMローダーを追加しない。
+- モジュール間の依存はESモジュールのimportで宣言する。`bootstrap.ts`の`window`公開はブラウザテスト・コンソール用の公開面で、アプリ内部の参照には使わない。ブラウザの各モジュールは`createX(deps)`ファクトリでモジュールトップレベルの副作用を持たず、合成順序・リスナー登録順は`app.ts`が管理する。遅延バインドのクロージャはイベント・Promise継続・タイマーからのみ発火させる。世代カウンタ（`dataRevision` / `requestSerial` / `shareSerial` / `TimeSignal.revision`）はガードと継続を同一モジュール内に保つ。ビルドはVite、Worker・WASM・配布設定はCloudflare公式プラグインを使う。`tools/vite-clock.ts`には式データとライセンス固有の処理だけを置き、独自バンドラーやWASMローダーを追加しない。
 - `dist/` は生成物。配信用アセットは`dist/site/`、Workerは`dist/worker/`。直接編集せず、ビルドで生成する。生成物はGitへ入れない。`public/data/`もVite起動時に生成する入力でGit管理外。
 - 整形はOxfmt、lintはOxlint。編集後に`pnpm run format`で原本を整形し、`pnpm run check`で整形・lint・型を確認する。`pnpm test`はテスト実行のみで、この確認を含まない。生成物や式データは整形対象に加えず、整形後にビルドする。lintの抑制は理由のある最小範囲に限る。
 - パッケージ管理はpnpm 12.4.1。`pnpm install`でNode.js 22.23.2とJavaScript・Pythonの依存を準備する。Python 3.11以上の本体は別途必要。JavaScriptは`pnpm-lock.yaml`、テスト用Pythonは`pyproject.toml` / `pylock.toml`で管理し、`.venv`と`.pnpm/`は生成物としてGitへ入れない。npmやpipで別の依存環境・ロックファイルを作らない。Python連携は実験機能でロックがOS・Python環境に依存するため、環境変更時は通常インストールで更新し、同じ環境の再現には`--frozen-lockfile`を使う。
@@ -31,7 +31,7 @@
 - 上の小さい時刻は選択中の数式フォント・6桁固定セル・要素保持（clock.test.ts）。**式の有無に応じたフェードはON/OFFのみ検証**——トランジションと高さ確保は未固定。
 - 分数/÷/スラッシュの切り替えで計算の意味・数字の順序・時刻を変えない（tests/unit/expression.test.tsのroundtrip＋SymPy検証・clock.test.ts）。
 - 時報は117風。周波数・長さ・重複禁止の正確な仕様はtests/browser/audio.test.tsが正。
-- 時報のオン／オフ・音量の保存復元、自動再生ブロック時の選択保持と操作による再開、復元時の確認音抑制、オフ後の非同期応答での再有効化禁止（tests/browser/audio-settings.test.ts）。
+- 時報のオン／オフはページ内だけで保持し、起動・リロード時は旧保存値にかかわらずオフ。音量だけ保存復元し、時報ボタン・Mキーで開始する。開始中はオン表示にせず取り消し可能、失敗時はオフへ戻して通知する。取り消し後の非同期応答での再有効化を禁止する（tests/browser/audio-settings.test.ts）。
 
 ## 設計の分離
 
