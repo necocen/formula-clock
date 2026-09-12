@@ -14,6 +14,7 @@ pnpm 12.4.1とPython 3.11以上を用意し、`pnpm install`を実行する。No
 - `pnpm run deploy`：既存Workerへ公開する。配信用ビルド後、生成された`dist/worker/wrangler.json`をWranglerへ渡す。
 
 入力の`wrangler.jsonc`の`main`は`src/worker/index.ts`。ViteとCloudflare公式プラグインがWorker・WASM・静的アセットをビルドし、`dist/worker/wrangler.json`に配布用`main`と`assets.directory`を設定する。アップロード・公開にはこの生成済み設定を使う。
+公開ドメインは`wrangler.jsonc`の`routes`で`formula.necocen.info`をCustom Domainとして設定する。`pnpm run deploy`で反映し、CloudflareがDNSとHTTPS証明書を管理する。既存の共有リンクを保つため`workers_dev: true`も維持する。
 Workerを先に呼ぶパスは`/`・`/og.png`・`/s/*`・`/api/shares`。時間別JSONなどは従来の静的配信を使う。
 `dist/worker/`、ソース、検証記録は公開アセットに含めない。フォントデータとWASMはWorker内部の依存になる。
 MathJax本体・4書体とEuler拡張は4.1.3、resvg WASMは2.6.2に固定する。
