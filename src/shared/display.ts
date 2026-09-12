@@ -4,26 +4,18 @@ const PROFILES = Object.freeze({
   stix2: Object.freeze({
     id: 'stix2' as const,
     label: 'STIX Two',
-    font: 'mathjax-stix2',
-    extensions: [] as string[],
   }),
   termes: Object.freeze({
     id: 'termes' as const,
     label: 'Termes',
-    font: 'mathjax-termes',
-    extensions: [] as string[],
   }),
   fira: Object.freeze({
     id: 'fira' as const,
     label: 'Fira',
-    font: 'mathjax-fira',
-    extensions: [] as string[],
   }),
   euler: Object.freeze({
     id: 'euler' as const,
     label: 'Euler',
-    font: 'mathjax-modern',
-    extensions: ['mathjax-euler'] as string[],
   }),
 });
 const NUMERALS = Object.freeze({ lining: 'Lining', oldstyle: 'Oldstyle' });

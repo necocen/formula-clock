@@ -3,6 +3,7 @@ import type { LiteText } from '@mathjax/src/js/adaptors/lite/Text.js';
 import type { LiteDocument } from '@mathjax/src/js/adaptors/lite/Document.js';
 import type { MathDocument } from '@mathjax/src/js/core/MathDocument.js';
 import type { Bounds, DisplayOptions, Expr, Typography } from '../shared/types.ts';
+import { CONVERT_OPTIONS, TEX_PACKAGES } from '../shared/typeset.ts';
 import type { RenderInput } from './types.ts';
 interface Engine {
   profile: ReturnType<typeof Display.typography>;
@@ -104,12 +105,7 @@ function inkBounds(svg: LiteElement, target = svg) {
 }
 
 async function convert(engine: Pick<Engine, 'document'>, tex: string) {
-  const node = await engine.document.convertPromise(tex, {
-    display: true,
-    em: 16,
-    ex: 8,
-    containerWidth: 100000,
-  });
+  const node = await engine.document.convertPromise(tex, { ...CONVERT_OPTIONS });
   if (!(node instanceof LiteElement)) throw new Error('MathJax did not produce an SVG container');
   const svg = adaptor.tags(node, 'svg')[0];
   // MathJax adds empty <text data-id-align> anchors inside fractions. They are
@@ -140,7 +136,7 @@ async function engineFor(
         queue: Promise.resolve(),
         document: mathjax.document('', {
           InputJax: new TeX({
-            packages: ['base', 'ams', 'newcommand', 'html'],
+            packages: [...TEX_PACKAGES],
             formatError(_jax: unknown, error: Error) {
               throw error;
             },

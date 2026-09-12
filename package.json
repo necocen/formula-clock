@@ -4,7 +4,6 @@
   "private": true,
   "description": "A mathematical clock with persistent digits, switchable typography, and AST data providers",
   "license": "MIT",
-  "types": "./src/api.d.ts",
   "scripts": {
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",

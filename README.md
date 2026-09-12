@@ -64,7 +64,6 @@ src/
   browser/       画面・CSS・組版・ブラウザ操作
   shared/        AST・表示設定・データ取得・共有URL・共通の型
   worker/        共有API・HTMLメタデータ・OG画像
-  api.d.ts       公開APIの型
 public/          配信用の静的設定・固定ロゴPNG（data/は生成物）
 licenses/        ライセンスの取得先・ハッシュ・表示テンプレート
 tools/           データ生成／取り込み・Vite用データ／ライセンス処理

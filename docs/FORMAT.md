@@ -200,7 +200,7 @@ await FormulaClock.setDisplay({ font: 'euler', numerals: 'lining', division: 'fr
 
 ## 7. 検証の境界
 
-`data/schema.json` がJSON Schema、`src/shared/types.ts`が共通のTypeScript型、`src/api.d.ts`が公開型の入口。実装も同じ型を使う。スキーマの配列サイズや演算の形に加えて、実行時に次を検証する。
+`data/schema.json` がJSON Schema、`src/shared/types.ts`が共通のTypeScript型。実装も同じ型を使う。スキーマの配列サイズや演算の形に加えて、実行時に次を検証する。
 
 - HHMMが有効な24時間制の時刻で、要求した分と一致すること。
 - 60秒分の要素があり、各構文木が4桁を順番に各1回参照すること。

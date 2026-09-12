@@ -14,6 +14,7 @@ import '@mathjax/src/js/input/tex/ams/AmsConfiguration.js';
 import '@mathjax/src/js/input/tex/newcommand/NewcommandConfiguration.js';
 import '@mathjax/src/js/input/tex/html/HtmlConfiguration.js';
 import type { DisplayOptions } from '../shared/types.ts';
+import { CONVERT_OPTIONS, TEX_PACKAGES } from '../shared/typeset.ts';
 
 RegisterHTMLHandler(browserAdaptor());
 
@@ -59,7 +60,7 @@ export async function createEngine(
   glyphFonts.set(output, glyphFont);
   const doc = mathjax.document(document, {
     InputJax: new TeX<HTMLElement, Text, Document>({
-      packages: ['base', 'ams', 'newcommand', 'html'],
+      packages: [...TEX_PACKAGES],
       formatError(_jax: unknown, error: Error) {
         throw error;
       },
@@ -67,13 +68,7 @@ export async function createEngine(
     OutputJax: output,
   });
   return {
-    convert: (tex) =>
-      doc.convertPromise(tex, {
-        display: true,
-        em: 16,
-        ex: 8,
-        containerWidth: 100000,
-      }) as Promise<HTMLElement>,
+    convert: (tex) => doc.convertPromise(tex, { ...CONVERT_OPTIONS }) as Promise<HTMLElement>,
     get params() {
       return (output.font as { params: { axis_height: number } }).params;
     },
