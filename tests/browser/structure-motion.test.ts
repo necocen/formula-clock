@@ -184,7 +184,7 @@ test('structure-motion', async ({ browser, args, page }) => {
             out.push({font,numerals,name,division,symbolMotion,structureMotion,delta});
           }
         }
-        engine.host.remove();engine.staging.remove();
+        engine.staging.remove();
       }return out;
     }`),
   );

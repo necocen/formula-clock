@@ -312,8 +312,9 @@ test('motion-settings', async ({ browser, args, page }) => {
   assert.notDeepEqual(await page.locator('#render-status').getAttribute('hidden'), null);
   const failed = await browser.newPage({ locale: 'ja-JP', timezoneId: 'Asia/Tokyo' });
   failed.on('pageerror', (e) => errors.push(String(e)));
-  // The site self-hosts MathJax under /vendor/mathjax.
-  await failed.route('**/vendor/mathjax/**', async (route) => await route.abort());
+  // MathJax ships as lazy chunks of the app bundle; block them to fail the engine.
+  await failed.route('**/assets/engine-*', async (route) => await route.abort());
+  await failed.route('**/assets/font-*', async (route) => await route.abort());
   await failed.goto(args.url);
   await failed.waitForFunction('window.FormulaClock?.state.engineError', undefined);
   assert.ok(await failed.locator('#plain-time').isVisible());

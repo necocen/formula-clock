@@ -1,10 +1,10 @@
 import type { DisplayOptions, Expr, TexOptions, Typography } from '../shared/types.ts';
-import type { ClockFace, Frame, GlyphToken, PlacedToken, MathJaxRuntime } from './types.ts';
+import type { ClockFace, Frame, GlyphToken, PlacedToken } from './types.ts';
+import type { Engine } from './engine.ts';
 /* TeX -> SVG layout adapter. MathJax owns typography; the clock owns animation.
- * No font files are bundled into the app script; the site self-hosts the
- * MathJax runtime and fonts under /vendor/mathjax.
+ * The engine and per-font data ship as lazy chunks of the app bundle; see
+ * ./engine.ts for the shared pipeline.
  */
-const MATHJAX_BASE = new URL('/vendor/mathjax', document.baseURI).href;
 const NS = 'http://www.w3.org/2000/svg';
 import * as Expression from '../shared/expression.ts';
 const { expressionTex, frameTex, mark, relation } = Expression;
@@ -43,8 +43,8 @@ function pathBounds(scope: Element | null, inverse: DOMMatrix) {
 
 class Typesetter {
   readonly profile: Omit<Display.Profile, 'label'> & { readonly label: string };
-  mathjax: MathJaxRuntime | null = null;
-  private host: HTMLIFrameElement;
+  mathjax: { version: string } | null = null;
+  private eng: Engine | null = null;
   private staging: HTMLDivElement;
   readonly cache = new Map<string, Promise<Frame>>();
   private tail: Promise<unknown> = Promise.resolve();
@@ -53,9 +53,9 @@ class Typesetter {
   ready = false;
   error: unknown = null;
   typography: Typography | null = null;
-  private get engine(): MathJaxRuntime {
-    if (!this.mathjax) throw new Error('MathJax is not ready');
-    return this.mathjax;
+  private get engine(): Engine {
+    if (!this.eng) throw new Error('MathJax is not ready');
+    return this.eng;
   }
   constructor(
     profile: DisplayOptions['font'] = 'stix2',
@@ -67,15 +67,9 @@ class Typesetter {
       ...Display.typography(profile, numerals),
       label: `${PROFILES[profile].label} · ${NUMERALS[numerals]}`,
     });
-    // Separate contexts for each font/style keep extensions and lining-axis
+    // Separate engines for each font/style keep extensions and lining-axis
     // calibration out of other fonts and native oldstyle axes. Engines are lazy
     // and cached: switching back never reloads MathJax or rebuilds digit nodes.
-    this.host = document.createElement('iframe');
-    this.host.className = 'math-engine-frame';
-    this.host.title = `Typesetter: ${this.profile.label}`;
-    this.host.tabIndex = -1;
-    this.host.setAttribute('aria-hidden', 'true');
-    document.body.append(this.host);
     this.staging = document.createElement('div');
     this.staging.className = 'math-staging';
     this.staging.setAttribute('aria-hidden', 'true');
@@ -86,100 +80,40 @@ class Typesetter {
       this.error = error;
     });
   }
-  load() {
-    return new Promise<void>((resolve, reject) => {
-      let settled = false;
-      const finish = (error?: unknown) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        if (error) {
-          this.error = error;
-          reject(error);
-        } else {
-          this.ready = true;
-          resolve();
-        }
-      };
-      const timer = setTimeout(() => finish(new Error('MathJax loading timed out')), 20000);
-      const engineWindow = this.host.contentWindow as
-        | (Window & typeof globalThis & { MathJax: MathJaxRuntime })
-        | null;
-      const engineDocument = this.host.contentDocument;
-      if (!engineWindow || !engineDocument)
-        return finish(new Error('MathJax frame is unavailable'));
-      const config = {
-        loader: {
-          load: ['[tex]/html'],
-          paths: { fonts: `${MATHJAX_BASE}/fonts` },
-          failed: (error: unknown) =>
-            finish(new Error(`MathJax: ${error instanceof Error ? error.message : String(error)}`)),
-        },
-        tex: { packages: { '[+]': ['html'] } },
-        output: {
-          font: this.profile.font,
-          fontExtensions: this.profile.extensions.slice(),
-          displayOverflow: 'overflow',
-        },
-        svg: { fontCache: 'none' },
-        options: { enableMenu: false },
-        startup: { typeset: false },
-      };
-      // MathJax uses realm-sensitive Array/Object checks in its option merger.
-      // Construct configuration values in the engine's own realm.
-      engineWindow.MathJax = engineWindow.JSON.parse(JSON.stringify(config));
-      engineWindow.MathJax.loader.failed = (error) =>
-        finish(new Error(`MathJax: ${error instanceof Error ? error.message : String(error)}`));
-      const script = engineDocument.createElement('script');
-      script.src = `${MATHJAX_BASE}/tex-svg-nofont.js`;
-      script.async = true;
-      script.id = 'mathjax-script';
-      script.onerror = () => finish(new Error('MathJax could not be downloaded'));
-      script.onload = () => {
-        const startup = engineWindow.MathJax?.startup?.promise;
-        if (!startup) return finish(new Error('MathJax startup is unavailable'));
-        startup
-          .then(() => {
-            this.mathjax = engineWindow.MathJax;
-            this.identifyGlyphs();
-            return this.calibrateTypography();
-          })
-          .then(() => finish(), finish);
-      };
-      engineDocument.head.append(script);
+  private async load() {
+    // The engine and font chunks load on demand; a stalled network must not
+    // leave the clock waiting forever. The clock reads error/ready and keeps
+    // displaying ordinary time on failure.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('MathJax loading timed out')), 20000);
     });
-  }
-  identifyGlyphs() {
-    // With fontCache:none, MathJax's pathNode keeps the Unicode code but drops
-    // its size variant. Capture that identity before it is lost. The isolated
-    // engine owns this prototype; never patch another font's browsing context.
-    const exports = this.engine._?.output?.svg?.Wrapper;
-    const prototype = (exports?.SvgWrapper || exports?.SVGWrapper)?.prototype;
-    if (typeof prototype?.charNode !== 'function') return; // Compatibility engines keep decorations fading.
-    const original = prototype.charNode;
-    const font = `${this.profile.id}@${this.engine.version}`;
-    prototype.charNode = function (variant, code, path) {
-      const node = original.call(this, variant, code, path);
-      this.adaptor.setAttribute(node, 'data-glyph-key', `${font}:${variant}:${code}`);
-      return node;
-    };
+    try {
+      await Promise.race([
+        timeout,
+        (async () => {
+          const { createEngine, version } = await import('./engine.ts');
+          this.eng = await createEngine(this.profile.id, `${this.profile.id}@${version}`);
+          this.mathjax = { version };
+          await this.calibrateTypography();
+        })(),
+      ]);
+      this.ready = true;
+    } finally {
+      clearTimeout(timer);
+    }
   }
   async calibrateTypography() {
     // FontData.params.axis_height is MathJax's TeX math-axis parameter.
     // Calibrate ONCE from the actual font's zero, not the current time's digits.
     // Otherwise the vertical center would change whenever (say) 8 becomes 9.
     let typography: Omit<Typography, 'equalCenterY'>;
-    const node = await this.engine.tex2svgPromise(mark('probe', '0', this.profile), {
-      display: true,
-      em: 16,
-      ex: 8,
-      containerWidth: 100000,
-    });
+    const node = await this.engine.convert(mark('probe', '0', this.profile));
     this.staging.append(node);
     try {
       const svg = node.querySelector('svg');
       const paths = [...(svg?.querySelectorAll('#fc-probe path') || [])];
-      const params = this.engine.startup?.document?.outputJax?.font?.params;
+      const params = this.engine.params;
       if (!svg || !paths.length || !Number.isFinite(params?.axis_height)) {
         throw new Error('MathJax math-axis calibration is unavailable');
       }
@@ -212,12 +146,7 @@ class Typesetter {
     // A font's metric bounds and its visible ink can differ by a fraction of
     // a unit. Measure the centered '=' too, so time mode has exactly the same
     // baseline as equation mode, down to this optical/metric discrepancy.
-    const axisNode = await this.engine.tex2svgPromise(relation(this.profile), {
-      display: true,
-      em: 16,
-      ex: 8,
-      containerWidth: 100000,
-    });
+    const axisNode = await this.engine.convert(relation(this.profile));
     this.staging.append(axisNode);
     try {
       const svg = axisNode.querySelector('svg');
@@ -305,14 +234,12 @@ class Typesetter {
     clockFace = false,
     division: TexOptions['division'] = 'fraction',
   ): Promise<Frame> {
-    const node = await this.engine.tex2svgPromise(tex, {
-      display: true,
-      em: 16,
-      ex: 8,
-      containerWidth: 100000,
-    });
+    const node = await this.engine.convert(tex);
     const svg = node.querySelector('svg');
     if (!svg || svg.querySelector('[data-mml-node="merror"]'))
+      throw new Error('TeX typesetting failed');
+    // A glyph outside the bundled font data falls back to a real <text> node.
+    if ([...svg.querySelectorAll('text')].some((text) => text.textContent?.length))
       throw new Error('TeX typesetting failed');
     // Not display:none: the SVG must participate in layout for getScreenCTM().
     this.staging.append(node);

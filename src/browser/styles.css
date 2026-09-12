@@ -650,16 +650,6 @@ main {
 .license-content details {
   border-bottom: 1px solid var(--line);
 }
-.math-engine-frame {
-  position: fixed;
-  left: -100000px;
-  top: 0;
-  width: 300px;
-  height: 200px;
-  visibility: hidden;
-  pointer-events: none;
-  border: 0;
-}
 .segmented-control {
   display: grid;
   grid-auto-flow: column;

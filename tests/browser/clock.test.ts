@@ -450,7 +450,7 @@ test('clock', async ({ browser, args, context: ctx }) => {
       await checkGeometry();
     }
   }
-  assert.deepEqual(await page.locator('.math-engine-frame').count(), 8);
+  assert.deepEqual(await page.locator('.math-staging').count(), 8);
   report['checks'].push(
     'Cached independent font engines; repeated font switching leaves expression and digit identity intact',
   );
