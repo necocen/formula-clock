@@ -1,7 +1,46 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { match } from '../../src/shared/symbols.ts';
+import { match, readOperator, readStructure } from '../../src/shared/symbols.ts';
+import { expressionTex } from '../../src/shared/expression.ts';
 import type { SymbolIdentity } from '../../src/shared/types.ts';
+import { literal as L, unary as U, binary as B } from '../fixtures/ast.ts';
+
+test('TeX markers decode into stable operator gaps, nested operands and structures', () => {
+  const ast = B('div', U('fact', U('fact', L(0))), U('sqrt', B('add', L(1), B('mul', L(2), L(3)))));
+  for (const division of ['fraction', 'inline', 'slash'] as const) {
+    const options = { division, symbolMotion: true, structureMotion: true };
+    const tex = expressionTex(ast, '1234', options);
+    const operators = [...tex.matchAll(/\\cssId\{(fc-op-[^}]+)\}/g)].map(([, id]) =>
+      readOperator(id, division),
+    );
+    const sites = operators.map((marker) => marker.site).sort();
+    assert.deepEqual(sites, [
+      'add-b2-0',
+      ...(division === 'fraction' ? [] : ['div-b1-0']),
+      'fact-u01-0',
+      'fact-u01-1',
+      'mul-b3-0',
+    ]);
+    if (division !== 'fraction')
+      assert.equal(
+        operators.find((marker) => marker.role === 'div')?.kind,
+        division === 'slash' ? '/' : '÷',
+      );
+    const structures = [...tex.matchAll(/\\cssId\{(fc-struct-[^}]+)\}/g)].map(([, id]) =>
+      readStructure(id),
+    );
+    assert.ok(structures.some((marker) => marker.site === 'root-u14-0'));
+    assert.equal(
+      structures.some((marker) => marker.site === 'frac-b1-0'),
+      division === 'fraction',
+    );
+    assert.equal(
+      expressionTex(ast, '1234', options),
+      tex,
+      'Marker ordinals reset for each expression',
+    );
+  }
+});
 const glyph = (
   kind: string,
   site?: string,

@@ -20,18 +20,9 @@ function parse(url: string | URL): Readonly<SharedClockState> | null {
   return Object.freeze({
     v: 1,
     t: time,
-    font:
-      font && Object.hasOwn(Display.PROFILES, font)
-        ? (font as SharedClockState['font'])
-        : Display.DEFAULTS.font,
-    numerals:
-      numerals && Object.hasOwn(Display.NUMERALS, numerals)
-        ? (numerals as SharedClockState['numerals'])
-        : Display.DEFAULTS.numerals,
-    division:
-      division === 'fraction' || division === 'inline' || division === 'slash'
-        ? division
-        : Display.DEFAULTS.division,
+    font: Display.isFont(font) ? font : Display.DEFAULTS.font,
+    numerals: Display.isNumerals(numerals) ? numerals : Display.DEFAULTS.numerals,
+    division: Display.isDivision(division) ? division : Display.DEFAULTS.division,
   });
 }
 function params(state: SharedClockState) {
@@ -39,9 +30,9 @@ function params(state: SharedClockState) {
     !state ||
     !validTime(state.t) ||
     state.v !== 1 ||
-    !Object.hasOwn(Display.PROFILES, state.font) ||
-    !Object.hasOwn(Display.NUMERALS, state.numerals) ||
-    !['fraction', 'inline', 'slash'].includes(state.division)
+    !Display.isFont(state.font) ||
+    !Display.isNumerals(state.numerals) ||
+    !Display.isDivision(state.division)
   ) {
     throw new TypeError('Invalid shared clock state');
   }
@@ -63,11 +54,9 @@ function snapshot(value: unknown): Readonly<SharedSnapshot> {
     !isRecord(value) ||
     value.v !== 1 ||
     !validTime(value.t) ||
-    typeof value.font !== 'string' ||
-    !Object.hasOwn(Display.PROFILES, value.font) ||
-    typeof value.numerals !== 'string' ||
-    !Object.hasOwn(Display.NUMERALS, value.numerals) ||
-    (value.division !== 'fraction' && value.division !== 'inline' && value.division !== 'slash') ||
+    !Display.isFont(value.font) ||
+    !Display.isNumerals(value.numerals) ||
+    !Display.isDivision(value.division) ||
     !Object.hasOwn(value, 'ast') ||
     Object.keys(value).some(
       (key) => !['v', 't', 'font', 'numerals', 'division', 'ast'].includes(key),
@@ -78,24 +67,24 @@ function snapshot(value: unknown): Readonly<SharedSnapshot> {
   return Object.freeze({
     v: 1,
     t: value.t,
-    font: value.font as SharedClockState['font'],
-    numerals: value.numerals as SharedClockState['numerals'],
+    font: value.font,
+    numerals: value.numerals,
     division: value.division,
     ast: validateAst(value.ast, value.t.slice(0, 4)),
   });
 }
-const validId = (value: unknown): value is string =>
+const isShareId = (value: unknown): value is string =>
   typeof value === 'string' && /^[A-Za-z0-9]{10}$/.test(value);
 function id(path: string): string | null {
   const value = /^\/s\/([^/]+)$/.exec(path)?.[1];
-  return validId(value) ? value : null;
+  return isShareId(value) ? value : null;
 }
 function shortUrl(origin: string, id: string) {
-  if (!validId(id)) throw new TypeError('Invalid share ID');
+  if (!isShareId(id)) throw new TypeError('Invalid share ID');
   return new URL(`/s/${id}`, origin);
 }
 function view(value: unknown): Readonly<SharedView> {
-  if (!isRecord(value) || !validId(value.id)) throw new TypeError('Invalid shared view');
+  if (!isRecord(value) || !isShareId(value.id)) throw new TypeError('Invalid shared view');
   return Object.freeze({ id: value.id, snapshot: snapshot(value.snapshot) });
 }
 function timeLabel(state: SharedClockState) {
@@ -130,97 +119,6 @@ function localDate(time: string) {
     0,
   );
 }
-interface PreparedLink {
-  id: string | null;
-  promise: Promise<string>;
-  controller: AbortController | null;
-}
-// Canonical key order without revalidating ASTs already accepted by their producer.
-const snapshotKey = (state: SharedSnapshot) =>
-  JSON.stringify(state, [
-    'v',
-    't',
-    'font',
-    'numerals',
-    'division',
-    'ast',
-    'op',
-    'i',
-    'j',
-    'a',
-    'b',
-  ]);
-/** Small per-page cache: repeated saves of the same snapshot share one request. */
-class LinkCache {
-  private entries = new Map<string, PreparedLink>();
-  constructor(
-    initial: SharedView | null = null,
-    private request: typeof fetch = globalThis.fetch.bind(globalThis),
-    private timeoutMs = 15000,
-  ) {
-    if (initial) {
-      this.entries.set(snapshotKey(initial.snapshot), {
-        id: initial.id,
-        promise: Promise.resolve(initial.id),
-        controller: null,
-      });
-    }
-  }
-  peek(state: SharedSnapshot): string | null {
-    return this.entries.get(snapshotKey(state))?.id || null;
-  }
-  prepare(state: SharedSnapshot): Promise<string> {
-    const key = snapshotKey(state),
-      existing = this.entries.get(key);
-    if (existing) {
-      this.entries.delete(key);
-      this.entries.set(key, existing);
-      return existing.promise;
-    }
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    const entry: PreparedLink = {
-      id: null,
-      controller,
-      promise: Promise.resolve()
-        .then(async () => {
-          controller.signal.throwIfAborted();
-          const response = await this.request('/api/shares', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: key,
-            signal: controller.signal,
-          });
-          if (!response.ok) throw new Error(`Share creation returned ${response.status}`);
-          const result: unknown = await response.json();
-          controller.signal.throwIfAborted();
-          if (!isRecord(result) || !validId(result.id)) throw new Error('Invalid share response');
-          entry.id = result.id;
-          entry.controller = null;
-          return result.id;
-        })
-        .catch((error) => {
-          if (this.entries.get(key) === entry) this.entries.delete(key);
-          throw error;
-        })
-        .finally(() => clearTimeout(timeout)),
-    };
-    this.entries.set(key, entry);
-    while (this.entries.size > 12) {
-      const oldest = this.entries.keys().next().value!;
-      this.entries.get(oldest)?.controller?.abort();
-      this.entries.delete(oldest);
-    }
-    return entry.promise;
-  }
-  cancelPending() {
-    for (const [key, entry] of this.entries)
-      if (entry.controller) {
-        entry.controller.abort();
-        this.entries.delete(key);
-      }
-  }
-}
 const api = {
   parse,
   params,
@@ -233,7 +131,7 @@ const api = {
   title,
   card,
   localDate,
-  LinkCache,
+  isShareId,
 };
 export {
   parse,
@@ -247,6 +145,6 @@ export {
   title,
   card,
   localDate,
-  LinkCache,
+  isShareId,
 };
 export default Object.freeze(api);

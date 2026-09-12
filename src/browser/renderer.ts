@@ -1,18 +1,20 @@
-import type {
-  ClockLayout,
-  DisplayOptions,
-  Expr,
-  GlyphDiagnostic,
-  LayoutItem,
-  SharedSnapshot,
-} from '../shared/types.ts';
+import type { DisplayOptions, Expr, SharedSnapshot } from '../shared/types.ts';
 import FormulaDisplay from '../shared/display.ts';
 import FormulaExpression from '../shared/expression.ts';
 import FormulaSymbols from '../shared/symbols.ts';
 import type { Typesetter } from './typesetter.ts';
 import { $, pad } from './dom.ts';
-import type { ClockFace, DisplayedFrame, Frame, PlacedToken, Translate } from './types.ts';
-import type { FrameCommit } from './sharing.ts';
+import type {
+  ClockFace,
+  ClockLayout,
+  DisplayedFrame,
+  Frame,
+  FrameCommit,
+  GlyphDiagnostic,
+  LayoutItem,
+  PlacedToken,
+  Translate,
+} from './types.ts';
 
 interface Movement {
   from: number[];

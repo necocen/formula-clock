@@ -1,5 +1,5 @@
 import type { FormulaProvider } from '../shared/types.ts';
-import FormulaI18n from '../shared/i18n.ts';
+import FormulaI18n from './i18n.ts';
 import FormulaShare from '../shared/share.ts';
 import { $, pad, timeCode, setupDialog } from './dom.ts';
 import { createTimeSignal } from './audio.ts';

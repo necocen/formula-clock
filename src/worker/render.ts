@@ -1,46 +1,31 @@
 import { LiteElement } from '@mathjax/src/js/adaptors/lite/Element.js';
 import type { LiteText } from '@mathjax/src/js/adaptors/lite/Text.js';
 import type { LiteDocument } from '@mathjax/src/js/adaptors/lite/Document.js';
-import type { MathDocument } from '@mathjax/src/js/core/MathDocument.js';
 import type { Bounds, DisplayOptions, Expr, Typography } from '../shared/types.ts';
-import { CONVERT_OPTIONS, TEX_PACKAGES } from '../shared/typeset.ts';
+import { createMathJax, type MathJaxEngine } from '../shared/mathjax/pipeline.ts';
+import { calibrateTypography } from '../shared/typography.ts';
 import type { RenderInput } from './types.ts';
-interface Engine {
+interface Engine extends Pick<MathJaxEngine<LiteElement, LiteText, LiteDocument>, 'convert'> {
   profile: ReturnType<typeof Display.typography>;
   queue: Promise<unknown>;
-  document: MathDocument<LiteElement, LiteText, LiteDocument>;
   typography: Typography;
 }
-import { mathjax } from '@mathjax/src/js/mathjax.js';
-import { TeX } from '@mathjax/src/js/input/tex.js';
-import { SVG } from '@mathjax/src/js/output/svg.js';
 import { liteAdaptor } from '@mathjax/src/js/adaptors/liteAdaptor.js';
 import { RegisterHTMLHandler } from '@mathjax/src/js/handlers/html.js';
-import '@mathjax/src/js/input/tex/base/BaseConfiguration.js';
-import '@mathjax/src/js/input/tex/ams/AmsConfiguration.js';
-import '@mathjax/src/js/input/tex/newcommand/NewcommandConfiguration.js';
-import '@mathjax/src/js/input/tex/html/HtmlConfiguration.js';
-import { MathJaxStix2Font } from '@mathjax/mathjax-stix2-font/js/svg.js';
-import { MathJaxTermesFont } from '@mathjax/mathjax-termes-font/js/svg.js';
-import { MathJaxFiraFont } from '@mathjax/mathjax-fira-font/js/svg.js';
-import { MathJaxModernFont } from '@mathjax/mathjax-modern-font/js/svg.js';
-import { MathJaxEulerFontExtension } from '@mathjax/mathjax-euler-font-extension/js/svg.js';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
 import Expression from '../shared/expression.ts';
 import Display from '../shared/display.ts';
 import Share from '../shared/share.ts';
-import { COLORS, canvas, DEFAULT_IMAGE } from './brand.ts';
+import { Font as Stix2 } from '../shared/mathjax/fonts/font-stix2.ts';
+import { Font as Termes } from '../shared/mathjax/fonts/font-termes.ts';
+import { Font as Fira } from '../shared/mathjax/fonts/font-fira.ts';
+import { Font as Euler } from '../shared/mathjax/fonts/font-euler.ts';
+import { COLORS } from '../shared/palette.ts';
+import { canvas, DEFAULT_IMAGE } from './brand.ts';
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
-// Modern is used only as the base for Euler; other profiles have separate classes.
-MathJaxModernFont.addExtension(MathJaxEulerFontExtension);
-const fonts = {
-  stix2: MathJaxStix2Font,
-  termes: MathJaxTermesFont,
-  fira: MathJaxFiraFont,
-  euler: MathJaxModernFont,
-};
+const fonts = { stix2: Stix2, termes: Termes, fira: Fira, euler: Euler };
 const engines = new Map<string, Promise<Engine>>();
 const rasterOptions = { font: { loadSystemFonts: false } };
 let wasmReady: Promise<void> | null;
@@ -104,8 +89,8 @@ function inkBounds(svg: LiteElement, target = svg) {
   }
 }
 
-async function convert(engine: Pick<Engine, 'document'>, tex: string) {
-  const node = await engine.document.convertPromise(tex, { ...CONVERT_OPTIONS });
+async function convert(engine: Pick<Engine, 'convert'>, tex: string) {
+  const node = await engine.convert(tex);
   if (!(node instanceof LiteElement)) throw new Error('MathJax did not produce an SVG container');
   const svg = adaptor.tags(node, 'svg')[0];
   // MathJax adds empty <text data-id-align> anchors inside fractions. They are
@@ -127,43 +112,17 @@ async function engineFor(
   if (!engines.has(key)) {
     const task = (async (): Promise<Engine> => {
       const profile = Display.typography(font, numerals);
-      const output = new SVG<LiteElement, LiteText, LiteDocument>({
-        fontData: fonts[font],
-        fontCache: 'none',
-      });
-      const engine = {
+      const pipeline = createMathJax<LiteElement, LiteText, LiteDocument>('', fonts[font]);
+      const engine = { profile, queue: Promise.resolve(), convert: pipeline.convert };
+      const typography = await calibrateTypography(
         profile,
-        queue: Promise.resolve(),
-        document: mathjax.document('', {
-          InputJax: new TeX({
-            packages: [...TEX_PACKAGES],
-            formatError(_jax: unknown, error: Error) {
-              throw error;
-            },
-          }),
-          OutputJax: output,
-        }),
-      };
-      const zero = await convert(engine, Expression.mark('probe', '0', profile));
-      const zeroBox = inkBounds(zero, byId(zero, 'fc-probe'));
-      const originalAxisEm = output.font.params.axis_height,
-        numericAxisEm = -zeroBox.centerY / 1000;
-      if (!(numericAxisEm > 0.15 && numericAxisEm < 0.55)) throw new Error('Invalid numeral axis');
-      if (profile.numericAxis) output.font.params.axis_height = numericAxisEm;
-      const equal = await convert(engine, Expression.relation(profile));
-      const equalBox = inkBounds(equal, byId(equal, 'fc-eq'));
-      const typography: Typography = {
-        profile: font,
-        numerals,
-        axisMode: profile.numericAxis ? 'numeric' : 'font',
-        referenceDigit: '0',
-        originalAxisEm,
-        numericAxisEm,
-        axisEm: output.font.params.axis_height,
-        zeroTop: zeroBox.y,
-        zeroBottom: zeroBox.y + zeroBox.h,
-        equalCenterY: equalBox.centerY,
-      };
+        pipeline.params,
+        async (tex, marker) => {
+          const svg = await convert(engine, tex);
+          const ink = inkBounds(svg, byId(svg, marker));
+          return { top: ink.y, bottom: ink.y + ink.h, centerY: ink.centerY };
+        },
+      );
       return { ...engine, typography };
     })().catch((error) => {
       engines.delete(key);

@@ -110,20 +110,7 @@ function create(language: unknown) {
       Object.hasOwn(values, name) ? String(values[name]) : placeholder,
     );
   }
-  function apply(document: Document) {
-    document.documentElement.lang = locale;
-    for (const element of document.querySelectorAll<HTMLElement>('[data-i18n]'))
-      element.textContent = t(element.dataset.i18n as MessageKey);
-    for (const attribute of ['title', 'aria-label']) {
-      for (const element of document.querySelectorAll(`[data-i18n-${attribute}]`)) {
-        element.setAttribute(
-          attribute,
-          t(element.getAttribute(`data-i18n-${attribute}`) as MessageKey),
-        );
-      }
-    }
-  }
-  return Object.freeze({ locale, t, apply });
+  return Object.freeze({ locale, t });
 }
 const api = Object.freeze({ resolveLanguage, create, messages });
 export { resolveLanguage, create, messages };

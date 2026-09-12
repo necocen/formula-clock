@@ -4,14 +4,17 @@
  * Application code must never reference them (AGENTS.md); they exist so test
  * probes typecheck against the real API surface.
  */
-import type { FormulaClockAPI, FormulaProvider } from '../../src/shared/types.ts';
+import type { FormulaProvider } from '../../src/shared/types.ts';
+import type { FormulaClockAPI } from '../../src/browser/types.ts';
 
 declare global {
   // Published by src/browser/bootstrap.ts and src/browser/app.ts.
   var FormulaClock: FormulaClockAPI;
   var FORMULA_CLOCK_CONFIG: { provider?: FormulaProvider };
-  var FormulaShare: (typeof import('../../src/shared/share.ts'))['default'];
-  var FormulaData: (typeof import('../../src/shared/data.ts'))['default'];
+  var FormulaShare: (typeof import('../../src/shared/share.ts'))['default'] & {
+    LinkCache: typeof import('../../src/browser/share-client.ts').LinkCache;
+  };
+  var FormulaData: (typeof import('../../src/browser/data.ts'))['default'];
   var FormulaExpression: (typeof import('../../src/shared/expression.ts'))['default'];
   var FormulaTypesetter: (typeof import('../../src/browser/typesetter.ts'))['default'];
 

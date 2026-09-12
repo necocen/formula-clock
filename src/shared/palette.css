@@ -1,0 +1,11 @@
+/* Shared equation colors. The browser uses these variables directly;
+   palette.ts reads the same values for SVG/PNG rendering. */
+:root {
+  --bg: #111311;
+  --fg: #edece4;
+  --symbols: #c3c8ba;
+  --c0: #eea28c;
+  --c1: #e4c782;
+  --c2: #9acbbb;
+  --c3: #b8ace1;
+}

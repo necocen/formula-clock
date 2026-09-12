@@ -1,11 +1,6 @@
 import brand from './assets/brand.svg?raw';
 import defaultBrand from './assets/default.svg?raw';
-export const COLORS = Object.freeze({
-  background: '#111311',
-  foreground: '#edece4',
-  symbols: '#c3c8ba',
-  digits: ['#eea28c', '#e4c782', '#9acbbb', '#b8ace1'],
-});
+import { COLORS } from '../shared/palette.ts';
 
 export const BRAND = brand.trim();
 const CORNER_BRAND = `<g transform="translate(50 40) scale(6) translate(-50 -43)">${BRAND}</g>`;

@@ -1,14 +1,16 @@
 import type { DisplayOptions, Expr, TexOptions, Typography } from '../shared/types.ts';
 import type { ClockFace, Frame, GlyphToken, PlacedToken } from './types.ts';
 import type { Engine } from './engine.ts';
-import { FONT_LOADERS } from './fonts/index.ts';
+import { calibrateTypography } from '../shared/typography.ts';
+import { readOperator, readStructure } from '../shared/symbols.ts';
+import { FONT_LOADERS } from './fonts.ts';
 /* TeX -> SVG layout adapter. MathJax owns typography; the clock owns animation.
  * The engine and per-font data ship as lazy chunks of the app bundle; see
  * ./engine.ts for the shared pipeline.
  */
 const NS = 'http://www.w3.org/2000/svg';
 import * as Expression from '../shared/expression.ts';
-const { expressionTex, frameTex, mark, relation } = Expression;
+const { expressionTex, frameTex } = Expression;
 import * as Display from '../shared/display.ts';
 const { PROFILES, NUMERALS } = Display;
 const matrixArray = (m: DOMMatrixReadOnly) => [m.a, m.b, m.c, m.d, m.e, m.f];
@@ -63,8 +65,8 @@ class Typesetter {
     profile: DisplayOptions['font'] = 'stix2',
     numerals: DisplayOptions['numerals'] = 'oldstyle',
   ) {
-    if (!Object.hasOwn(PROFILES, profile)) throw new TypeError('Unknown font profile');
-    if (!Object.hasOwn(NUMERALS, numerals)) throw new TypeError('Unknown numeral style');
+    if (!Display.isFont(profile)) throw new TypeError('Unknown font profile');
+    if (!Display.isNumerals(numerals)) throw new TypeError('Unknown numeral style');
     this.profile = Object.freeze({
       ...Display.typography(profile, numerals),
       label: `${PROFILES[profile].label} · ${NUMERALS[numerals]}`,
@@ -110,60 +112,23 @@ class Typesetter {
     }
   }
   async calibrateTypography() {
-    // FontData.params.axis_height is MathJax's TeX math-axis parameter.
-    // Calibrate ONCE from the actual font's zero, not the current time's digits.
-    // Otherwise the vertical center would change whenever (say) 8 becomes 9.
-    let typography: Omit<Typography, 'equalCenterY'>;
-    const node = await this.engine.convert(mark('probe', '0', this.profile));
-    this.staging.append(node);
-    try {
-      const svg = node.querySelector('svg');
-      const paths = [...(svg?.querySelectorAll('#fc-probe path') || [])];
-      const params = this.engine.params;
-      if (!svg || !paths.length || !Number.isFinite(params?.axis_height)) {
-        throw new Error('MathJax math-axis calibration is unavailable');
-      }
-      const inverse = svg.getScreenCTM()?.inverse();
-      if (!inverse) throw new Error('MathJax calibration coordinates are unavailable');
-      const { top, bottom } = pathBounds(svg.querySelector('#fc-probe'), inverse);
-      // SVG's math root is y-down; the font axis is y-up, in em.
-      const numericAxis = -(top + bottom) / 2000;
-      if (!(numericAxis > 0.15 && numericAxis < 0.55)) {
-        throw new Error('Unexpected numeral metrics during math-axis calibration');
-      }
-      typography = Object.freeze({
-        profile: this.profile.id,
-        numerals: this.profile.numerals,
-        axisMode: this.profile.numericAxis ? 'numeric' : 'font',
-        referenceDigit: '0',
-        originalAxisEm: params.axis_height,
-        numericAxisEm: numericAxis,
-        zeroTop: top,
-        zeroBottom: bottom,
-        axisEm: params.axis_height,
-      });
-      // Set this before typesetting any clock frame. Fractions and symmetric
-      // delimiters then use the SAME axis as the vcentered arithmetic signs.
-      if (this.profile.numericAxis) params.axis_height = numericAxis;
-      typography = Object.freeze({ ...typography, axisEm: params.axis_height });
-    } finally {
-      node.remove();
-    }
-    // A font's metric bounds and its visible ink can differ by a fraction of
-    // a unit. Measure the centered '=' too, so time mode has exactly the same
-    // baseline as equation mode, down to this optical/metric discrepancy.
-    const axisNode = await this.engine.convert(relation(this.profile));
-    this.staging.append(axisNode);
-    try {
-      const svg = axisNode.querySelector('svg');
-      if (!svg) throw new Error('Equal-sign calibration failed');
-      const inverse = svg.getScreenCTM()?.inverse();
-      if (!inverse) throw new Error('Equal-sign calibration coordinates are unavailable');
-      const equal = pathBounds(svg.querySelector('#fc-eq'), inverse);
-      this.typography = Object.freeze({ ...typography, equalCenterY: equal.centerY });
-    } finally {
-      axisNode.remove();
-    }
+    this.typography = await calibrateTypography(
+      this.profile,
+      this.engine.params,
+      async (tex, marker) => {
+        const node = await this.engine.convert(tex);
+        this.staging.append(node);
+        try {
+          const svg = node.querySelector('svg');
+          if (!svg) throw new Error('MathJax calibration SVG is unavailable');
+          const inverse = svg.getScreenCTM()?.inverse();
+          if (!inverse) throw new Error('MathJax calibration coordinates are unavailable');
+          return pathBounds(svg.querySelector('#' + marker), inverse);
+        } finally {
+          node.remove();
+        }
+      },
+    );
   }
   frame(
     ast: Expr | null,
@@ -279,21 +244,9 @@ class Typesetter {
       const slots = ['d0', 'd1', 'd2', 'd3', 's0', 's1'];
       if (equality) slots.push('eq');
       const symbolMarks = new Map(
-        [...svg.querySelectorAll('[id^="fc-op-"]')].map((el) => {
-          const [, role, attachment, ordinal] = el.id.match(
-            /^fc-op-\d+-(add|sub|neg|mul|div|fact)-(b[1-3]|u[0-3][1-4])-(\d+)$/,
-          )!;
-          const kinds: Record<string, string> = {
-            add: '+',
-            sub: '−',
-            neg: '−',
-            mul: '×',
-            div: division === 'slash' ? '/' : '÷',
-            fact: '!',
-          };
-          const kind = kinds[role];
-          return [el.id.slice(3), { kind, role, site: `${role}-${attachment}-${ordinal}` }];
-        }),
+        [...svg.querySelectorAll('[id^="fc-op-"]')].map(
+          (el) => [el.id.slice(3), readOperator(el.id, division)] as const,
+        ),
       );
       const symbolOffset = slots.length;
       slots.push(...symbolMarks.keys());
@@ -433,10 +386,7 @@ class Typesetter {
         path.setAttribute('data-fc-extract', '');
       }
       for (const tag of svg.querySelectorAll('[id^="fc-struct-"]')) {
-        const [, role, attachment, ordinal] = tag.id.match(
-          /^fc-struct-(frac|root|paren)-(b[1-3]|u[0-3][1-4])-(\d+)$/,
-        )!;
-        const site = `${role}-${attachment}-${ordinal}`;
+        const { role, site } = readStructure(tag.id);
         if (role === 'frac') {
           const core = coreOf(tag, 'mfrac'),
             rules = core ? ownRules(core) : [];

@@ -1,4 +1,5 @@
 import { isRecord, type DisplayOptions } from '../shared/types.ts';
+import Display from '../shared/display.ts';
 import FormulaTypesetter, { type Typesetter } from './typesetter.ts';
 import { $ } from './dom.ts';
 import type { ClockFace } from './types.ts';
@@ -32,34 +33,19 @@ export function createSettings(deps: SettingsDeps): Settings {
       return {};
     }
   }
-  function activeDisplay(options: DisplayOptions = displaySettings): DisplayOptions {
-    return {
-      ...options,
-      structureMotion: options.symbolMotion && options.structureMotion,
-      symbolMorph: options.symbolMotion && options.symbolMorph,
-    };
-  }
   const saved = savedDisplay();
   let displaySettings: DisplayOptions = {
-    font:
-      typeof saved.font === 'string' && Object.hasOwn(FormulaTypesetter.PROFILES, saved.font)
-        ? (saved.font as DisplayOptions['font'])
-        : 'stix2',
+    font: Display.isFont(saved.font) ? saved.font : Display.DEFAULTS.font,
     // Preserve the appearance of settings saved before numeral styles were independent.
-    numerals:
-      typeof saved.numerals === 'string' &&
-      Object.hasOwn(FormulaTypesetter.NUMERALS, saved.numerals)
-        ? (saved.numerals as DisplayOptions['numerals'])
-        : saved.font === 'euler'
-          ? 'lining'
-          : 'oldstyle',
-    division:
-      saved.division === 'fraction' || saved.division === 'inline' || saved.division === 'slash'
-        ? saved.division
-        : 'fraction',
-    symbolMotion: saved.symbolMotion !== false,
-    structureMotion: saved.structureMotion !== false,
-    symbolMorph: saved.symbolMorph !== false,
+    numerals: Display.isNumerals(saved.numerals)
+      ? saved.numerals
+      : saved.font === 'euler'
+        ? 'lining'
+        : Display.DEFAULTS.numerals,
+    division: Display.isDivision(saved.division) ? saved.division : Display.DEFAULTS.division,
+    symbolMotion: saved.symbolMotion === false ? false : Display.DEFAULTS.symbolMotion,
+    structureMotion: saved.structureMotion === false ? false : Display.DEFAULTS.structureMotion,
+    symbolMorph: saved.symbolMorph === false ? false : Display.DEFAULTS.symbolMorph,
   };
   // Restore before selecting an engine; opening a link never saves preferences.
   if (deps.sharedState) {
@@ -128,15 +114,7 @@ export function createSettings(deps: SettingsDeps): Settings {
   }
   async function setDisplay(changes: Partial<DisplayOptions>) {
     const next = { ...displaySettings, ...changes };
-    if (
-      !Object.hasOwn(FormulaTypesetter.PROFILES, next.font) ||
-      !Object.hasOwn(FormulaTypesetter.NUMERALS, next.numerals) ||
-      !['fraction', 'inline', 'slash'].includes(next.division) ||
-      (['symbolMotion', 'structureMotion', 'symbolMorph'] as const).some(
-        (key) => typeof next[key] !== 'boolean',
-      )
-    )
-      throw new TypeError('Invalid display options');
+    if (!Display.isDisplay(next)) throw new TypeError('Invalid display options');
     deps.leaveShared(true); // Restyle the saved formula until the user changes time.
     displaySettings = {
       font: next.font,
@@ -194,7 +172,7 @@ export function createSettings(deps: SettingsDeps): Settings {
     get current() {
       return displaySettings;
     },
-    view: () => activeDisplay(),
+    view: () => Display.activeDisplay(displaySettings),
     engine: () => typesetter,
     face: (font, numerals) => clockFaces.get(typographyKey(font, numerals)),
     prepareFace,

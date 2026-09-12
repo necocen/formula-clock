@@ -310,5 +310,5 @@ OG／Twitterカードは`FormulaShare.card(state)`で作り、タイトルは`Fo
 旧形式の`/og.png`も維持する。画像URLの描画版`r`はキャッシュの更新用で、過去の描画版を指定するAPIではない。
 `renderOg({state,ast})` は正規ASTからPNGを返す、Cloudflareのストレージに依存しない処理。
 
-`FetchHourProvider(manifestUrl, {fetch, initial})` の任意の第2引数で取得関数と焼き込み目録を差し替えられる。
+`FetchHourProvider(manifestUrl, {fetch, initial})` の任意の第2引数で取得関数と焼き込み目録を差し替えられる。`src/shared/data.ts`の実装には絶対URLを渡す。ブラウザの`FormulaData.FetchHourProvider`は`src/browser/data.ts`のアダプターを使い、従来どおり相対URLを`document.baseURI`から解決する。
 旧形式のOG画像ではASSETS bindingを使い、既存の`getMinute(hhmm, {signal})`契約とキャッシュ・中止処理を維持する。

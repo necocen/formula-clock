@@ -1,4 +1,5 @@
-import { isRecord, type AudioEvent } from '../shared/types.ts';
+import { isRecord } from '../shared/types.ts';
+import type { AudioEvent } from './types.ts';
 import { $ } from './dom.ts';
 import type { Translate } from './types.ts';
 

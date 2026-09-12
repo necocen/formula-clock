@@ -1,4 +1,5 @@
-import type { FormulaProvider, FormulaClockAPI } from '../shared/types.ts';
+import type { FormulaProvider } from '../shared/types.ts';
+import type { FormulaClockAPI } from './types.ts';
 export {};
 declare global {
   interface Document {

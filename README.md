@@ -62,7 +62,7 @@ URLのIDが発行されたら共有を開き、KV保存の完了は待ちませ�
 ```text
 src/
   browser/       画面・CSS・組版・ブラウザ操作
-  shared/        AST・表示設定・データ取得・共有URL・共通の型
+  shared/        AST・表示規則・組版と軸補正・データ取得・共有URL・共通の型
   worker/        共有API・HTMLメタデータ・OG画像
 public/          配信用の静的設定・固定ロゴPNG（data/は生成物）
 licenses/        ライセンスの取得先・ハッシュ・表示テンプレート
@@ -80,7 +80,9 @@ dist/            ビルド出力（Git管理外）
 test-results/    実行結果・スクリーンショット（Git管理外）
 ```
 
-`src/browser/index.html`が画面の原本、`src/browser/main.ts`がViteのエントリーです。アプリ本体はデータ取得・表示設定・レンダラ・時計進行・共有・時報・全画面・ショートカットの役割別モジュールに分かれ、`app.ts`が合成ルートとして配線し、最後に公開API`window.FormulaClock`を組み立てます。`bootstrap.ts`はテスト・コンソール向けに共有モジュールを`window`へ載せます。データ取得の既定値は`provider.ts`が登録します。`tools/vite-clock.ts`はライセンス表示と式データだけを用意し、JavaScript・HTML・WASMの処理はViteと既存プラグインに任せます。原本を編集して`pnpm run build`で更新してください。
+`src/browser/index.html`が画面の原本、`src/browser/main.ts`がViteのエントリーです。アプリ本体はデータ取得・表示設定・レンダラ・時計進行・共有・時報・全画面・ショートカットの役割別モジュールに分かれ、`app.ts`が合成ルートとして配線し、最後に公開API`window.FormulaClock`を組み立てます。`bootstrap.ts`はテスト・コンソール向けの公開APIを`window`へ載せます。DOM向け翻訳適用と埋め込みデータの読み込みは`browser/i18n.ts`・`browser/data.ts`、共有URL発行の通信とキャッシュは`browser/share-client.ts`が担当し、既存の公開APIも保ちます。データ取得の既定値は`provider.ts`が登録します。`tools/vite-clock.ts`はライセンス表示と式データだけを用意し、JavaScript・HTML・WASMの処理はViteと既存プラグインに任せます。原本を編集して`pnpm run build`で更新してください。
+
+`shared/`には環境から独立した仕様を置きます。`display.ts`は表示設定の許容値・初期値・有効値、`symbols.ts`は記号マーカーの生成・解析と持ち場の対応付け、`typography.ts`は軸補正の手順を管理します。`mathjax/pipeline.ts`と`mathjax/fonts/`は両描画環境で共通のエンジン構成とフォント定義です。ブラウザは`engine.ts`と`fonts.ts`から遅延読み込みし、Workerは静的importします。字形の測定は各環境のDOM／resvgで行い、書体×数字スタイルごとのエンジンとキャッシュは各環境が保持します。画面とOGの共通色は`shared/palette.css`を原本とし、Workerは`palette.ts`を介して同じ値を使います。
 
 `dist/`と`test-results/`は削除・再生成できるためGitへ入れません。`data/expressions.json`は採用済みの入力データ、`docs/images/`は説明用の見本、`tests/fixtures/og-snapshots/`は画像差分の基準入力なのでGit管理します。`public/data/`も生成物です。テストの実際の画像や差分は`test-results/`へ出力します。
 

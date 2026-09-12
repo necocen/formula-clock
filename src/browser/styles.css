@@ -1,14 +1,10 @@
+@import '../shared/palette.css';
+
 :root {
   color-scheme: dark;
-  --bg: #111311;
-  --fg: #edece4;
   --muted: #92978e;
   --dim: #636b61;
   --line: #30362c;
-  --c0: #eea28c;
-  --c1: #e4c782;
-  --c2: #9acbbb;
-  --c3: #b8ace1;
   --sans: Inter, 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
   --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 }
@@ -269,18 +265,18 @@ main {
   fill: currentColor;
   stroke: currentColor;
   stroke-width: 0;
-  color: #c3c8ba;
+  color: var(--symbols);
 }
 #equal-sign {
   fill: currentColor;
   stroke: currentColor;
   stroke-width: 0;
-  color: #c3c8ba;
+  color: var(--symbols);
   opacity: 0;
   transition: opacity 440ms ease;
 }
 #notation-root {
-  color: #c3c8ba;
+  color: var(--symbols);
   transition: opacity 440ms ease;
 }
 .stage.resting .digit {

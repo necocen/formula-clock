@@ -28,7 +28,7 @@ pnpm run test:og      # 配信用ビルド → 画像描画とworkerdの統合�
 
 `vitest.config.ts`で`unit`・`build`・`og`のプロジェクトを定義しています。`pnpm test`は`unit`・`build`を実行します。整形・lint・型チェックは`pnpm run check`で別に実行します。VitestはViteによってTypeScriptを変換しますが、型チェックは`tsc --noEmit`で別に行います。
 
-`unit/`は生成物に依存しません。`build/`と`og/`は実行時に必要なビルドを作ります。採用済みの`data/expressions.json`を読み取るだけで、式の再探索は行いません。
+`unit/`は生成物に依存しません。`typography.test.ts`は共通の軸補正手順と書体スタイル間の独立性、`symbols.test.ts`はTeXマーカーの生成・解析と持ち場の対応付けを確認します。`share-client.test.ts`はブラウザ側のURL発行キャッシュ・中止・再試行を、`share.test.ts`は共有URLと保存形式の契約を検証します。`build/`と`og/`は実行時に必要なビルドを作ります。採用済みの`data/expressions.json`を読み取るだけで、式の再探索は行いません。
 
 `fixtures/`は固定した入力、`helpers/`はSymPyによる厳密計算やレポート出力の補助です。補助ファイルに`.test.*`を付けず、実行対象と区別してください。すべてのテストは`*.test.ts`で揃え、型チェックの対象に含めます。
 
@@ -44,6 +44,12 @@ pnpm run test:browser --project chromium --project webkit
 ```
 
 引数なしでは設定済みの全ブラウザとOG画像差分を実行します。Chromium・WebKitは全14スイート、Firefoxは対応する10スイートです。テストファイル名か`--grep`で絞り込み、`--project`でブラウザを選択します。`share`など名前が重なる場合は`--grep '^share$'`でテスト名を完全一致させてください。アニメーションの計測に競合が出ないよう、実行workerは1に固定しています。
+
+ヘッドレスFirefoxで`clock`の全画面拡大を検証するときは、仮想画面をテストの表示領域と同じ1440×1000に揃えます。仮想画面が小さいと、全画面への移行で表示領域が縮み、横幅による縮小がテストの想定に混ざります。
+
+```sh
+MOZ_HEADLESS_WIDTH=1440 MOZ_HEADLESS_HEIGHT=1000 pnpm run test:browser --project firefox
+```
 
 実行時に配信版をViteでビルドし、`vite preview`のHTTP Workerを自動で起動・終了します。`--list` / `--help`ではビルドやサーバー起動は行いません。既定のHTTP URLは`http://127.0.0.1:8787/`です。開発中に同じポートでWorkerが動いていれば再利用し、CIでは既存サーバーとの競合をエラーにします。
 

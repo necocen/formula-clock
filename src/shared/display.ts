@@ -1,4 +1,4 @@
-import type { Bounds, DisplayOptions } from './types.ts';
+import { isRecord, type Bounds, type DisplayOptions } from './types.ts';
 /* Typography choices shared by the interactive clock and the OG renderer. */
 const PROFILES = Object.freeze({
   stix2: Object.freeze({
@@ -23,10 +23,40 @@ const DEFAULTS = Object.freeze({
   font: 'stix2',
   numerals: 'oldstyle',
   division: 'fraction',
-} as const);
+  symbolMotion: true,
+  structureMotion: true,
+  symbolMorph: true,
+} as const satisfies DisplayOptions);
+function isFont(value: unknown): value is DisplayOptions['font'] {
+  return typeof value === 'string' && Object.hasOwn(PROFILES, value);
+}
+function isNumerals(value: unknown): value is DisplayOptions['numerals'] {
+  return typeof value === 'string' && Object.hasOwn(NUMERALS, value);
+}
+function isDivision(value: unknown): value is DisplayOptions['division'] {
+  return value === 'fraction' || value === 'inline' || value === 'slash';
+}
+function isDisplay(value: unknown): value is DisplayOptions {
+  return (
+    isRecord(value) &&
+    isFont(value.font) &&
+    isNumerals(value.numerals) &&
+    isDivision(value.division) &&
+    (['symbolMotion', 'structureMotion', 'symbolMorph'] as const).every(
+      (key) => typeof value[key] === 'boolean',
+    )
+  );
+}
+/** Selected preferences are preserved; only rendering masks dependent motions. */
+function activeDisplay(options: DisplayOptions): DisplayOptions {
+  return {
+    ...options,
+    structureMotion: options.symbolMotion && options.structureMotion,
+    symbolMorph: options.symbolMotion && options.symbolMorph,
+  };
+}
 function typography(font: DisplayOptions['font'], numerals: DisplayOptions['numerals']) {
-  if (!Object.hasOwn(PROFILES, font) || !Object.hasOwn(NUMERALS, numerals))
-    throw new TypeError('Invalid typography');
+  if (!isFont(font) || !isNumerals(numerals)) throw new TypeError('Invalid typography');
   return Object.freeze({
     ...PROFILES[font],
     numerals,
@@ -53,7 +83,29 @@ function fitFrame(bounds: Bounds, axisY: number, width: number, height: number, 
     axis,
   };
 }
-const api = { PROFILES, NUMERALS, DEFAULTS, typography, fitFrame };
-export { PROFILES, NUMERALS, DEFAULTS, typography, fitFrame };
+const api = {
+  PROFILES,
+  NUMERALS,
+  DEFAULTS,
+  isFont,
+  isNumerals,
+  isDivision,
+  isDisplay,
+  activeDisplay,
+  typography,
+  fitFrame,
+};
+export {
+  PROFILES,
+  NUMERALS,
+  DEFAULTS,
+  isFont,
+  isNumerals,
+  isDivision,
+  isDisplay,
+  activeDisplay,
+  typography,
+  fitFrame,
+};
 export default Object.freeze(api);
 export type Profile = ReturnType<typeof typography>;

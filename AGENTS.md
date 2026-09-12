@@ -5,7 +5,7 @@
 
 ## 編集とビルド
 
-- 表示アプリの原本は`src/browser/`（マークアップ`index.html`・CSS`styles.css`・合成ルート`app.ts`・役割別モジュール`dom.ts` / `audio.ts` / `data-source.ts` / `settings.ts` / `renderer.ts` / `clock.ts` / `sharing.ts` / `fullscreen.ts` / `shortcuts.ts` / `typesetter.ts`）と`src/shared/`（`i18n.ts` / `display.ts` / `share.ts` / `expression.ts` / `data.ts` / `symbols.ts`）。ビルド時に`<!-- clock-licenses -->`へライセンス表示を挿入する。共有画像と配信処理は `src/worker/`。
+- 表示アプリの原本は`src/browser/`（マークアップ`index.html`・CSS`styles.css`・合成ルート`app.ts`・役割別モジュール`dom.ts` / `audio.ts` / `data-source.ts` / `settings.ts` / `renderer.ts` / `clock.ts` / `sharing.ts` / `fullscreen.ts` / `shortcuts.ts` / `typesetter.ts`）と`src/shared/`（`i18n.ts` / `display.ts` / `share.ts` / `expression.ts` / `data.ts` / `symbols.ts` / `typography.ts` / `mathjax/` / `palette.css`）。ビルド時に`<!-- clock-licenses -->`へライセンス表示を挿入する。共有画像と配信処理は `src/worker/`。
 - ライセンスの取得先・SHA-256・出典・確認済みの依存版は`licenses/`で管理し、`tools/licenses.ts`で生成する。本文は取得してGit管理外の`licenses/texts/`へキャッシュする。通常ビルドでも自動生成し、`pnpm run generate:licenses`で単独確認できる。更新時は`licenses/README.md`に従い、配布物と照合してから確認済み版とハッシュを更新する。
 - アプリ・Worker・ビルドツール・テストはTypeScriptのES Modules。単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行し、PythonはSymPyの厳密計算だけに使う。共通の型は `src/shared/types.ts`、ブラウザ固有の型は `src/browser/types.ts` / `src/browser/globals.d.ts`。`strict`を保ち、信頼境界を型とAPIの契約に明記する。管理下の式データは生成・取り込み・ビルド時に検証し、実行時のAST検証・複製・凍結は行わない。公開の共有作成APIが受け取る外部JSONはサーバーで検証する。
 - モジュール間の依存はESモジュールのimportで宣言する。`bootstrap.ts`の`window`公開はブラウザテスト・コンソール用の公開面で、アプリ内部の参照には使わない。ブラウザの各モジュールは`createX(deps)`ファクトリでモジュールトップレベルの副作用を持たず、合成順序・リスナー登録順（ショートカット→時報再開のkeydown）は`app.ts`が管理する。遅延バインドのクロージャはイベント・Promise継続・タイマーからのみ発火させる。世代カウンタ（`dataRevision` / `requestSerial` / `shareSerial` / `TimeSignal.revision`）はガードと継続を同一モジュール内に保つ。ビルドはVite、Worker・WASM・配布設定はCloudflare公式プラグインを使う。`tools/vite-clock.ts`には式データとライセンス固有の処理だけを置き、独自バンドラーやWASMローダーを追加しない。
@@ -41,9 +41,12 @@
 - 全プロバイダーは生成側で確認済みの正規データを返す。`InlineProvider`・`TableProvider`・独自プロバイダーも同じ契約とし、返したASTを後から変更しない。`tools/validate-data.ts`を生成・取り込み・ビルドの検証に使い、検証済みASTを表示・共有・OG描画で再検証しない。
 - ブラウザ用コードにソルバを含めない。値と定義域の検証は生成・テスト側の責務。
 - 測定用SVGと数字パスには同じ基準の `getScreenCTM()` を使う。過去の数字消失を再発させない。
-- 書体×数字スタイルごとに独立したエンジン（SVG出力とフォントインスタンス）を保ち、軸キャリブレーションを他のエンジンへ漏らさない。エンジン生成は`src/browser/engine.ts`に集約し、Workerの`render.ts`と構成を揃える。
+- 書体×数字スタイルごとに独立したエンジン（SVG出力とフォントインスタンス）を保ち、軸キャリブレーションを他のエンジンへ漏らさない。共通のエンジン生成は`src/shared/mathjax/pipeline.ts`、フォント定義は`src/shared/mathjax/fonts/`、軸補正の手順は`src/shared/typography.ts`に集約する。ブラウザの`engine.ts`はDOMアダプターと字形識別パッチを担当し、`fonts.ts`とともに遅延読み込みを保つ。Workerの`render.ts`は共通処理を静的importし、resvgによる測定とPNG化を担当する。
 - `engine.ts`の`charNode`パッチ（`data-glyph-key`によるサイズバリアント記録）を保持する。Wrapperのprototypeは全エンジン共有のため、パッチは1回だけ当ててフォント識別は呼び出し時に解決する。MathJax更新時は構造記号のブラウザ検証も実行する。
 - 古い非同期応答を破棄するserial/revision確認と、失敗時の時刻表示を維持する。
+- `src/shared/`は環境から独立した契約・規則を置く。DOM向け翻訳適用と相対URL・埋め込みデータの読み込みは`src/browser/i18n.ts`・`src/browser/data.ts`、共有APIの通信とページ単位のキャッシュは`src/browser/share-client.ts`に置く。ブラウザの公開API・描画状態・診断の型は`src/browser/types.ts`に置き、`bootstrap.ts`の既存公開面を保つ。
+- 画面とOGの共通色は`src/shared/palette.css`を原本とする。ブラウザはCSSとしてimportし、Workerは`palette.ts`から同じ値を読む。
+- 記号マーカーの生成・解析と持ち場の対応付けは`src/shared/symbols.ts`に集約し、TeX生成側とSVG抽出側で形式を重複定義しない。
 - 共有URLの解析・生成は `src/shared/share.ts` に集約し、復元でlocalStorageを書き換えない。共有時は描画済みの秒を同期的に停止し、ネイティブ共有の前に画像生成を待たない。
 - 新しい共有URLは英数字10文字の`/s/<ID>`。ID発行後に202で返し、時刻・表示設定・AST（nullを含む）のKVへの期限なし保存を`ctx.waitUntil`で継続する。共有シート表示ではKV保存を待たず、タイトルはブラウザから渡す。画面とOG画像は保存済みASTから再現する。時刻操作で固定ASTを解除し、表示設定変更時はASTを保ってURLを`/`へ戻す。ID発行を待った後のネイティブ共有ではユーザー操作の有効期間を確認する。
 - 共有URLは共有ボタンのクリック時に発行する。時刻・表示設定・ASTが完全一致する発行済みURLだけを再利用し、同じ発行が進行中なら要求を共有する。通常の時計更新でKVへ書き込まない。発行の失敗は通知し、クリックで再試行できる。

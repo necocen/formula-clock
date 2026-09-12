@@ -3,21 +3,14 @@
  * its SVG output jax and font instance, so per-profile axis calibration never
  * leaks across fonts. Font data loads lazily as a per-font chunk.
  */
-import { mathjax } from '@mathjax/src/js/mathjax.js';
-import { TeX } from '@mathjax/src/js/input/tex.js';
-import { SVG } from '@mathjax/src/js/output/svg.js';
+// Initialize MathJax's TeX/SVG module graph before importing the wrapper to patch.
+import { createMathJax } from '../shared/mathjax/pipeline.ts';
 import { SvgWrapper } from '@mathjax/src/js/output/svg/Wrapper.js';
 import { browserAdaptor } from '@mathjax/src/js/adaptors/browserAdaptor.js';
 import { RegisterHTMLHandler } from '@mathjax/src/js/handlers/html.js';
-import '@mathjax/src/js/input/tex/base/BaseConfiguration.js';
-import '@mathjax/src/js/input/tex/ams/AmsConfiguration.js';
-import '@mathjax/src/js/input/tex/newcommand/NewcommandConfiguration.js';
-import '@mathjax/src/js/input/tex/html/HtmlConfiguration.js';
-import { CONVERT_OPTIONS, TEX_PACKAGES } from '../shared/typeset.ts';
+export { version } from '../shared/mathjax/pipeline.ts';
 
 RegisterHTMLHandler(browserAdaptor());
-
-export const version: string = mathjax.version;
 
 // With fontCache:none, MathJax's pathNode keeps the Unicode code but drops its
 // size variant. Capture that identity before it is lost. The wrapper prototype
@@ -44,21 +37,10 @@ export interface Engine {
 }
 
 export function createEngine(Font: unknown, glyphFont: string): Engine {
-  const output = new SVG<HTMLElement, Text, Document>({ fontData: Font, fontCache: 'none' });
-  glyphFonts.set(output, glyphFont);
-  const doc = mathjax.document(document, {
-    InputJax: new TeX<HTMLElement, Text, Document>({
-      packages: [...TEX_PACKAGES],
-      formatError(_jax: unknown, error: Error) {
-        throw error;
-      },
-    }),
-    OutputJax: output,
-  });
+  const engine = createMathJax<HTMLElement, Text, Document>(document, Font);
+  glyphFonts.set(engine.output, glyphFont);
   return {
-    convert: (tex) => doc.convertPromise(tex, { ...CONVERT_OPTIONS }) as Promise<HTMLElement>,
-    get params() {
-      return (output.font as { params: { axis_height: number } }).params;
-    },
+    convert: (tex) => engine.convert(tex) as Promise<HTMLElement>,
+    params: engine.params,
   };
 }

@@ -89,10 +89,7 @@ class FetchHourProvider implements FormulaProvider {
   ) {
     if (typeof fetcher !== 'function') throw new TypeError('Expected a fetch function');
     this.fetch = fetcher;
-    this.url = new URL(
-      manifestUrl,
-      typeof document === 'undefined' ? undefined : document.baseURI,
-    ).href;
+    this.url = new URL(manifestUrl).href;
     // A baked snapshot serves the first request with no manifest round trip;
     // the manifest URL remains the recovery path for long-lived sessions that
     // cross a data redeploy (hour fetches then 404 and refresh the manifest).
@@ -232,27 +229,12 @@ class TableProvider implements FormulaProvider {
     return provider.getMinute(hhmm, { signal });
   }
 }
-async function loadEmbedded(element: HTMLElement | null): Promise<FormulaTable> {
-  if (!element) throw new Error('Embedded formula table is missing');
-  if (element.dataset.encoding !== 'gzip-base64') return JSON.parse(element.textContent || '');
-  const bytes = Uint8Array.from(atob((element.textContent || '').trim()), (c) => c.charCodeAt(0));
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(stream).json() as Promise<FormulaTable>;
-}
 const api = {
   SCHEMA,
-  loadEmbedded,
   InlineProvider,
   FetchMinuteProvider,
   FetchHourProvider,
   TableProvider,
 };
-export {
-  SCHEMA,
-  loadEmbedded,
-  InlineProvider,
-  FetchMinuteProvider,
-  FetchHourProvider,
-  TableProvider,
-};
+export { SCHEMA, InlineProvider, FetchMinuteProvider, FetchHourProvider, TableProvider };
 export default Object.freeze(api);

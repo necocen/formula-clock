@@ -6,17 +6,10 @@ import {
   type SharedView,
 } from '../shared/types.ts';
 import FormulaShare from '../shared/share.ts';
+import { LinkCache } from './share-client.ts';
 import { $, pad } from './dom.ts';
-import type { DisplayedFrame, Frame, Translate } from './types.ts';
+import type { DisplayedFrame, Frame, FrameCommit, Translate } from './types.ts';
 import type { MinuteSolutions } from './data-source.ts';
-
-export interface FrameCommit {
-  code: string;
-  seconds: number;
-  loading: boolean;
-  view: DisplayOptions;
-  ast: Expr | null;
-}
 
 export function readInitialShare() {
   let sharedView: SharedView | null = null;
@@ -72,7 +65,7 @@ export function createSharing(deps: SharingDeps): Sharing {
   const { t, shareButton, shareDialog } = deps;
   let activeSnapshot: SharedSnapshot | null = deps.sharedView?.snapshot || null;
   let sharedAddress = deps.initiallyShared;
-  const shareLinks = new FormulaShare.LinkCache(deps.sharedView);
+  const shareLinks = new LinkCache(deps.sharedView);
   let shareSerial = 0,
     shareBusy = false;
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;

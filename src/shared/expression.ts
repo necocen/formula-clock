@@ -1,4 +1,6 @@
 import { isRecord, type Expr, type TexOptions } from './types.ts';
+import { isDivision } from './display.ts';
+import { createMarkers, type OperatorRole, type StructureRole } from './symbols.ts';
 /* The public expression format and its presentation-independent serializer.
  * Leaves reference HHMM positions [i,j); they never contain numeric values.
  */
@@ -62,8 +64,7 @@ function validateAst(ast: unknown, code: string): Expr | null {
 
 function options(value: Partial<TexOptions> = {}): TexOptions {
   const division = value.division ?? 'fraction';
-  if (!['fraction', 'inline', 'slash'].includes(division))
-    throw new TypeError('Unknown division style');
+  if (!isDivision(division)) throw new TypeError('Unknown division style');
   return {
     division,
     oldstyle: !!value.oldstyle,
@@ -97,35 +98,20 @@ function precedence(ast: Expr, opt: TexOptions): number {
 function expressionTex(ast: Expr, code: string, settings: Partial<TexOptions> = {}): string {
   assertCode(code);
   const opt = options(settings);
-  let symbolId = 0;
-  const siteCounts = new Map();
-  function interval(a: Expr): [number, number] {
-    if (a.op === 'lit') return [a.i, a.j];
-    const left = interval(a.a);
-    return [left[0], 'b' in a ? interval(a.b)[1] : left[1]];
-  }
-  function structure(role: 'frac' | 'root' | 'paren', a: Expr, tex: string): string {
+  const markers = createMarkers();
+  function structure(role: StructureRole, a: Expr, tex: string): string {
     if (!opt.structureMotion) return tex;
-    const [i, j] = interval(a);
-    const site = `${role}-${role === 'frac' && 'b' in a ? `b${interval(a.a)[1]}` : `u${i}${j}`}`;
-    const ordinal = siteCounts.get(site) || 0;
-    siteCounts.set(site, ordinal + 1);
-    return `\\cssId{fc-struct-${site}-${ordinal}}{${tex}}`;
+    return `\\cssId{${markers.structure(role, a)}}{${tex}}`;
   }
   const enclose = (a: Expr, tex: string) => structure('paren', a, parens(tex));
-  function symbol(a: Exclude<Expr, { op: 'lit' }>, glyph: string, texClass: string): string {
+  function symbol(a: Extract<Expr, { op: OperatorRole }>, glyph: string, texClass: string): string {
     if (!opt.symbolMotion && !(opt.symbolMorph && ['add', 'sub', 'mul', 'div'].includes(a.op))) {
       if (a.op === 'neg') return negative(opt);
       return a.op === 'fact' ? glyph : binary(glyph, opt);
     }
-    const [i, j] = interval(a);
     // Binary operators belong to a gap between HHMM slots. Unary operators
     // belong to their operand's slot interval, with an ordinal for nesting.
-    const attachment = 'b' in a ? `b${interval(a.a)[1]}` : `u${i}${j}`;
-    const site = `${a.op}-${attachment}`;
-    const ordinal = siteCounts.get(site) || 0;
-    siteCounts.set(site, ordinal + 1);
-    const id = `fc-op-${symbolId++}-${site}-${ordinal}`;
+    const id = markers.operator(a);
     // Keep the native postfix spacing of ! (notably after \left...\right).
     // A forced mathclose atom discards that spacing in MathJax 4.
     if (a.op === 'fact') return `\\cssId{${id}}{${glyph}}`;
