@@ -35,9 +35,10 @@ export function setupDialog(
       first?.focus();
     }
   });
-  // Dragging out from a control must not count as a backdrop click.
-  let backdropPointer = false;
-  function outsideDialog(event: Pick<MouseEvent, 'clientX' | 'clientY'>) {
+  // iOS Safari can send only click for ::backdrop, without pointer/touch events.
+  // Exclude drags that start inside; do not require a pointerdown on the backdrop.
+  let pointerStartedInside = false;
+  function outsideDialog(event: MouseEvent) {
     const r = dialog.getBoundingClientRect();
     return (
       event.clientX < r.left ||
@@ -47,66 +48,15 @@ export function setupDialog(
     );
   }
   dialog.addEventListener('pointerdown', (event) => {
-    backdropPointer = outsideDialog(event);
+    pointerStartedInside = !outsideDialog(event);
   });
   dialog.addEventListener('click', (event) => {
-    if (backdropPointer && outsideDialog(event)) dialog.close();
-    backdropPointer = false;
+    if (event.target === dialog && !pointerStartedInside && outsideDialog(event)) dialog.close();
+    pointerStartedInside = false;
   });
-  // A backdrop tap can finish without a compatibility click.
-  // Finish taps directly, and suppress that click so it cannot hit the page below.
-  let backdropTouch: Touch | undefined;
-  dialog.addEventListener(
-    'touchstart',
-    (event) => {
-      const touch = event.touches[0];
-      backdropTouch = event.touches.length === 1 && outsideDialog(touch) ? touch : undefined;
-    },
-    { passive: true },
-  );
-  dialog.addEventListener(
-    'touchmove',
-    (event) => {
-      const touch = [...event.touches].find(
-        (touch) => touch.identifier === backdropTouch?.identifier,
-      );
-      if (
-        backdropTouch &&
-        (!touch ||
-          Math.hypot(touch.clientX - backdropTouch.clientX, touch.clientY - backdropTouch.clientY) >
-            10)
-      ) {
-        backdropTouch = undefined;
-      }
-    },
-    { passive: true },
-  );
-  dialog.addEventListener(
-    'touchend',
-    (event) => {
-      const start = backdropTouch;
-      backdropTouch = undefined;
-      backdropPointer = false;
-      const touch = [...event.changedTouches].find(
-        (touch) => touch.identifier === start?.identifier,
-      );
-      if (
-        start &&
-        touch &&
-        event.touches.length === 0 &&
-        outsideDialog(touch) &&
-        Math.hypot(touch.clientX - start.clientX, touch.clientY - start.clientY) <= 10
-      ) {
-        event.preventDefault();
-        dialog.close();
-      }
-    },
-    { passive: false },
-  );
-  for (const type of ['touchcancel', 'close']) {
+  for (const type of ['pointercancel', 'close']) {
     dialog.addEventListener(type, () => {
-      backdropTouch = undefined;
-      backdropPointer = false;
+      pointerStartedInside = false;
     });
   }
 }

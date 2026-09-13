@@ -4,7 +4,7 @@ import path from 'node:path';
 import { expect } from '@playwright/test';
 import { test, createReport, playwrightVersion } from '../helpers/browser.ts';
 
-for (const input of ['mouse', 'touch', 'touch-without-click'] as const) {
+for (const input of ['mouse', 'touch', 'backdrop-click-only'] as const) {
   test(`dialog-${input}`, async ({ browser, args }) => {
     const touch = input !== 'mouse';
     const ctx = await browser.newContext({
@@ -31,17 +31,31 @@ for (const input of ['mouse', 'touch', 'touch-without-click'] as const) {
     report.mathjax = await page.evaluate(() => FormulaClock.diagnostics().mathjax);
     report.display = await page.evaluate(() => FormulaClock.state.display);
 
-    if (input === 'touch-without-click') {
-      // Model a touch sequence that does not deliver a compatibility click.
+    if (input === 'backdrop-click-only') {
+      // iOS 26.5 Safari sends click, but no pointer/touch start/end, for ::backdrop.
+      // Reproduce that observed sequence in desktop engines as well.
       await page.evaluate(() => {
         for (const dialog of document.querySelectorAll('dialog')) {
-          dialog.addEventListener(
-            'click',
-            (event) => {
-              if (event.target === dialog) event.stopImmediatePropagation();
-            },
-            true,
-          );
+          for (const type of ['pointerdown', 'pointerup', 'touchstart', 'touchend']) {
+            dialog.addEventListener(
+              type,
+              (event) => {
+                const point =
+                  'changedTouches' in event
+                    ? (event as TouchEvent).changedTouches[0]
+                    : (event as MouseEvent);
+                const r = dialog.getBoundingClientRect();
+                if (
+                  point.clientX < r.left ||
+                  point.clientX > r.right ||
+                  point.clientY < r.top ||
+                  point.clientY > r.bottom
+                )
+                  event.stopImmediatePropagation();
+              },
+              true,
+            );
+          }
         }
       });
     }
@@ -75,6 +89,19 @@ for (const input of ['mouse', 'touch', 'touch-without-click'] as const) {
     await backdrop();
     await expect(settings).toBeHidden();
 
+    // Keyboard clicks on controls have no pointerdown and can have (0, 0) coordinates.
+    // They must not be mistaken for a backdrop click.
+    await activate('#settings-open');
+    await page.locator('#licenses-open').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#licenses')).toBeVisible();
+    await expect(settings).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#licenses')).toBeHidden();
+    await expect(settings).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(settings).toBeHidden();
+
     // A dismissal over a toolbar button must not also activate that button.
     await activate('#settings-open');
     const sound = (await page.locator('#sound').boundingBox())!;
@@ -94,49 +121,27 @@ for (const input of ['mouse', 'touch', 'touch-without-click'] as const) {
 
     await activate('#settings-open');
     const title = (await page.locator('#settings-title').boundingBox())!;
-    if (!touch) {
-      await page.mouse.move(title.x + 4, title.y + 4);
-      await page.mouse.down();
-      await page.mouse.move(8, 8, { steps: 5 });
-      await page.mouse.up();
-      await expect(settings).toBeVisible();
-    } else {
-      // Scrolling/dragging, cancelled gestures, and multiple fingers are not taps.
-      for (const gesture of ['inside-out', 'move', 'cancel', 'multi']) {
-        await settings.evaluate((dialog, gesture) => {
-          const r = dialog.getBoundingClientRect();
-          const makeTouch = (identifier: number, clientX: number, clientY: number) => ({
-            identifier,
-            target: dialog,
-            clientX,
-            clientY,
-          });
-          const start = makeTouch(1, gesture === 'inside-out' ? r.left + 20 : 8, 100);
-          const end = makeTouch(1, 8, gesture === 'move' ? 300 : 100);
-          // WebKit does not expose a constructible Touch. These synthetic gesture
-          // sequences supplement the real touchscreen.tap checks above.
-          const send = (
-            type: string,
-            touches: ReturnType<typeof makeTouch>[],
-            changedTouches: ReturnType<typeof makeTouch>[],
-          ) => {
-            const event = new Event(type, { bubbles: true, cancelable: true });
-            Object.defineProperties(event, {
-              touches: { value: touches },
-              changedTouches: { value: changedTouches },
-            });
-            dialog.dispatchEvent(event);
-          };
-          send('touchstart', [start], [start]);
-          if (gesture === 'multi')
-            send('touchstart', [start, makeTouch(2, 8, 120)], [makeTouch(2, 8, 120)]);
-          if (gesture === 'move') send('touchmove', [end], [end]);
-          if (gesture === 'cancel') send('touchcancel', [], [start]);
-          send('touchend', [], [end]);
-        }, gesture);
-        await expect(settings).toBeVisible();
+    await page.mouse.move(title.x + 4, title.y + 4);
+    await page.mouse.down();
+    await page.mouse.move(8, 8, { steps: 5 });
+    await page.mouse.up();
+    await expect(settings).toBeVisible();
+    // Browser scrolling cancels the pointer. It must not leave a stale drag guard
+    // that blocks the next iOS backdrop click (which has no pointerdown to reset it).
+    await page.locator('#settings-title').evaluate((element) => {
+      const r = element.getBoundingClientRect();
+      for (const type of ['pointerdown', 'pointercancel']) {
+        element.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            pointerType: 'touch',
+            clientX: r.left + 4,
+            clientY: r.top + 4,
+          }),
+        );
       }
-    }
+    });
+    await expect(settings).toBeVisible();
     await backdrop();
     await expect(settings).toBeHidden();
     assert.ok(
@@ -144,7 +149,7 @@ for (const input of ['mouse', 'touch', 'touch-without-click'] as const) {
     );
     assert.deepEqual(report.errors, []);
     report.checks.push(
-      'Backdrop dismissal, panel controls, nested dialogs, focus restoration, no click-through, and gesture rejection',
+      'Backdrop dismissal with and without pointerdown, panel controls, nested dialogs, focus restoration, no click-through, drag rejection and cancelled-pointer recovery',
     );
     fs.writeFileSync(path.join(args.outputDir, 'results.json'), JSON.stringify(report, null, 2));
     await ctx.close();
