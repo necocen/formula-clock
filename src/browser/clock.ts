@@ -157,7 +157,6 @@ export function createClock(deps: ClockDeps): Clock {
       code = timeCode(now);
     const changed = secondKey !== lastSecond;
     if (!changed && !force) return;
-    const previousSecond = lastSecond;
     lastSecond = secondKey;
     const result = deps.getMinute(code);
     deps.requestMinute(code);
@@ -226,11 +225,6 @@ export function createClock(deps: ClockDeps): Clock {
       label.textContent = '';
       label.classList.add('quiet');
     } else label.textContent = '';
-    if (changed && previousSecond !== null && seconds === 0 && !preview?.paused) {
-      $('#flash').animate([{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 0 }], {
-        duration: reducedMotion.matches ? 200 : 1650,
-      });
-    }
   }
   function scheduleTick() {
     clearTimeout(tickTimer);

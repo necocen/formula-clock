@@ -376,14 +376,6 @@ main {
   font-size: 12px;
   letter-spacing: 2px;
 }
-.flash {
-  position: absolute;
-  inset: 0;
-  border-radius: 20px;
-  background: radial-gradient(ellipse, #c4d0ae18, transparent 66%);
-  pointer-events: none;
-  opacity: 0;
-}
 .a11y {
   position: absolute;
   width: 1px;
