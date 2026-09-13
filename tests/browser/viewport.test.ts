@@ -201,3 +201,46 @@ test('viewport fits portrait and short landscape screens', async ({ browser, arg
   fs.writeFileSync(path.join(args.outputDir, 'results.json'), JSON.stringify(report, null, 2));
   await ctx.close();
 });
+
+test('mobile clock stays in view while the page scrolls', async ({ browser, args }) => {
+  const ctx = await browser.newContext({
+    viewport: { width: 844, height: 290 },
+    isMobile: args.browser !== 'firefox',
+    hasTouch: true,
+    reducedMotion: 'reduce',
+  });
+  const page = await ctx.newPage();
+  await page.goto(args.url + '?t=235910');
+  await page.waitForFunction(() => window.FormulaClock?.state.layout);
+
+  // Headless browsers have no collapsing bars: svh, lvh and dvh are equal.
+  // Supply the root scroll range that Safari has while its bars are expanded.
+  const scrollRange = await page.addStyleTag({
+    content: 'body:not(.fullscreen) { min-height: calc(100dvh + 80px); }',
+  });
+  for (const height of [290, 390, 245]) {
+    await page.setViewportSize({ width: 844, height });
+    const shellBefore = await page.locator('.shell').boundingBox();
+    assert.ok(shellBefore);
+    await page.evaluate(() => scrollTo({ top: 1000, behavior: 'instant' }));
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
+    await expect.poll(() => page.locator('.shell').boundingBox()).toEqual(shellBefore);
+
+    await page.locator('#settings-open').tap();
+    const dialog = await page.locator('#settings').boundingBox();
+    assert.ok(dialog && dialog.y >= 0 && dialog.y + dialog.height <= height + 1);
+    await page.locator('#settings-close').tap();
+    await expect(page.locator('#settings')).toBeHidden();
+    await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+    await expect.poll(() => page.locator('.shell').boundingBox()).toEqual(shellBefore);
+  }
+  await scrollRange.evaluate((el) => el.parentNode!.removeChild(el));
+  await page.setViewportSize({ width: 390, height: 664 });
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1));
+
+  await page.setViewportSize({ width: 844, height: 290 });
+  await page.evaluate(() => document.body.classList.add('fullscreen'));
+  assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1));
+  await ctx.close();
+});

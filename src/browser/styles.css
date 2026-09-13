@@ -956,3 +956,15 @@ body.fullscreen .stage {
     transform: translateX(-50%);
   }
 }
+
+/* Keep a root scroll range for mobile browser bars, while the clock stays in view.
+   One extra pixel keeps the page scrollable even at the large viewport height. */
+@media (max-height: 640px) and (orientation: landscape) and (hover: none) and (pointer: coarse) {
+  body:not(.fullscreen) {
+    min-height: calc(100lvh + 1px);
+  }
+  body:not(.fullscreen) .shell {
+    position: sticky;
+    top: 0;
+  }
+}
