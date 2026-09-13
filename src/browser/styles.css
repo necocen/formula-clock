@@ -2,6 +2,8 @@
 
 :root {
   color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   --muted: #92978e;
   --dim: #636b61;
   --line: #30362c;
@@ -76,11 +78,17 @@ button:hover:not(:disabled) {
   background: #83977b55;
 }
 .shell {
+  --shell-block: 28px;
+  --shell-inline: 50px;
   position: relative;
   max-width: 1520px;
   min-height: 100svh;
+  min-height: 100dvh;
   margin: auto;
-  padding: 28px 50px;
+  padding: calc(var(--shell-block) + env(safe-area-inset-top))
+    max(var(--shell-inline), calc(env(safe-area-inset-right) + 12px))
+    calc(var(--shell-block) + env(safe-area-inset-bottom))
+    max(var(--shell-inline), calc(env(safe-area-inset-left) + 12px));
   display: flex;
   flex-direction: column;
 }
@@ -484,11 +492,12 @@ main {
 }
 .settings-dialog {
   position: fixed;
-  inset: 80px 28px auto auto;
+  inset: calc(80px + env(safe-area-inset-top)) max(28px, calc(env(safe-area-inset-right) + 16px))
+    auto auto;
   margin: 0;
   width: 350px;
-  max-width: calc(100vw - 32px);
-  max-height: calc(100svh - 100px);
+  max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  max-height: calc(100dvh - 100px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   overflow: auto;
   overscroll-behavior: contain;
   background: #181d17;
@@ -614,10 +623,11 @@ main {
   text-underline-offset: 3px;
 }
 .settings-dialog.license-dialog {
-  inset: 0;
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
   margin: auto;
   width: 760px;
-  max-height: calc(100svh - 48px);
+  max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   padding: 0;
 }
 .license-dialog .settings-header {
@@ -705,7 +715,8 @@ main {
 }
 @media (max-width: 760px) {
   .shell {
-    padding: 22px;
+    --shell-block: 22px;
+    --shell-inline: 22px;
   }
   .brand {
     font-size: 10px;
@@ -728,14 +739,15 @@ main {
     font-size: 22px;
   }
   .settings-dialog {
-    right: 16px;
-    top: 76px;
-    max-height: calc(100svh - 92px);
+    right: calc(16px + env(safe-area-inset-right));
+    top: calc(76px + env(safe-area-inset-top));
+    max-height: calc(100dvh - 92px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
 }
 @media (max-width: 480px) {
   .shell {
-    padding: 18px 16px;
+    --shell-block: 18px;
+    --shell-inline: 16px;
   }
   .brand {
     font-size: 9px;
@@ -796,7 +808,7 @@ main {
 }
 .share-status {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
@@ -813,7 +825,8 @@ main {
   display: none;
 }
 .share-dialog {
-  inset: 0;
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
   margin: auto;
   width: 460px;
 }
@@ -864,17 +877,82 @@ main {
 }
 .share-status {
   width: max-content;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
   white-space: normal;
   text-align: center;
 }
 body.fullscreen .shell {
+  --shell-block: 16px;
   max-width: none;
-  padding-block: 16px;
 }
 body.fullscreen main {
   padding: 20px 0;
 }
 body.fullscreen .stage {
   height: clamp(120px, calc(100svh - 280px), 66svh);
+}
+
+/* A phone's landscape viewport can be shorter than 300px with Safari's bars open.
+   Reserve the controls, then let the formula fit the space that is actually left. */
+@media (max-height: 640px) {
+  .shell,
+  body.fullscreen .shell {
+    --shell-block: 10px;
+    height: 100svh;
+    height: 100dvh;
+    min-height: 0;
+  }
+  .topbar,
+  .clock-top,
+  .minute,
+  .transport {
+    flex-shrink: 0;
+  }
+  main,
+  body.fullscreen main {
+    min-height: 0;
+    padding: 8px 0 0;
+  }
+  .clock-top {
+    margin-bottom: 0;
+  }
+  .source-time {
+    font-size: 18px;
+    height: 20px;
+  }
+  .stage-wrap {
+    flex: 1;
+    min-height: 60px;
+    max-height: 300px;
+    margin: 0;
+  }
+  .stage,
+  body.fullscreen .stage {
+    height: 100%;
+  }
+  .minute {
+    margin-top: 4px;
+  }
+  .ruler-labels {
+    line-height: 12px;
+  }
+  .transport {
+    height: 32px;
+    margin-top: 4px;
+  }
+  #settings {
+    top: calc(58px + env(safe-area-inset-top));
+    max-height: calc(100dvh - 74px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+@media (max-height: 640px) and (min-width: 600px) {
+  .shell {
+    --shell-inline: 24px;
+  }
+  .clock-top {
+    position: absolute;
+    top: calc(var(--shell-block) + 10px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
