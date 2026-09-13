@@ -5,7 +5,7 @@
 
 ## ビルドと配信
 
-pnpm 12.4.1とPython 3.11以上を用意し、`pnpm install`を実行する。Node.js 22.23.2と依存環境はpnpmが準備する。同じOS・Python環境の再現には`pnpm install --frozen-lockfile`を使う。
+pnpm 12.4.1を用意し、`pnpm install`を実行する。Node.js 22.23.2と依存パッケージはpnpmが準備する。CIでは`pnpm install --frozen-lockfile`でロック済みの依存を導入する。
 
 - `pnpm run build`：静的サイトの`dist/site/`とWorkerの`dist/worker/`を生成する。
 - `pnpm run dev`：ViteでローカルのWorker、ASSETS、KV、R2を起動する。開発中の画面はViteのHMRで更新する。

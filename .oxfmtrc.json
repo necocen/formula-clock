@@ -6,5 +6,5 @@
   "sortImports": false,
   "sortPackageJson": false,
   "htmlWhitespaceSensitivity": "css",
-  "ignorePatterns": ["data/expressions.json", "data/examples/**", "pnpm-lock.yaml", "pylock.toml"]
+  "ignorePatterns": ["data/expressions.json", "data/examples/**", "pnpm-lock.yaml"]
 }

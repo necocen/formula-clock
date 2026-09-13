@@ -1,19 +1,13 @@
 # テストの実行と配置
 
-pnpm 12.4.1とPython 3.11以上を用意します。Node.js 22.23.2はpnpmが準備します。実行コードはTypeScriptのES Modulesに揃え、単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行します。PythonはSymPyの厳密計算にだけ使います。
+pnpm 12.4.1を用意します。Node.js 22.23.2と依存パッケージはpnpmが準備します。実行コードはTypeScriptのES Modulesに揃え、単体・ビルド・OG検証はVitest、ブラウザ検証はPlaywright Testで実行します。
 
 ```sh
 pnpm install
 pnpm exec playwright install chromium firefox webkit
 ```
 
-`pnpm-workspace.yaml`でPython連携を有効にしています。SymPyは`pyproject.toml`の`dev`グループで指定し、`pylock.toml`で間接依存・取得ファイルも固定します。JavaScriptの`pnpm-lock.yaml`とともにGit管理します。
-
-pnpm 12.4.1のPythonロックにはOS・Pythonの環境情報も含まれ、別の環境では`--frozen-lockfile`が失敗します。初回や環境変更時は通常の`pnpm install`でロックを更新してください。対応するロックがある環境では`pnpm install --frozen-lockfile`、取得済みのキャッシュから再現するときは`pnpm install --offline --frozen-lockfile`を使えます。CIでは`pnpm install --no-frozen-lockfile`でPythonロックをrunner環境へ更新し、`git diff --exit-code -- pnpm-lock.yaml`でJavaScriptの依存解決に変更がないことを確認します。
-
-pnpmは`.pnpm/python-envs/`に環境を作り、`.venv`をそこへ向けます。手動のactivateやpip installは不要です。`pnpm exec python`や`pnpm run`からも同じ環境を使えます。Python本体は自動インストールされないため、`python3`（Windowsでは`python`）を先に用意してください。使用するインタプリタを変える場合は`pnpm-workspace.yaml`の`python.executable`で指定できます。
-
-以前の手作業で作った`.venv`はpnpmが上書きしません。その場合は既存環境を別名へ退避してから`pnpm install`を実行してください。pnpmが管理する`.venv`・`.pnpm/`・`node_modules/`は削除して再作成できます。Python連携は実験機能なので、pnpmの更新時には環境の再作成とテストを確認します。
+依存は`pnpm-lock.yaml`で固定します。CIと同じ条件で導入するときは`pnpm install --frozen-lockfile`、取得済みのキャッシュから再現するときは`pnpm install --offline --frozen-lockfile`を使います。
 
 ## 基本の確認
 
@@ -30,7 +24,9 @@ pnpm run test:og      # 配信用ビルド → 画像描画とworkerdの統合�
 
 `unit/`は生成物に依存しません。`typography.test.ts`は共通の軸補正手順と書体スタイル間の独立性、`symbols.test.ts`はTeXマーカーの生成・解析と持ち場の対応付けを確認します。`share-client.test.ts`はブラウザ側のURL発行キャッシュ・中止・再試行を、`share.test.ts`は共有URLと保存形式の契約を検証します。`build/`と`og/`は実行時に必要なビルドを作ります。採用済みの`data/expressions.json`を読み取るだけで、式の再探索は行いません。
 
-`fixtures/`は固定した入力、`helpers/`はSymPyによる厳密計算やレポート出力の補助です。補助ファイルに`.test.*`を付けず、実行対象と区別してください。すべてのテストは`*.test.ts`で揃え、型チェックの対象に含めます。
+`expression.test.ts`は全日データとランダムなASTをTeX・テキストへ変換し、独立したパーサーで読み戻して演算構造・結合順序・数字のスロットが保たれることを確認します。式の計算結果と定義域の検証はデータ生成側の責任とし、ここでは再計算しません。
+
+`fixtures/`は固定した入力、`helpers/`はビルド・ブラウザ操作・レポート出力などの補助です。補助ファイルに`.test.*`を付けず、実行対象と区別してください。すべてのテストは`*.test.ts`で揃え、型チェックの対象に含めます。
 
 ## ブラウザ
 
@@ -61,7 +57,7 @@ pnpm run test:browser --grep '^share$' --project chromium
 pnpm run test:browser transport.test.ts --project chromium
 ```
 
-ブラウザの操作・通信モック・検証はNodeで実行します。SymPyの補助処理だけはpnpmが管理する`.venv`を使い、別環境の検証時には`FORMULA_CLOCK_PYTHON`でも指定できます。
+ブラウザの操作・通信モック・検証はNodeで実行します。
 
 | スイート                                              | 主な確認                                                         |
 | ----------------------------------------------------- | ---------------------------------------------------------------- |
@@ -106,7 +102,7 @@ pnpm exec playwright show-report test-results/playwright-report
 
 ## 実行結果
 
-GitHub ActionsはUbuntu 24.04・Node.js 22.23.2・Python 3.14で実行します。PRとmainへのpushでは`Unit, build and OG`が`check`・`test`・`test:og`・`og-snapshots`を順に実行します。`og-snapshots`はブラウザを起動しません。
+GitHub ActionsはUbuntu 24.04・Node.js 22.23.2で実行します。PRとmainへのpushでは`Unit, build and OG`が`check`・`test`・`test:og`・`og-snapshots`を順に実行します。`og-snapshots`はブラウザを起動しません。
 
 ブラウザの全テストは`Browser tests`ワークフローを手動実行したときだけ起動します。`Browser (chromium)`・`Browser (firefox)`・`Browser (webkit)`は別runnerで並列に実行し、ブラウザとOSの必要ライブラリは`playwright install --with-deps`で準備します。
 
@@ -114,7 +110,7 @@ GitHub ActionsはUbuntu 24.04・Node.js 22.23.2・Python 3.14で実行します�
 
 出力はすべてGit管理外の`test-results/`へ保存します。
 
-- `unit/`: 単体テストの詳細な計算結果
+- `unit/`: 単体テストの変換・構造検証レポート
 - `og/`: 共有画像・測定値
 - `browser/`: Playwrightがテスト・ブラウザごとに分けた結果JSON・画像・失敗時のトレース
 - `playwright-report/`: HTMLレポート（`pnpm exec playwright show-report test-results/playwright-report`で表示）

@@ -1,5 +1,5 @@
 name: Set up Formula Clock
-description: Install the pinned pnpm, Node.js and Python dependencies
+description: Install the pinned pnpm, Node.js and project dependencies
 
 runs:
   using: composite
@@ -9,17 +9,7 @@ runs:
       with:
         node-version-file: .node-version
         cache: pnpm
-        cache-dependency-path: |
-          pnpm-lock.yaml
-          pyproject.toml
-          pylock.toml
-    - uses: actions/setup-python@v7
-      with:
-        python-version: '3.14'
+        cache-dependency-path: pnpm-lock.yaml
     - name: Install dependencies
       shell: bash
-      # pnpm 12.4's Python lock includes OS, kernel and interpreter details.
-      # Refresh it for this runner, while rejecting any JavaScript lock drift.
-      run: |
-        pnpm install --no-frozen-lockfile
-        git diff --exit-code -- pnpm-lock.yaml
+      run: pnpm install --frozen-lockfile
