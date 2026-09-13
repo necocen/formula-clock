@@ -2,6 +2,8 @@
 
 A clock that turns the hour and minute digits into an equation for the current second.
 
+![Formula Clock in action](docs/images/formula-clock.gif)
+
 ## Run locally
 
 Install [pnpm 12.4.1](https://pnpm.io/installation). pnpm will download the required Node.js version automatically.
