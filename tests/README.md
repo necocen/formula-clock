@@ -9,7 +9,7 @@ pnpm exec playwright install chromium firefox webkit
 
 `pnpm-workspace.yaml`でPython連携を有効にしています。SymPyは`pyproject.toml`の`dev`グループで指定し、`pylock.toml`で間接依存・取得ファイルも固定します。JavaScriptの`pnpm-lock.yaml`とともにGit管理します。
 
-pnpm 12.4.1のPythonロックにはOS・Pythonの環境情報も含まれ、別の環境では`--frozen-lockfile`が失敗します。初回や環境変更時は通常の`pnpm install`でロックを更新してください。対応するロックがある環境では`pnpm install --frozen-lockfile`、取得済みのキャッシュから再現するときは`pnpm install --offline --frozen-lockfile`を使えます。CIで環境が変わった場合も、対象環境でロックを更新してから固定インストールを使います。
+pnpm 12.4.1のPythonロックにはOS・Pythonの環境情報も含まれ、別の環境では`--frozen-lockfile`が失敗します。初回や環境変更時は通常の`pnpm install`でロックを更新してください。対応するロックがある環境では`pnpm install --frozen-lockfile`、取得済みのキャッシュから再現するときは`pnpm install --offline --frozen-lockfile`を使えます。CIでは`pnpm install --no-frozen-lockfile`でPythonロックをrunner環境へ更新し、`git diff --exit-code -- pnpm-lock.yaml`でJavaScriptの依存解決に変更がないことを確認します。
 
 pnpmは`.pnpm/python-envs/`に環境を作り、`.venv`をそこへ向けます。手動のactivateやpip installは不要です。`pnpm exec python`や`pnpm run`からも同じ環境を使えます。Python本体は自動インストールされないため、`python3`（Windowsでは`python`）を先に用意してください。使用するインタプリタを変える場合は`pnpm-workspace.yaml`の`python.executable`で指定できます。
 
@@ -104,6 +104,12 @@ pnpm exec playwright show-report test-results/playwright-report
 ブラウザ検証は配布物のMathJax 4だけを使います。MathJaxとフォントはアプリの遅延チャンクとして配信されます。
 
 ## 実行結果
+
+GitHub ActionsはUbuntu 24.04・Node.js 22.23.2・Python 3.14で実行します。PRとmainへのpushでは`Unit, build and OG`が`check`・`test`・`test:og`・`og-snapshots`を順に実行します。`og-snapshots`はブラウザを起動しません。
+
+ブラウザの全テストは`Browser tests`ワークフローを手動実行したときだけ起動します。`Browser (chromium)`・`Browser (firefox)`・`Browser (webkit)`は別runnerで並列に実行し、ブラウザとOSの必要ライブラリは`playwright install --with-deps`で準備します。
+
+各ジョブの`test-results/`はActionsのArtifactsに7日間保存します。失敗時のHTMLレポート・トレース・画像差分もここから取得できます。PRの更新で古い検証はキャンセルし、ブラウザ間では一つの失敗で他の検証をキャンセルしません。
 
 出力はすべてGit管理外の`test-results/`へ保存します。
 

@@ -135,6 +135,8 @@ pnpm run test:browser i18n.test.ts --project chromium
 pnpm run test:browser transport.test.ts --project chromium
 ```
 
+GitHub ActionsではPRと`main`へのpushで、整形・lint・型、単体・ビルド・OGを検証します。`main`へのpushはこれらの成功後に本番へデプロイします。Chromium・Firefox・WebKitの全テストは`Browser tests`ワークフローの手動実行に分けています。必要なSecretと実行条件は[CIと自動デプロイ](docs/SHARING.md#ciと自動デプロイ)を参照してください。
+
 ログ・実行結果JSON・確認用スクリーンショットは、Git対象外の`test-results/`に保存します。
 変更内容に応じた確認項目は[ACCEPTANCE.md](docs/ACCEPTANCE.md)を参照してください。
 

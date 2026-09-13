@@ -21,6 +21,24 @@ MathJax本体・4書体とEuler拡張は4.1.3、resvg WASMは2.6.2に固定す�
 
 `pnpm run dev`は原本を、`pnpm run preview:local`はビルド済み出力を使う。プレビューの実行中に再ビルドした場合は、検証前に再起動してアセット目録を読み直す。式データやライセンスの入力を変えた場合もViteを再起動する。`public/data/`はその起動・ビルド時に生成されるため手で編集しない。Viteの開発中はHMRでバージョンIDが変わらないため、OG画像のR2キャッシュを迂回して毎回描画する。キャッシュ動作は`preview:local`または`test:og`で確認する。
 
+## CIと自動デプロイ
+
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml)で次の処理を行う。
+
+- PR：整形・lint・型、単体・ビルド・OG画像のテストを実行する。OGの画像差分はブラウザを起動せずworkerdで比較する。
+- `main`へのpush：同じ検証を実行し、成功したコミットを`production`へデプロイする。直接pushでもこの検証を省略しない。
+- `CI`の手動実行：上記の検証だけを実行する。
+
+時間のかかるChromium・Firefox・WebKitの全テストは、[`.github/workflows/browser.yml`](../.github/workflows/browser.yml)の`Browser tests`に分ける。Actions画面の「Run workflow」から対象ブランチを指定して実行する。PRとmainへのpushでは起動しない。
+
+デプロイは`pnpm run build`後に、ロック済みのWranglerで`dist/worker/wrangler.json`を公開する。Account ID・Custom Domain・KV・R2は`wrangler.jsonc`の既存設定を使う。テストはローカルのworkerdを使い、Cloudflareの認証情報はデプロイのステップだけへ渡す。
+
+初回は[Cloudflareの手順](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)に従い、対象アカウントと`necocen.info`ゾーンへ範囲を限定した「Edit Cloudflare Workers」トークンを作る。既存のKV・R2 bindingとCustom Domainをデプロイできる権限を含める。
+[GitHubのActions Secrets](https://github.com/necocen/formula-clock/settings/secrets/actions)へ`CLOUDFLARE_API_TOKEN`として登録する。トークン本文はGitへ保存しない。`production` EnvironmentのSecretとして登録してもよい。Account IDは設定済みなので追加のSecretは不要。
+
+`production`に承認必須ルールを設定すると自動デプロイは承認待ちになる。pushだけで公開する運用では必須承認を設定しない。mainの実行は直列化し、進行中のデプロイを次のpushで中断しない。
+テスト結果は各ジョブのArtifactsに7日間保存する。詳細は[テストの説明](../tests/README.md#実行結果)を参照。
+
 ## KVと共有リンク
 
 `SHARES`に`formula-clock-shares`を割り当て、`share/<ID>`へ検証済みJSONを保存する。

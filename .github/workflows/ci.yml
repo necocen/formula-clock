@@ -6,24 +6,57 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  # Replace outdated PR checks, but let an active production deployment finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Unit, build and OG
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
         with:
-          node-version-file: .node-version
-          cache: pnpm
-      # The Python lock (pylock.toml) is tied to the OS it was generated on, so a
-      # frozen install fails on Linux runners. Plain install keeps pnpm-lock.yaml
-      # as-is here because every JavaScript dependency is pinned exactly.
-      - run: pnpm install
+          persist-credentials: false
+      - uses: ./.github/actions/setup
       - run: pnpm run check
       - run: pnpm test
+      - run: pnpm run test:og
+      - run: pnpm run test:browser --project og-snapshots
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results-unit-build-og
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  deploy:
+    name: Deploy production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://formula.necocen.info
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm run build
+      - name: Deploy with the locked Wrangler version
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [[ -z "$CLOUDFLARE_API_TOKEN" ]]; then
+            echo '::error::Set the CLOUDFLARE_API_TOKEN Actions secret; see docs/SHARING.md.'
+            exit 1
+          fi
+          pnpm exec wrangler deploy --config dist/worker/wrangler.json
