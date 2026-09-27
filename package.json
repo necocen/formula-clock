@@ -41,7 +41,7 @@
     "@playwright/test": "1.62.0",
     "@resvg/resvg-wasm": "2.6.2",
     "@types/node": "22.20.2",
-    "oxfmt": "0.67.0",
+    "oxfmt": "0.68.0",
     "oxlint": "1.82.0",
     "tsx": "4.23.13",
     "typescript": "7.0.2",
